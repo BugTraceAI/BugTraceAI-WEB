@@ -1,0 +1,72 @@
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:16-alpine
+    container_name: bugtraceai-web-db
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-bugtraceai}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-bugtraceai_dev_2026}
+      POSTGRES_DB: ${POSTGRES_DB:-bugtraceai_web}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./backend/init-scripts:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-bugtraceai}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - bugtraceai-network
+
+  # Express/Prisma Backend
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: bugtraceai-web-backend
+    environment:
+      NODE_ENV: production
+      PORT: 3001
+      DATABASE_URL: postgresql://${POSTGRES_USER:-bugtraceai}:${POSTGRES_PASSWORD:-bugtraceai_dev_2026}@postgres:5432/${POSTGRES_DB:-bugtraceai_web}?schema=public
+      FRONTEND_URL: http://localhost:${FRONTEND_PORT:-6869}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    restart: unless-stopped
+    networks:
+      - bugtraceai-network
+
+  # Vite/React Frontend (nginx)
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        VITE_API_URL: /api
+        VITE_CLI_API_URL: ${VITE_CLI_API_URL:-http://localhost:8000}
+    container_name: bugtraceai-web-frontend
+    ports:
+      - "${FRONTEND_PORT:-6869}:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - bugtraceai-network
+
+volumes:
+  postgres_data:
+    name: bugtraceai_web_postgres_data
+    driver: local
+
+networks:
+  bugtraceai-network:
+    name: bugtraceai-web-network
+    driver: bridge

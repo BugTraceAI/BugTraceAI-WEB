@@ -1,0 +1,116 @@
+// BugTraceAI-WEB Database Schema
+// This schema defines all tables for chat persistence, analysis storage, and CLI integration
+
+generator client {
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "linux-musl-openssl-3.0.x"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================================================
+// CHAT SYSTEM
+// ============================================================================
+
+/// Chat sessions represent individual conversations
+/// Each session has a type (websec, xss, sql) and contains multiple messages
+model ChatSession {
+  id          String   @id @default(uuid()) @db.Uuid
+  sessionType String   @map("session_type") @db.VarChar(50)
+  title       String   @db.VarChar(255)
+  context     Json? // Stores additional context like model settings, target URL, etc.
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @default(now()) @updatedAt @map("updated_at")
+  isArchived  Boolean  @default(false) @map("is_archived")
+
+  // Relations
+  messages ChatMessage[]
+  analyses AnalysisReport[] // Link to analyses created during this session (ANAL-06)
+
+  // Indexes for performance
+  @@index([updatedAt], name: "idx_sessions_updated")
+  @@index([isArchived], name: "idx_sessions_archived")
+  @@index([sessionType], name: "idx_sessions_type")
+  @@map("chat_sessions")
+}
+
+/// Individual messages within a chat session
+/// Messages can be from user, assistant, or error type
+model ChatMessage {
+  id        String      @id @default(uuid()) @db.Uuid
+  sessionId String      @map("session_id") @db.Uuid
+  session   ChatSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  role      String      @db.VarChar(20) // 'user', 'assistant', 'error'
+  content   String      @db.Text
+  createdAt DateTime    @default(now()) @map("created_at")
+
+  // Indexes for performance
+  @@index([sessionId], name: "idx_messages_session")
+  @@index([createdAt], name: "idx_messages_created")
+  @@map("chat_messages")
+}
+
+// ============================================================================
+// ANALYSIS SYSTEM
+// ============================================================================
+
+/// Analysis reports store results from URL analysis, XSS tests, and SQL injection tests
+/// These are generated from the frontend analysis tools
+model AnalysisReport {
+  id              String   @id @default(uuid()) @db.Uuid
+  analysisType    String   @map("analysis_type") @db.VarChar(50) // 'url_analysis', 'xss_test', 'sql_test'
+  target          String   @db.Text // URL or endpoint being analyzed
+  vulnerabilities Json // Array of vulnerability objects
+  createdAt       DateTime @default(now()) @map("created_at")
+  metadata        Json? // Additional metadata (HTTP headers, response times, etc.)
+
+  // Optional link to chat session (ANAL-06)
+  sessionId       String?      @map("session_id") @db.Uuid
+  session         ChatSession? @relation(fields: [sessionId], references: [id], onDelete: SetNull)
+
+  // Indexes for performance
+  @@index([target], name: "idx_analysis_target")
+  @@index([createdAt], name: "idx_analysis_created")
+  @@index([analysisType], name: "idx_analysis_type")
+  @@index([sessionId], name: "idx_analysis_session")
+  @@map("analysis_reports")
+}
+
+// ============================================================================
+// CLI INTEGRATION
+// ============================================================================
+
+/// CLI reports imported from BugTraceAI-CLI JSON files
+/// Stores metadata and links to the original report file
+model CliReport {
+  id              String    @id @default(uuid()) @db.Uuid
+  cliScanId       Int?      @map("cli_scan_id") // Original scan ID from CLI
+  reportPath      String    @unique @map("report_path") @db.Text // Absolute path to JSON report file
+  targetUrl       String?   @map("target_url") @db.Text
+  scanDate        DateTime? @map("scan_date")
+  toolUsed        String    @default("BugTraceAI-CLI") @map("tool_used") @db.VarChar(50)
+  severitySummary Json?     @map("severity_summary") // { critical: 2, high: 5, medium: 10, low: 3 }
+  syncedAt        DateTime  @default(now()) @map("synced_at")
+
+  // Indexes for performance
+  @@index([scanDate], name: "idx_cli_scan_date")
+  @@index([targetUrl], name: "idx_cli_target")
+  @@map("cli_reports")
+}
+
+// ============================================================================
+// APPLICATION SETTINGS
+// ============================================================================
+
+/// Application-wide settings stored as key-value pairs
+/// Replaces localStorage for persistent configuration
+model AppSettings {
+  key       String   @id @db.VarChar(100)
+  value     Json // Flexible JSON storage for any setting type
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
+
+  @@map("app_settings")
+}

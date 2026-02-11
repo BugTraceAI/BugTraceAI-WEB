@@ -1,0 +1,21 @@
+node_modules/
+dist/
+.env*
+*.log
+.claude/
+.trash/
+
+# Backend specific
+backend/node_modules/
+backend/dist/
+backend/.env*
+
+# DB and Secrets
+*.db
+*.sqlite
+*.sqlite3
+*.key
+*.pem
+*.pcap
+session.json
+credentials.json

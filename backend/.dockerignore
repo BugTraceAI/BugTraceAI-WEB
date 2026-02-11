@@ -1,0 +1,38 @@
+# Dependencies
+node_modules/
+
+# Build outputs
+dist/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# Git
+.git/
+.gitignore
+
+# Tests
+tests/
+*.test.ts
+*.spec.ts
+vitest.config.ts
+coverage/
+
+# Development
+.env
+.env.*
+!.env.example
+nodemon.json
+
+# Documentation
+README.md
+*.md
+
+# Docker files in subdirectories
+docker-compose*.yml
+
+# OS
+.DS_Store
+Thumbs.db

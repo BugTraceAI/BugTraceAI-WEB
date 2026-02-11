@@ -1,0 +1,43 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+
+# Git
+.git/
+.gitignore
+
+# Documentation
+*.md
+!README.md
+
+# Environment files
+.env
+.env.*
+!.env.example
+
+# IDE/Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Backend (builds separately)
+backend/
+
+# Tests
+*.test.tsx
+*.spec.tsx
+*.test.ts
+*.spec.ts
+coverage/
+__tests__/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Misc
+*.log
+npm-debug.log*

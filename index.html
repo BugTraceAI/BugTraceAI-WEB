@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" href="data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 5560 4140' fill='%23FF7F50'%3e%3cg transform='translate(0,4140) scale(1,-1)'%3e%3cpath d='M110 2065 l0 -1944 618 4 c339 2 652 4 696 5 75 0 79 1 112 34 l34 34 0 1031 0 1030 -35 35 -35 35 23 16 c13 8 29 27 35 41 9 18 12 183 12 585 l0 559 243 -2 242 -3 3 -1698 2 -1697 240 0 240 0 0 1700 0 1700 245 0 245 0 0 -1705 0 -1705 240 0 240 0 0 985 0 985 245 0 245 0 0 -979 0 -979 98 -7 c102 -8 370 -1 381 10 3 4 7 769 9 1701 l3 1694 219 0 220 0 0 -1637 c0 -1054 4 -1651 10 -1674 6 -19 22 -46 36 -60 25 -24 29 -24 228 -27 l203 -3 6 77 c9 100 9 3647 0 3737 l-6 67 -2648 0 -2649 0 0 -1945z m980 985 l0 -480 -250 0 -250 0 0 480 0 480 250 0 250 0 0 -480z m2910 5 l0 -475 -245 0 -245 0 0 475 0 475 245 0 245 0 0 -475z m-2910 -1720 l0 -735 -247 2 -248 3 -3 733 -2 732 250 0 250 0 0 -735z'/%3e%3c/g%3e%3c/svg%3e" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>BugTraceAI</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      // BugTraceAI Custom Tailwind Configuration
+      // Extends the default theme with our color palette
+      tailwind.config = {
+        darkMode: 'class',
+        theme: {
+          extend: {
+            colors: {
+              // Primary Purple Palette (60% - Backgrounds)
+              'purple-deep': '#2D1B4D',
+              'purple-medium': '#3D2B5F',
+              'purple-light': '#4D3B6F',
+              'purple-elevated': '#5D4B7F',
+              // Dashboard Colors (darker variants)
+              'dashboard-bg': '#1A0F2E',
+              'dashboard-card': 'rgba(26, 15, 46, 0.9)',
+              // Accent Colors (10% - CTAs, highlights)
+              'coral': '#FF7F50',
+              'coral-hover': '#FF9B70',
+              'coral-active': '#E56B3C',
+              // Status Colors
+              'success': '#2ECC71',
+              'warning': '#FFC107',
+              'error': '#FF3131',
+              // Text Colors (30%)
+              'off-white': '#F8F9FA',
+              'purple-gray': '#B0A8C0',
+              'muted': '#8A7FA8',
+            },
+            boxShadow: {
+              'glow-coral': '0 0 20px rgba(255, 127, 80, 0.4)',
+              'glow-success': '0 0 20px rgba(46, 204, 113, 0.4)',
+              'glow-error': '0 0 20px rgba(255, 49, 49, 0.4)',
+              'dashboard': '0 4px 20px rgba(0, 0, 0, 0.4)',
+              'dashboard-hover': '0 8px 30px rgba(0, 0, 0, 0.5)',
+            },
+            borderRadius: {
+              'card': '24px',
+              'card-lg': '32px',
+              'card-xl': '40px',
+            },
+          },
+        },
+      }
+    </script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <!-- Theme System -->
+    <link rel="stylesheet" href="/styles/theme.css">
+    <style>
+      /* Tailwind CSS custom config - extends theme.css */
+      /* These map Tailwind classes to our CSS variables */
+
+      /* Legacy compatibility classes (map old names to new theme) */
+      .text-text-primary { color: var(--color-text-primary); }
+      .text-text-secondary { color: var(--color-text-secondary); }
+      .text-text-tertiary { color: var(--color-text-tertiary); }
+
+      .bg-glass-bg {
+        background-color: var(--color-glass-bg);
+        border-color: var(--color-glass-border);
+      }
+      .bg-card-glass-bg { background-color: var(--color-bg-secondary); }
+      .border-glass-border { border-color: var(--color-glass-border); }
+      .bg-control-bg { background-color: var(--input-bg); }
+      .border-control-border { border-color: var(--input-border); }
+
+      /* Gradient classes using accent color */
+      .gradient-accent {
+        background: var(--gradient-accent);
+      }
+      .gradient-text-accent {
+        background: var(--gradient-accent);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+      }
+
+      /* Vibrant Gradient Definitions (legacy support) */
+      .gradient-purple-blue { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
+      .gradient-cyan-blue { background: linear-gradient(135deg, #00d2ff 0%, #3a7bd5 100%); }
+      .gradient-coral { background: linear-gradient(135deg, #FF7F50 0%, #FF9B70 100%); }
+      .gradient-success { background: linear-gradient(135deg, #2ECC71 0%, #27AE60 100%); }
+      .gradient-warning { background: linear-gradient(135deg, #FFC107 0%, #FFD54F 100%); }
+      .gradient-error { background: linear-gradient(135deg, #FF3131 0%, #FF6B6B 100%); }
+    </style>
+  <script type="importmap">
+{
+  "imports": {
+    "react": "https://esm.sh/react@^19.1.1",
+    "react-dom/": "https://esm.sh/react-dom@^19.1.1/",
+    "react/": "https://esm.sh/react@^19.1.1/",
+    "url": "https://esm.sh/url@^0.11.4",
+    "vite": "https://esm.sh/vite@^7.1.2",
+    "@vitejs/plugin-react": "https://esm.sh/@vitejs/plugin-react@^5.0.0",
+    "marked": "https://esm.sh/marked@^16.1.2"
+  }
+}
+</script>
+</head>
+  <body class="font-sans">
+    <div id="root"></div>
+    <script type="module" src="/index.tsx"></script>
+  </body>
+</html>
