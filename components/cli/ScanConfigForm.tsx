@@ -57,9 +57,10 @@ export const ScanConfigForm: React.FC<ScanConfigFormProps> = ({
 
   const handleNumberChange = (field: 'max_depth' | 'max_urls', value: string) => {
     const numValue = parseInt(value, 10);
-    if (!isNaN(numValue)) {
-      onChange({ ...config, [field]: numValue });
-    }
+    if (isNaN(numValue)) return;
+    const limits = { max_depth: { min: 1, max: 10 }, max_urls: { min: 1, max: 5000 } };
+    const clamped = Math.min(Math.max(numValue, limits[field].min), limits[field].max);
+    onChange({ ...config, [field]: clamped });
   };
 
 
@@ -115,7 +116,7 @@ export const ScanConfigForm: React.FC<ScanConfigFormProps> = ({
           </select>
         </div>
 
-        {/* Max Depth */}
+        {/* Max Depth (1-10) */}
         <div className="w-20 flex-shrink-0">
           <label htmlFor="max-depth" className="label-mini block mb-1 ml-1">
             Depth
@@ -127,13 +128,14 @@ export const ScanConfigForm: React.FC<ScanConfigFormProps> = ({
             max="10"
             value={config.max_depth}
             onChange={(e) => handleNumberChange('max_depth', e.target.value)}
+            onBlur={() => { if (config.max_depth < 1) onChange({ ...config, max_depth: 1 }); }}
             disabled={disabled}
             data-testid="scan-config-max-depth"
-            className="input-premium font-mono text-center text-sm h-8 w-full"
+            className="input-premium font-mono text-center text-sm h-8 w-full [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none [-moz-appearance:textfield]"
           />
         </div>
 
-        {/* Max URLs */}
+        {/* Max URLs (1-5000) */}
         <div className="w-24 flex-shrink-0">
           <label htmlFor="max-urls" className="label-mini block mb-1 ml-1">
             Max URLs
@@ -142,12 +144,13 @@ export const ScanConfigForm: React.FC<ScanConfigFormProps> = ({
             id="max-urls"
             type="number"
             min="1"
-            max="500"
+            max="5000"
             value={config.max_urls}
             onChange={(e) => handleNumberChange('max_urls', e.target.value)}
+            onBlur={() => { if (config.max_urls < 1) onChange({ ...config, max_urls: 1 }); }}
             disabled={disabled}
             data-testid="scan-config-max-urls"
-            className="input-premium font-mono text-center text-sm h-8 w-full"
+            className="input-premium font-mono text-center text-sm h-8 w-full [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none [-moz-appearance:textfield]"
           />
         </div>
 
