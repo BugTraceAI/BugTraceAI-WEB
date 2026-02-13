@@ -29,7 +29,7 @@ export const ChatLayout: React.FC<ChatLayoutProps> = ({ header, children, footer
             </header>
 
             {/* Chat area - centered content column */}
-            <main ref={chatContainerRef} className="flex-1 overflow-y-auto min-h-0">
+            <main ref={chatContainerRef} className="flex-1 overflow-y-auto overflow-x-hidden min-h-0">
                 <div className="max-w-3xl mx-auto px-4 py-6 space-y-6">
                     {children}
                 </div>

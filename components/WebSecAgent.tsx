@@ -31,6 +31,7 @@ export const WebSecAgent: React.FC<WebSecAgentProps> = ({
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const initializingRef = useRef(false);
   const initializedRef = useRef(false);
+  const autoRespondTriggeredRef = useRef<string | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const navigate = useNavigate();
   const { sessionId } = useParams<{ sessionId?: string }>();
@@ -90,6 +91,10 @@ export const WebSecAgent: React.FC<WebSecAgentProps> = ({
     if (currentSession && sessionId !== currentSession.id && initializedRef.current && !initializingRef.current) {
       navigate(`/chat/${currentSession.id}`, { replace: false });
     }
+    // Reset auto-respond guard when switching sessions
+    if (currentSession) {
+      autoRespondTriggeredRef.current = null;
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentSession?.id, sessionId]);
 
@@ -118,6 +123,28 @@ export const WebSecAgent: React.FC<WebSecAgentProps> = ({
 
     persistAiResponse();
   }, [legacyMessages, currentSession, persistMessage, persistedMessages]);
+
+  // Auto-trigger AI response when session loads with an unanswered user message
+  // (e.g., when a report is sent to chat from the reports page)
+  useEffect(() => {
+    if (
+      !currentSession ||
+      loadingMessages ||
+      isLoading ||
+      initializingRef.current ||
+      persistedMessages.length === 0
+    ) return;
+
+    const lastMsg = persistedMessages[persistedMessages.length - 1];
+    if (lastMsg.role !== 'user') return;
+
+    // Guard: only trigger once per session+message combination
+    const triggerKey = `${currentSession.id}:${lastMsg.id}`;
+    if (autoRespondTriggeredRef.current === triggerKey) return;
+    autoRespondTriggeredRef.current = triggerKey;
+
+    onSendMessage(lastMsg.content);
+  }, [currentSession, persistedMessages, loadingMessages, isLoading, onSendMessage]);
 
   useEffect(() => {
     if (textareaRef.current) {

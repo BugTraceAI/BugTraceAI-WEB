@@ -1,5 +1,6 @@
 // components/MarkdownRenderer.tsx
 import { marked } from 'marked';
+import DOMPurify from 'dompurify';
 import React, { useMemo } from 'react';
 
 // Configure marked options once
@@ -129,10 +130,18 @@ const markdownStyles = `
 export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content }) => {
     const parsedHtml = useMemo(() => {
         if (!content) return '';
-        // Note: In a production app with user-generated content,
-        // you would add a sanitizer like DOMPurify here for security.
-        // For this app, the content is from a trusted AI source.
-        return marked.parse(content) as string;
+        const rawHtml = marked.parse(content) as string;
+        return DOMPurify.sanitize(rawHtml, {
+            ALLOWED_TAGS: [
+                'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'p', 'br', 'hr',
+                'ul', 'ol', 'li', 'blockquote', 'pre', 'code',
+                'table', 'thead', 'tbody', 'tr', 'th', 'td',
+                'strong', 'em', 'b', 'i', 'a', 'del', 'sup', 'sub',
+                'span', 'div', 'img',
+            ],
+            ALLOWED_ATTR: ['href', 'src', 'alt', 'title', 'class', 'id', 'target', 'rel'],
+            ALLOW_DATA_ATTR: false,
+        });
     }, [content]);
 
     return (

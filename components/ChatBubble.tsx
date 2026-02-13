@@ -24,8 +24,8 @@ export const ChatBubble: React.FC<ChatBubbleProps> = ({ message, isLoading }) =>
                 </div>
 
                 {/* Message content */}
-                <div className="flex-1 min-w-0 py-1">
-                    <div className={`text-[15px] leading-7 ${isError ? 'text-red-300' : 'text-white'}`}>
+                <div className="flex-1 min-w-0 overflow-hidden py-1">
+                    <div className={`text-[15px] leading-7 overflow-x-auto overflow-y-hidden break-words ${isError ? 'text-red-300' : 'text-white'}`}>
                         {isLoading ? (
                             <div className="flex items-center gap-1 my-2">
                                 <div className="h-2 w-2 bg-coral/50 rounded-full animate-bounce [animation-delay:-0.3s]"></div>
@@ -45,7 +45,7 @@ export const ChatBubble: React.FC<ChatBubbleProps> = ({ message, isLoading }) =>
     return (
         <div className="flex justify-end animate-fade-in">
             <div className="max-w-[85%] bg-coral/10 border border-coral/10 rounded-2xl rounded-tr-md px-5 py-3 shadow-[0_0_15px_-5px_rgba(6,182,212,0.1)]">
-                <div className="text-[15px] leading-relaxed text-off-white whitespace-pre-wrap">
+                <div className="text-[15px] leading-relaxed text-off-white whitespace-pre-wrap break-words overflow-hidden">
                     {message.content}
                 </div>
             </div>

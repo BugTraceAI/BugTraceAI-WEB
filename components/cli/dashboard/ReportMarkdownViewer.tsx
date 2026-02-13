@@ -5,6 +5,7 @@
  * download section, and markdown rendering. Presentation-heavy component.
  */
 import React, { useState, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
 import JSZip from 'jszip';
 import { MarkdownRenderer } from '../../MarkdownRenderer.tsx';
@@ -72,6 +73,67 @@ const groupByType = (findings: Finding[]): { name: string; value: number; severi
     .sort((a, b) => b.value - a.value);
 };
 
+interface AttackChain {
+  name: string;
+  vulnerabilities: string;
+  impact: string;
+}
+
+const buildReportSummary = (
+  report: CLIReport,
+  findings: Finding[],
+  scanStats: ScanStats | null,
+  markdown: string,
+  attackChains: AttackChain[],
+): string => {
+  const s = report.severity_summary;
+  const counts = s || {
+    critical: findings.filter(f => f.severity.toLowerCase() === 'critical').length,
+    high: findings.filter(f => f.severity.toLowerCase() === 'high').length,
+    medium: findings.filter(f => f.severity.toLowerCase() === 'medium').length,
+    low: findings.filter(f => f.severity.toLowerCase() === 'low').length,
+  };
+  const total = counts.critical + counts.high + counts.medium + counts.low;
+
+  let summary = `This is a cybersecurity scan report for **${report.target_url}**. I'd like your help understanding the findings, their severity, and what actions should be taken.\n\n`;
+  summary += `## Scan Summary\n`;
+  summary += `- **Date:** ${report.scan_date || 'Unknown'}\n`;
+  if (scanStats?.duration) summary += `- **Duration:** ${scanStats.duration}\n`;
+  if (scanStats?.urls_scanned != null) summary += `- **URLs Scanned:** ${scanStats.urls_scanned}\n`;
+  summary += `- **Total Findings:** ${total} (Critical: ${counts.critical}, High: ${counts.high}, Medium: ${counts.medium}, Low: ${counts.low})\n\n`;
+
+  if (findings.length > 0) {
+    summary += `## Findings\n\n`;
+    summary += `| # | Type | Severity | Parameter | CVSS | Status |\n`;
+    summary += `|---|------|----------|-----------|------|--------|\n`;
+    for (const [i, f] of findings.entries()) {
+      const status = f.status === 'VALIDATED_CONFIRMED' ? 'Confirmed' : f.validated ? 'Validated' : 'Pending';
+      const cvss = f.cvss_score != null ? String(f.cvss_score) : '-';
+      summary += `| ${i + 1} | ${f.type || f.title} | ${f.severity} | ${f.parameter || '-'} | ${cvss} | ${status} |\n`;
+    }
+    summary += `\n`;
+  }
+
+  if (attackChains.length > 0) {
+    summary += `## Attack Chains\n\n`;
+    for (const [i, chain] of attackChains.entries()) {
+      summary += `### ${i + 1}. ${chain.name}\n`;
+      summary += `- **Vulnerabilities:** ${chain.vulnerabilities}\n`;
+      summary += `- **Impact:** ${chain.impact}\n\n`;
+    }
+  }
+
+  if (markdown) {
+    const MAX_REPORT_LEN = 6000;
+    const truncated = markdown.length > MAX_REPORT_LEN
+      ? markdown.substring(0, MAX_REPORT_LEN) + '\n\n... (report truncated for chat context)'
+      : markdown;
+    summary += `## Full Report\n\n${truncated}\n`;
+  }
+
+  return summary;
+};
+
 export const ReportMarkdownViewer: React.FC<ReportMarkdownViewerProps> = ({ report, onBack }) => {
   const {
     markdown,
@@ -89,12 +151,15 @@ export const ReportMarkdownViewer: React.FC<ReportMarkdownViewerProps> = ({ repo
     loadData,
   } = useReportViewer(report.id);
 
+  const navigate = useNavigate();
   const [zipping, setZipping] = useState(false);
+  const [sendingToChat, setSendingToChat] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [activeTab, setActiveTab] = useState<'findings' | 'report'>('findings');
   const [expandedIdx, setExpandedIdx] = useState<number | null>(null);
   const [showMetrics, setShowMetrics] = useState(false);
   const CLI_API_URL = import.meta.env.VITE_CLI_API_URL || 'http://localhost:8000';
+  const WEB_API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
 
   // Compute severity counts
   const s = report.severity_summary;
@@ -177,6 +242,52 @@ export const ReportMarkdownViewer: React.FC<ReportMarkdownViewerProps> = ({ repo
     }
   };
 
+  const handleSendToChat = async () => {
+    setSendingToChat(true);
+    try {
+      // 1. Fetch attack chains (non-blocking — empty array on failure)
+      let attackChains: AttackChain[] = [];
+      try {
+        const chainsRes = await fetch(`${CLI_API_URL}/api/scans/${report.id}/files/attack_chains.json`);
+        if (chainsRes.ok) {
+          const data = await chainsRes.json();
+          attackChains = data.chains || [];
+        }
+      } catch { /* attack chains not available — continue without them */ }
+
+      // 2. Create a new chat session
+      const sessionRes = await fetch(`${WEB_API_URL}/chats`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          session_type: 'websec',
+          title: `Report: ${report.target_url}`,
+        }),
+      });
+      if (!sessionRes.ok) throw new Error('Failed to create chat session');
+      const { data: session } = await sessionRes.json();
+
+      // 3. Build structured report summary with all available data
+      const summary = buildReportSummary(report, findings, scanStats, markdown, attackChains);
+
+      // 4. Send as initial user message
+      await fetch(`${WEB_API_URL}/chats/${session.id}/messages/bulk`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          messages: [{ role: 'user', content: summary }],
+        }),
+      });
+
+      // 5. Navigate to chat with this session
+      navigate(`/chat/${session.id}`);
+    } catch (err) {
+      console.error('Failed to send report to chat:', err);
+    } finally {
+      setSendingToChat(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-24">
@@ -245,10 +356,30 @@ export const ReportMarkdownViewer: React.FC<ReportMarkdownViewerProps> = ({ repo
               onClick={() => setShowMetrics(!showMetrics)}
               className="text-[10px] font-bold text-muted hover:text-white uppercase tracking-widest transition-colors flex items-center gap-2 bg-white/5 px-3 py-1 rounded-lg border border-white/5"
             >
-              {showMetrics ? 'Hide Metrics' : 'Show Metrics'}
+              {showMetrics ? 'Show Less' : 'Show More'}
               <svg className={`h-3 w-3 transition-transform duration-300 ${showMetrics ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
               </svg>
+            </button>
+
+            <button
+              onClick={handleSendToChat}
+              disabled={sendingToChat || (!markdown && findings.length === 0)}
+              className="text-[10px] font-bold text-emerald-400 hover:text-emerald-300 uppercase tracking-widest transition-colors flex items-center gap-2 bg-emerald-500/10 px-3 py-1 rounded-lg border border-emerald-500/20 hover:border-emerald-500/40 disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              {sendingToChat ? (
+                <>
+                  <div className="h-3 w-3 rounded-full border-2 border-emerald-400/30 border-t-emerald-400 animate-spin" />
+                  Sending...
+                </>
+              ) : (
+                <>
+                  <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                  </svg>
+                  Send to Chat
+                </>
+              )}
             </button>
 
             <button
