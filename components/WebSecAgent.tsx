@@ -169,14 +169,16 @@ export const WebSecAgent: React.FC<WebSecAgentProps> = ({
     <div className="flex items-center gap-3">
       <button
         onClick={() => setSidebarOpen(!sidebarOpen)}
-        className={`p-2 rounded-lg text-purple-gray hover:text-white hover:bg-white/10 transition-colors ${sidebarOpen ? 'md:hidden' : ''}`}
+        className={`flex items-center justify-center w-9 h-9 rounded-xl bg-ui-input-bg border border-ui-border text-ui-text-dim hover:text-ui-text-main hover:border-ui-accent/30 transition-all ${sidebarOpen ? 'md:hidden' : ''}`}
         title={sidebarOpen ? "Close sidebar" : "Open sidebar"}
       >
         <MenuIcon className="h-5 w-5" />
       </button>
-      <div className="flex items-center gap-2 px-2 py-1 rounded-lg">
-        <span className="text-lg font-semibold text-white">WebSec Agent</span>
-        <span className="px-2 py-0.5 rounded text-xs font-medium bg-coral/10 text-coral border border-coral/20">{openRouterModel.split('/').pop() || openRouterModel}</span>
+      <div className="flex items-center gap-2">
+        <h1 className="title-standard !text-lg">WebSec Agent</h1>
+        <span className="badge-mini badge-mini-accent !text-[9px] !py-0.5 !px-2 tracking-tighter opacity-80 backdrop-blur-sm shadow-[0_0_10px_rgba(255,127,80,0.1)]">
+          {openRouterModel.split('/').pop() || openRouterModel}
+        </span>
       </div>
     </div>
   );
@@ -210,10 +212,12 @@ export const WebSecAgent: React.FC<WebSecAgentProps> = ({
             type="submit"
             disabled={!userInput.trim()}
             data-testid="send-button"
-            className="flex-shrink-0 w-8 h-8 mb-1 rounded-full bg-coral text-black flex items-center justify-center hover:bg-coral-hover disabled:bg-white/10 disabled:text-white/20 transition-all shadow-[0_0_15px_-3px_rgba(6,182,212,0.6)] disabled:shadow-none"
+            className="group flex-shrink-0 w-10 h-10 rounded-full bg-ui-accent text-ui-bg flex items-center justify-center hover:bg-ui-accent-hover disabled:bg-white/5 disabled:text-ui-text-dim/30 transition-all shadow-glow-coral disabled:shadow-none"
             aria-label="Send message"
           >
-            <PaperAirplaneIcon className="h-4 w-4 transform rotate-90 translate-x-[1px]" />
+            <svg className="h-4 w-4 transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 19.5l15-15m0 0H8.25m11.25 0v11.25" />
+            </svg>
           </button>
         )}
       </form>

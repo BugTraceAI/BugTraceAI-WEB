@@ -111,17 +111,17 @@ export const AnalysisTable: React.FC<AnalysisTableProps> = ({
   const getSeverityColor = (severity: string) => {
     switch (severity) {
       case Severity.CRITICAL:
-        return 'bg-red-900/40 text-red-300 border-red-700/80';
+        return 'bg-red-500/10 text-red-500 border-red-500/30 shadow-[0_0_10px_rgba(239,68,68,0.1)]';
       case Severity.HIGH:
-        return 'bg-orange-900/40 text-orange-300 border-orange-700/80';
+        return 'bg-orange-500/10 text-orange-400 border-orange-500/30';
       case Severity.MEDIUM:
-        return 'bg-yellow-900/40 text-yellow-300 border-yellow-700/80';
+        return 'bg-yellow-500/10 text-yellow-400 border-yellow-500/30';
       case Severity.LOW:
-        return 'bg-blue-900/40 text-blue-300 border-blue-700/80';
+        return 'bg-blue-500/10 text-blue-400 border-blue-500/30';
       case Severity.INFO:
-        return 'bg-gray-900/40 text-gray-300 border-gray-700/80';
+        return 'bg-ui-text-dim/10 text-ui-text-dim border-ui-border';
       default:
-        return 'bg-gray-900/40 text-gray-300 border-gray-700/80';
+        return 'bg-ui-text-dim/10 text-ui-text-dim border-ui-border';
     }
   };
 
@@ -152,13 +152,13 @@ export const AnalysisTable: React.FC<AnalysisTableProps> = ({
     <div className="space-y-3" data-testid="analysis-table">
       {/* Compare Selected Button */}
       {onCompareSelected && selectedForCompare.size === 2 && (
-        <div className="flex justify-center">
+        <div className="flex justify-center mb-6">
           <button
             onClick={handleCompareClick}
             data-testid="compare-selected-btn"
-            className="px-6 py-3 bg-coral-active text-white font-semibold rounded-lg hover:bg-coral-active transition-colors shadow-lg"
+            className="btn-mini btn-mini-primary !px-10 !h-12 shadow-glow-coral animate-pulse"
           >
-            Compare Selected ({selectedForCompare.size})
+            INITIALIZE COMPARISON SEQUENCE ({selectedForCompare.size})
           </button>
         </div>
       )}
@@ -167,17 +167,17 @@ export const AnalysisTable: React.FC<AnalysisTableProps> = ({
       <div className="hidden lg:block overflow-x-auto">
         <table className="w-full border-collapse">
           <thead>
-            <tr className="border-b border-0">
+            <tr className="border-b border-ui-border/50">
               {onCompareSelected && (
-                <th className="text-left py-3 px-4 text-sm font-semibold text-purple-gray w-12">
+                <th className="text-left py-4 px-4 w-12">
                   <span className="sr-only">Select</span>
                 </th>
               )}
-              <th className="text-left py-3 px-4 text-sm font-semibold text-purple-gray">Date</th>
-              <th className="text-left py-3 px-4 text-sm font-semibold text-purple-gray">Type</th>
-              <th className="text-left py-3 px-4 text-sm font-semibold text-purple-gray">Target</th>
-              <th className="text-left py-3 px-4 text-sm font-semibold text-purple-gray">Findings</th>
-              <th className="text-right py-3 px-4 text-sm font-semibold text-purple-gray">Actions</th>
+              <th className="text-left py-4 px-4 label-mini !text-ui-text-dim/60">timestamp</th>
+              <th className="text-left py-4 px-4 label-mini !text-ui-text-dim/60">category</th>
+              <th className="text-left py-4 px-4 label-mini !text-ui-text-dim/60">target endpoint</th>
+              <th className="text-left py-4 px-4 label-mini !text-ui-text-dim/60">findings</th>
+              <th className="text-right py-4 px-4 label-mini !text-ui-text-dim/60">actions</th>
             </tr>
           </thead>
           <tbody>
@@ -188,11 +188,10 @@ export const AnalysisTable: React.FC<AnalysisTableProps> = ({
                   key={analysis.id}
                   data-testid={`analysis-row-${analysis.id}`}
                   onClick={() => onSelectAnalysis(analysis)}
-                  className={`cursor-pointer transition-all duration-200 border-b border-0/50 ${
-                    selectedId === analysis.id
-                      ? 'bg-coral/20 ring-2 ring-coral/50'
-                      : 'hover:bg-purple-medium/60/50'
-                  }`}
+                  className={`group cursor-pointer transition-all duration-300 border-b border-ui-border/30 ${selectedId === analysis.id
+                    ? 'bg-ui-accent/10 border-ui-accent/40'
+                    : 'hover:bg-ui-input-bg/40'
+                    }`}
                 >
                   {onCompareSelected && (
                     <td className="py-3 px-4" onClick={(e) => e.stopPropagation()}>
@@ -201,24 +200,24 @@ export const AnalysisTable: React.FC<AnalysisTableProps> = ({
                         checked={selectedForCompare.has(analysis.id)}
                         onChange={(e) => handleCheckboxToggle(e as any, analysis.id)}
                         disabled={!selectedForCompare.has(analysis.id) && selectedForCompare.size >= 2}
-                        className="h-4 w-4 rounded border-0 bg-purple-medium/60 text-coral-active focus:ring-coral focus:ring-offset-0 disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="h-4 w-4 rounded-lg border-0 bg-purple-medium/60 text-coral-active focus:ring-coral focus:ring-offset-0 disabled:opacity-50 disabled:cursor-not-allowed"
                       />
                     </td>
                   )}
                   <td className="py-3 px-4 text-sm text-white">
                     {formatDate(analysis.created_at)}
                   </td>
-                  <td className="py-3 px-4">
+                  <td className="py-4 px-4">
                     <div className="flex items-center gap-2">
                       {analysis.analysis_type === 'url_analysis' ? (
                         <>
-                          <LinkIcon className="h-5 w-5 text-coral" />
-                          <span className="text-sm text-white">URL</span>
+                          <LinkIcon className="h-4 w-4 text-ui-accent" />
+                          <span className="text-[11px] font-bold text-ui-text-dim group-hover:text-ui-text-main transition-colors">DAST</span>
                         </>
                       ) : (
                         <>
-                          <CodeBracketIcon className="h-5 w-5 text-purple-400" />
-                          <span className="text-sm text-white">Code</span>
+                          <CodeBracketIcon className="h-4 w-4 text-ui-accent" />
+                          <span className="text-[11px] font-bold text-ui-text-dim group-hover:text-ui-text-main transition-colors">SAST</span>
                         </>
                       )}
                     </div>
@@ -231,27 +230,27 @@ export const AnalysisTable: React.FC<AnalysisTableProps> = ({
                       {truncateTarget(analysis.target, 60)}
                     </span>
                   </td>
-                  <td className="py-3 px-4">
+                  <td className="py-4 px-4">
                     {findings.count > 0 ? (
                       <span
-                        className={`inline-flex items-center px-3 py-1 text-xs font-semibold rounded-full border ${getSeverityColor(
+                        className={`inline-flex items-center px-2 py-0.5 text-[10px] font-black rounded-lg border ${getSeverityColor(
                           findings.severity || ''
                         )}`}
                       >
-                        {findings.count} {findings.count === 1 ? 'Finding' : 'Findings'}
+                        {findings.count} {findings.count === 1 ? 'FINDING' : 'FINDINGS'}
                       </span>
                     ) : (
-                      <span className="text-xs text-muted">No findings</span>
+                      <span className="text-[10px] text-ui-text-dim/40 font-bold uppercase">Safe</span>
                     )}
                   </td>
-                  <td className="py-3 px-4 text-right">
+                  <td className="py-4 px-4 text-right">
                     <div className="flex justify-end gap-2">
                       <button
                         data-testid="view-analysis-btn"
                         onClick={() => onSelectAnalysis(analysis)}
-                        className="px-3 py-1 text-xs font-semibold text-coral-hover bg-purple-elevated/40 border border-coral/80 rounded-lg hover:bg-purple-elevated/60 transition-colors"
+                        className="btn-mini btn-mini-primary !h-8 !px-3"
                       >
-                        View
+                        VIEW
                       </button>
                       {onDeleteAnalysis && (
                         <>
@@ -259,25 +258,25 @@ export const AnalysisTable: React.FC<AnalysisTableProps> = ({
                             <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
                               <button
                                 onClick={(e) => handleConfirmDelete(e, analysis.id)}
-                                className="px-3 py-1 text-xs font-semibold text-red-300 bg-red-900/60 border border-red-700/80 rounded-lg hover:bg-red-900/80 transition-colors"
+                                className="btn-mini !h-8 !px-3 bg-red-500/10 border-red-500/30 text-red-500 hover:bg-red-500 transition-colors"
                               >
-                                Confirm
+                                CONFIRM
                               </button>
                               <button
                                 onClick={handleCancelDelete}
-                                className="px-3 py-1 text-xs font-semibold text-purple-gray bg-purple-medium/60 border-0 rounded-lg hover:bg-purple-medium/60/80 transition-colors"
+                                className="btn-mini btn-mini-secondary !h-8 !px-3"
                               >
-                                Cancel
+                                ESC
                               </button>
                             </div>
                           ) : (
                             <button
                               data-testid="delete-analysis-btn"
                               onClick={(e) => handleDeleteClick(e, analysis.id)}
-                              className="px-3 py-1 text-xs font-semibold text-red-300 bg-red-900/40 border border-red-700/80 rounded-lg hover:bg-red-900/60 transition-colors"
-                              title="Delete analysis"
+                              className="btn-mini btn-mini-secondary !h-8 !w-8 !p-0"
+                              title="Purge Log"
                             >
-                              <TrashIcon className="h-4 w-4" />
+                              <TrashIcon className="h-3.5 w-3.5" />
                             </button>
                           )}
                         </>
@@ -292,7 +291,7 @@ export const AnalysisTable: React.FC<AnalysisTableProps> = ({
       </div>
 
       {/* Mobile Card View */}
-      <div className="lg:hidden space-y-3">
+      <div className="lg:hidden space-y-4">
         {analyses.map((analysis) => {
           const findings = getFindingsSummary(analysis.vulnerabilities);
           return (
@@ -300,71 +299,66 @@ export const AnalysisTable: React.FC<AnalysisTableProps> = ({
               key={analysis.id}
               data-testid={`analysis-row-${analysis.id}`}
               onClick={() => onSelectAnalysis(analysis)}
-              className={`cursor-pointer p-4 rounded-lg transition-all duration-200 ${
-                selectedId === analysis.id
-                  ? 'bg-coral/20 ring-2 ring-coral/50 shadow-lg'
-                  : 'bg-purple-medium/60/50 hover:bg-purple-medium/60'
-              }`}
+              className={`cursor-pointer p-5 rounded-2xl transition-all duration-300 border ${selectedId === analysis.id
+                ? 'bg-ui-accent/10 border-ui-accent/40 shadow-glow-coral/10'
+                : 'bg-ui-input-bg/40 border-ui-border hover:border-ui-accent/20'
+                }`}
             >
-              <div className="flex items-start justify-between mb-2">
+              <div className="flex items-start justify-between mb-3">
                 <div className="flex items-center gap-2">
                   {analysis.analysis_type === 'url_analysis' ? (
-                    <LinkIcon className="h-5 w-5 text-coral flex-shrink-0" />
+                    <LinkIcon className="h-4 w-4 text-ui-accent" />
                   ) : (
-                    <CodeBracketIcon className="h-5 w-5 text-purple-400 flex-shrink-0" />
+                    <CodeBracketIcon className="h-4 w-4 text-ui-accent" />
                   )}
-                  <span className="text-xs text-muted">
-                    {analysis.analysis_type === 'url_analysis' ? 'URL Analysis' : 'Code Analysis'}
+                  <span className="label-mini !text-[9px] text-ui-text-dim/60">
+                    {analysis.analysis_type === 'url_analysis' ? 'DAST LOG' : 'SAST LOG'}
                   </span>
                 </div>
-                <span className="text-xs text-muted">{formatDate(analysis.created_at)}</span>
+                <span className="label-mini !text-[8px] text-ui-text-dim/40">{formatDate(analysis.created_at)}</span>
               </div>
 
-              <p className="text-sm text-white font-medium mb-2 truncate" title={analysis.target}>
+              <p className="text-[13px] font-bold text-ui-text-main mb-4 truncate" title={analysis.target}>
                 {truncateTarget(analysis.target, 50)}
               </p>
 
               <div className="flex items-center justify-between">
                 {findings.count > 0 ? (
                   <span
-                    className={`inline-flex items-center px-2 py-1 text-xs font-semibold rounded-full border ${getSeverityColor(
+                    className={`inline-flex items-center px-2 py-0.5 text-[9px] font-black rounded-lg border ${getSeverityColor(
                       findings.severity || ''
                     )}`}
                   >
-                    {findings.count} {findings.count === 1 ? 'Finding' : 'Findings'}
+                    {findings.count} {findings.count === 1 ? 'FINDING' : 'FINDINGS'}
                   </span>
                 ) : (
-                  <span className="text-xs text-muted">No findings</span>
+                  <span className="text-[9px] text-ui-text-dim/40 font-black uppercase">Cleared</span>
                 )}
 
                 {onDeleteAnalysis && (
-                  <>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={(e) => { e.stopPropagation(); onSelectAnalysis(analysis); }}
+                      className="btn-mini btn-mini-primary !h-8 !px-4"
+                    >
+                      VIEW
+                    </button>
                     {deleteConfirmId === analysis.id ? (
-                      <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
-                        <button
-                          onClick={(e) => handleConfirmDelete(e, analysis.id)}
-                          className="px-2 py-1 text-xs font-semibold text-red-300 bg-red-900/60 border border-red-700/80 rounded-lg"
-                        >
-                          Confirm
-                        </button>
-                        <button
-                          onClick={handleCancelDelete}
-                          className="px-2 py-1 text-xs font-semibold text-purple-gray bg-purple-medium/60 border-0 rounded-lg"
-                        >
-                          Cancel
-                        </button>
-                      </div>
+                      <button
+                        onClick={(e) => handleConfirmDelete(e, analysis.id)}
+                        className="btn-mini !h-8 !px-3 bg-red-500/10 border-red-500/30 text-red-500"
+                      >
+                        PURGE
+                      </button>
                     ) : (
                       <button
-                        data-testid="delete-analysis-btn"
                         onClick={(e) => handleDeleteClick(e, analysis.id)}
-                        className="p-1.5 text-red-300 bg-red-900/40 border border-red-700/80 rounded-lg hover:bg-red-900/60 transition-colors"
-                        title="Delete analysis"
+                        className="btn-mini btn-mini-secondary !h-8 !w-8 !p-0"
                       >
-                        <TrashIcon className="h-4 w-4" />
+                        <TrashIcon className="h-3.5 w-3.5" />
                       </button>
                     )}
-                  </>
+                  </div>
                 )}
               </div>
             </div>

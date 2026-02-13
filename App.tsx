@@ -30,6 +30,7 @@ import { SqlExploitationAssistant } from './components/SqlExploitationAssistant.
 import { WebSecAgent } from './components/WebSecAgent.tsx';
 import { DisclaimerModal } from './components/DisclaimerModal.tsx';
 import { SettingsModal } from './components/SettingsModal.tsx';
+import { ThemeModal } from './components/ThemeModal.tsx';
 import { ApiKeyWarningModal } from './components/ApiKeyWarningModal.tsx';
 import { SecurityHeadersAnalyzer } from './components/SecurityHeadersAnalyzer.tsx';
 import { NoLightModeModal } from './components/NoLightModeModal.tsx';
@@ -58,9 +59,10 @@ const App: React.FC = () => {
   const [isDevDocModalOpen, setIsDevDocModalOpen] = useState<boolean>(false);
   const [isUserDocModalOpen, setIsUserDocModalOpen] = useState<boolean>(false);
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState<boolean>(false);
+  const [isThemeModalOpen, setIsThemeModalOpen] = useState<boolean>(false);
   const [isApiKeyWarningModalOpen, setIsApiKeyWarningModalOpen] = useState<boolean>(false);
-  const [isNoLightModeModalOpen, setIsNoLightModeModalOpen] = useState<boolean>(false);
-  
+  const [settingsInitialTab, setSettingsInitialTab] = useState<'api' | 'status' | 'danger'>('api');
+
   const [payloadForForge, setPayloadForForge] = useState<string | null>(null);
   const [jwtForAnalyzer, setJwtForAnalyzer] = useState<string | null>(null);
   const [exploitAssistantContext, setExploitAssistantContext] = useState<ExploitContext | null>(null);
@@ -70,23 +72,23 @@ const App: React.FC = () => {
   const [disclaimerRejected, setDisclaimerRejected] = useState(false);
 
   const [viewingReportId, setViewingReportId] = useState<string | null>(null);
-  const [comparingReports, setComparingReports] = useState<{a: string, b: string} | null>(null);
-    
+  const [comparingReports, setComparingReports] = useState<{ a: string, b: string } | null>(null);
+
   useEffect(() => {
     try {
-        const accepted = sessionStorage.getItem('disclaimerAccepted') === 'true';
-        if (accepted) {
-            setDisclaimerAccepted(true);
-        }
+      const accepted = sessionStorage.getItem('disclaimerAccepted') === 'true';
+      if (accepted) {
+        setDisclaimerAccepted(true);
+      }
     } catch (e) {
-        console.error("Could not access sessionStorage:", e);
+      console.error("Could not access sessionStorage:", e);
     }
   }, []);
 
   const handleShowApiKeyWarning = () => {
     setIsApiKeyWarningModalOpen(true);
   };
-  
+
   // Use the new custom hook for all WebSec Agent logic
   const {
     messages: agentMessages,
@@ -100,9 +102,9 @@ const App: React.FC = () => {
 
   const handleAcceptDisclaimer = () => {
     try {
-        sessionStorage.setItem('disclaimerAccepted', 'true');
-    } catch(e) {
-         console.error("Could not write to sessionStorage:", e);
+      sessionStorage.setItem('disclaimerAccepted', 'true');
+    } catch (e) {
+      console.error("Could not write to sessionStorage:", e);
     }
     setDisclaimerAccepted(true);
     setDisclaimerRejected(false);
@@ -131,9 +133,9 @@ const App: React.FC = () => {
     };
 
     const sortedVulnerabilities = [...(report.vulnerabilities || [])].sort((a, b) => {
-        const severityA = severityOrder[a.severity] ?? 99;
-        const severityB = severityOrder[b.severity] ?? 99;
-        return severityA - severityB;
+      const severityA = severityOrder[a.severity] ?? 99;
+      const severityB = severityOrder[b.severity] ?? 99;
+      return severityA - severityB;
     });
 
     const sortedReport = { ...report, vulnerabilities: sortedVulnerabilities };
@@ -142,18 +144,20 @@ const App: React.FC = () => {
     setSelectedReport(reportWithId);
     setIsLoading(false);
   };
-  
+
   const handleAnalysisError = (message: string) => {
     setIsLoading(false);
     setAnalysisLog(prev => [...prev, `Analysis failed: ${message}`]);
   }
-  
+
   const handleShowSettings = () => {
+    setSettingsInitialTab('api');
     setIsSettingsModalOpen(true);
   };
 
   const handleGoToSettings = () => {
     setIsApiKeyWarningModalOpen(false);
+    setSettingsInitialTab('api');
     setIsSettingsModalOpen(true);
   };
 
@@ -192,8 +196,8 @@ const App: React.FC = () => {
     setSqlExploitAssistantContext(null);
   };
 
-  const handleLightModeClick = () => {
-    setIsNoLightModeModalOpen(true);
+  const handleThemeClick = () => {
+    setIsThemeModalOpen(true);
   };
 
   const handleAnalyzeWithAgent = (vulnerability: Vulnerability, analyzedTarget: string) => {
@@ -242,10 +246,10 @@ const App: React.FC = () => {
   };
 
   const handleSubTabNavigation = (tool: Tool) => {
-      navigateToSubTab(tool);
-      setSelectedReport(null); // Clear previous report to prevent state leakage
+    navigateToSubTab(tool);
+    setSelectedReport(null); // Clear previous report to prevent state leakage
   };
-  
+
   const handleNavigate = (view: View) => {
     navigateToView(view); // Use router navigation (handles default sub-tab for tabbed views)
     setSelectedReport(null); // ARCHITECTURAL FIX: Clear report when changing main view to prevent state leakage
@@ -257,21 +261,21 @@ const App: React.FC = () => {
   const handleGoHome = () => {
     handleNavigate(View.CLI_FRAMEWORK);
   };
-  
+
   if (disclaimerRejected) {
     return (
-        <div className="flex items-center justify-center h-screen bg-gray-900 text-white p-4 text-center">
-            <div>
-                <h1 className="text-2xl font-bold text-red-400">Disclaimer Rejected</h1>
-                <p className="mt-4">You must accept the disclaimer to use this application.</p>
-                <p className="mt-2 text-sm text-gray-400">Please reload the page to review the disclaimer again.</p>
-            </div>
+      <div className="flex items-center justify-center h-screen bg-gray-900 text-white p-4 text-center">
+        <div>
+          <h1 className="text-2xl font-bold text-red-400">Disclaimer Rejected</h1>
+          <p className="mt-4">You must accept the disclaimer to use this application.</p>
+          <p className="mt-2 text-sm text-gray-400">Please reload the page to review the disclaimer again.</p>
         </div>
+      </div>
     );
   }
-  
+
   if (!disclaimerAccepted) {
-      return <DisclaimerModal onAccept={handleAcceptDisclaimer} onReject={handleRejectDisclaimer} />;
+    return <DisclaimerModal onAccept={handleAcceptDisclaimer} onReject={handleRejectDisclaimer} />;
   }
 
   const renderActiveView = () => {
@@ -289,11 +293,11 @@ const App: React.FC = () => {
       { id: Tool.SSTI_FORGE, name: "SSTI Forge" },
       { id: Tool.OOB_INTERACTION_HELPER, name: "OOB Helper" },
     ];
-     const discoveryTools = [
+    const discoveryTools = [
       { id: Tool.URL_LIST_FINDER, name: "URL Finder" },
       { id: Tool.SUBDOMAIN_FINDER, name: "Subdomain Finder" },
     ];
-    
+
     switch (activeView) {
       case View.URL_ANALYSIS:
         return (
@@ -317,24 +321,24 @@ const App: React.FC = () => {
               />
             )}
             {activeSubTab === Tool.SECURITY_HEADERS_ANALYZER && (
-                <SecurityHeadersAnalyzer 
-                    onAnalysisStart={handleAnalysisStart}
-                    onAnalysisComplete={handleAnalysisComplete}
-                    onAnalysisError={handleAnalysisError}
-                    onShowApiKeyWarning={handleShowApiKeyWarning}
-                    isLoading={isLoading}
-                    report={selectedReport}
-                />
+              <SecurityHeadersAnalyzer
+                onAnalysisStart={handleAnalysisStart}
+                onAnalysisComplete={handleAnalysisComplete}
+                onAnalysisError={handleAnalysisError}
+                onShowApiKeyWarning={handleShowApiKeyWarning}
+                isLoading={isLoading}
+                report={selectedReport}
+              />
             )}
           </>
         );
       case View.CODE_ANALYSIS:
         return (
           <>
-            <SubTabs 
-              tools={codeAnalysisTools} 
-              activeTool={activeSubTab} 
-              setTool={handleSubTabNavigation} 
+            <SubTabs
+              tools={codeAnalysisTools}
+              activeTool={activeSubTab}
+              setTool={handleSubTabNavigation}
             />
             {activeSubTab === Tool.SAST && (
               <CodeAnalyzer
@@ -367,14 +371,14 @@ const App: React.FC = () => {
               />
             )}
             {activeSubTab === Tool.DOM_XSS_PATHFINDER && (
-                <DomXssPathfinder 
-                    onAnalysisStart={handleAnalysisStart}
-                    onAnalysisComplete={handleAnalysisComplete}
-                    onAnalysisError={handleAnalysisError}
-                    onShowApiKeyWarning={handleShowApiKeyWarning}
-                    isLoading={isLoading}
-                    report={selectedReport}
-                />
+              <DomXssPathfinder
+                onAnalysisStart={handleAnalysisStart}
+                onAnalysisComplete={handleAnalysisComplete}
+                onAnalysisError={handleAnalysisError}
+                onShowApiKeyWarning={handleShowApiKeyWarning}
+                isLoading={isLoading}
+                report={selectedReport}
+              />
             )}
           </>
         );
@@ -397,55 +401,55 @@ const App: React.FC = () => {
         );
       case View.JWT_ANALYZER:
         return <JwtAnalyzer
-                    initialToken={jwtForAnalyzer}
-                    report={selectedReport}
-                    onTokenConsumed={() => setJwtForAnalyzer(null)}
-                    onAnalysisComplete={handleAnalysisComplete}
-                    onSendReportToAgent={handleSendReportToAgent}
-                    onShowApiKeyWarning={handleShowApiKeyWarning}
-                />;
+          initialToken={jwtForAnalyzer}
+          report={selectedReport}
+          onTokenConsumed={() => setJwtForAnalyzer(null)}
+          onAnalysisComplete={handleAnalysisComplete}
+          onSendReportToAgent={handleSendReportToAgent}
+          onShowApiKeyWarning={handleShowApiKeyWarning}
+        />;
       case View.EXPLOIT_TOOLS:
-          return (
-              <PrivEscPathfinder
-                  onAnalysisStart={handleAnalysisStart}
-                  onAnalysisComplete={handleAnalysisComplete}
-                  onAnalysisError={handleAnalysisError}
-                  report={selectedReport}
-                  isLoading={isLoading}
-                  onAnalyzeWithAgent={handleAnalyzeWithAgent}
-                  onShowApiKeyWarning={handleShowApiKeyWarning}
-              />
-          );
+        return (
+          <PrivEscPathfinder
+            onAnalysisStart={handleAnalysisStart}
+            onAnalysisComplete={handleAnalysisComplete}
+            onAnalysisError={handleAnalysisError}
+            report={selectedReport}
+            isLoading={isLoading}
+            onAnalyzeWithAgent={handleAnalyzeWithAgent}
+            onShowApiKeyWarning={handleShowApiKeyWarning}
+          />
+        );
       case View.FILE_UPLOAD_AUDITOR:
-          return <FileUploadAuditor 
-                    onAnalysisStart={handleAnalysisStart}
-                    onAnalysisComplete={handleAnalysisComplete}
-                    onAnalysisError={handleAnalysisError}
-                    onShowApiKeyWarning={handleShowApiKeyWarning}
-                    isLoading={isLoading}
-                  />;
+        return <FileUploadAuditor
+          onAnalysisStart={handleAnalysisStart}
+          onAnalysisComplete={handleAnalysisComplete}
+          onAnalysisError={handleAnalysisError}
+          onShowApiKeyWarning={handleShowApiKeyWarning}
+          isLoading={isLoading}
+        />;
       case View.WEB_SEC_AGENT:
-          return (
-              <WebSecAgent 
-                messages={agentMessages} 
-                onSendMessage={sendAgentMessage} 
-                isLoading={isAgentLoading} 
-              />
-          );
-       case View.XSS_EXPLOIT_ASSISTANT:
-            return (
-                <XssExploitationAssistant 
-                    exploitContext={exploitAssistantContext} 
-                    onShowApiKeyWarning={handleShowApiKeyWarning}
-                />
-            );
-       case View.SQL_EXPLOIT_ASSISTANT:
-            return (
-                <SqlExploitationAssistant
-                    exploitContext={sqlExploitAssistantContext}
-                    onShowApiKeyWarning={handleShowApiKeyWarning}
-                />
-            );
+        return (
+          <WebSecAgent
+            messages={agentMessages}
+            onSendMessage={sendAgentMessage}
+            isLoading={isAgentLoading}
+          />
+        );
+      case View.XSS_EXPLOIT_ASSISTANT:
+        return (
+          <XssExploitationAssistant
+            exploitContext={exploitAssistantContext}
+            onShowApiKeyWarning={handleShowApiKeyWarning}
+          />
+        );
+      case View.SQL_EXPLOIT_ASSISTANT:
+        return (
+          <SqlExploitationAssistant
+            exploitContext={sqlExploitAssistantContext}
+            onShowApiKeyWarning={handleShowApiKeyWarning}
+          />
+        );
       case View.CLI_FRAMEWORK:
         return <CLIFramework onClose={() => handleNavigate(View.URL_ANALYSIS)} />;
       case View.HISTORY:
@@ -464,7 +468,7 @@ const App: React.FC = () => {
         onUserDocsClick={() => setIsUserDocModalOpen(true)}
         onShowAgent={handleShowAgent}
         onGoHome={handleGoHome}
-        onLightModeClick={handleLightModeClick}
+        onThemeClick={handleThemeClick}
       />
       <MainMenu
         isOpen={isMenuOpen}
@@ -499,10 +503,17 @@ const App: React.FC = () => {
       {/* Modals */}
       <DevDocumentationModal isOpen={isDevDocModalOpen} onClose={() => setIsDevDocModalOpen(false)} />
       <UserDocumentationModal isOpen={isUserDocModalOpen} onClose={() => setIsUserDocModalOpen(false)} />
-      <SettingsModal isOpen={isSettingsModalOpen} onClose={() => setIsSettingsModalOpen(false)} />
+      <SettingsModal
+        isOpen={isSettingsModalOpen}
+        onClose={() => setIsSettingsModalOpen(false)}
+        initialTab={settingsInitialTab}
+      />
+      <ThemeModal
+        isOpen={isThemeModalOpen}
+        onClose={() => setIsThemeModalOpen(false)}
+      />
       <ApiKeyWarningModal isOpen={isApiKeyWarningModalOpen} onClose={() => setIsApiKeyWarningModalOpen(false)} onGoToSettings={handleGoToSettings} />
-      <NoLightModeModal isOpen={isNoLightModeModalOpen} onClose={() => setIsNoLightModeModalOpen(false)} />
-
+      <ErrorToast />
       {/* Report Viewer Modal */}
       {viewingReportId && (
         <ReportViewer

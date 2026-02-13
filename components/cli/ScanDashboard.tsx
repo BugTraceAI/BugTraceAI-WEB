@@ -1,10 +1,10 @@
 // components/cli/ScanDashboard.tsx
 // Composite dashboard for real-time scan monitoring.
 // Combines pipeline progress, agent grid, findings, metrics, and log output.
-import React from 'react';
+import React, { useState } from 'react';
 import { PipelineBar } from './PipelineBar';
-import { AgentGrid } from './AgentGrid';
 import { ScanConsole } from './ScanConsole';
+import { ChevronDownIcon, ChevronUpIcon } from '../Icons';
 import type { LogEntry } from './ScanConsole';
 import type { PipelineState, AgentState, MetricsState, Finding } from '../../hooks/useScanSocket';
 
@@ -45,68 +45,79 @@ export const ScanDashboard: React.FC<ScanDashboardProps> = ({
   metrics,
   findings,
 }) => {
+  const [findingsOpen, setFindingsOpen] = useState(false);
   const hasDashboardData = pipeline.currentPhase || agents.length > 0;
 
-  // Sort findings: most severe first, newest first within same severity
-  const sortedFindings = [...findings]
-    .sort((a, b) => (severityOrder[a.severity?.toLowerCase()] ?? 5) - (severityOrder[b.severity?.toLowerCase()] ?? 5));
+  // Filter out Unknowns and reverse: newest first
+  const filteredFindings = findings
+    .filter(f => f.type?.toLowerCase() !== 'unknown')
+    .reverse();
 
   return (
     <div className="flex flex-col h-full gap-2">
-      {/* Pipeline progress bar */}
-      {hasDashboardData && (
-        <PipelineBar pipeline={pipeline} />
-      )}
-
-      {/* Middle section: metrics + agents + findings */}
+      {/* NEW SUPER BAR: Unified Pipeline + Metrics + Agents-with-findings */}
       {hasDashboardData && (
         <div className="flex flex-col gap-2">
-          {/* Metrics row */}
-          {(metrics.urlsDiscovered > 0 || metrics.urlsAnalyzed > 0) && (
-            <div className="flex items-center gap-4 px-3 py-1.5 rounded-lg bg-white/[0.02] border border-white/[0.04]">
-              <div className="flex items-center gap-1.5">
-                <span className="text-[10px] uppercase tracking-wider text-muted">URLs</span>
-                <span className="text-xs font-mono text-white/80">{metrics.urlsDiscovered}</span>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <span className="text-[10px] uppercase tracking-wider text-muted">Analyzed</span>
-                <span className="text-xs font-mono text-emerald-400/80">{metrics.urlsAnalyzed}</span>
-              </div>
-              {findings.length > 0 && (
-                <div className="flex items-center gap-1.5">
-                  <span className="text-[10px] uppercase tracking-wider text-muted">Findings</span>
-                  <span className="text-xs font-mono text-red-400 font-bold">{findings.length}</span>
+          <div className="flex items-center justify-between p-2 rounded-xl bg-white/[0.03] border border-white/[0.05] shadow-sm">
+            {/* Pipeline Part */}
+            <div className="flex-1 max-w-[50%]">
+              <PipelineBar pipeline={pipeline} />
+            </div>
+
+            {/* Metrics + Specialist Part */}
+            <div className="flex items-center gap-4 px-3">
+              <div className="flex items-center gap-3 pr-4 border-r border-white/[0.05]">
+                <div className="flex items-center gap-1">
+                  <span className="text-[10px] uppercase tracking-wider text-muted">URLs</span>
+                  <span className="text-xs font-mono text-white/80">{metrics.urlsDiscovered}</span>
                 </div>
+                <div className="flex items-center gap-1">
+                  <span className="text-[10px] uppercase tracking-wider text-muted">Analyzed</span>
+                  <span className="text-xs font-mono text-emerald-400/80">{metrics.urlsAnalyzed}</span>
+                </div>
+              </div>
+
+              {/* Only show agents with vulnerabilities */}
+              <div className="flex items-center gap-2">
+                {agents.filter(a => a.vulns > 0).map(agent => (
+                  <div key={agent.agent} className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-red-500/10 border border-red-500/20">
+                    <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
+                    <span className="text-[10px] font-bold text-red-100/90">{agent.agent}</span>
+                    <span className="text-[10px] font-black text-red-500">{agent.vulns}</span>
+                  </div>
+                ))}
+              </div>
+
+              {/* Findings Count Badge as Toggle */}
+              {filteredFindings.length > 0 && (
+                <button
+                  onClick={() => setFindingsOpen(!findingsOpen)}
+                  className={`flex items-center gap-2 px-3 py-1 rounded-lg transition-all duration-200 ${findingsOpen ? 'bg-coral text-white' : 'bg-red-500/20 text-red-400 border border-red-500/30'
+                    }`}
+                >
+                  <span className="text-[10px] font-bold uppercase tracking-wider">Findings ({filteredFindings.length})</span>
+                  {findingsOpen ? <ChevronUpIcon className="h-3 w-3" /> : <ChevronDownIcon className="h-3 w-3" />}
+                </button>
               )}
             </div>
-          )}
+          </div>
 
-          {/* Agent grid */}
-          {agents.length > 0 && (
-            <AgentGrid agents={agents} />
-          )}
-
-          {/* Findings mini-table */}
-          {sortedFindings.length > 0 && (
-            <div className="rounded-lg bg-white/[0.02] border border-white/[0.04] overflow-hidden">
-              <div className="px-3 py-1.5 border-b border-white/[0.04]">
-                <span className="text-[10px] font-semibold uppercase tracking-wider text-red-400">
-                  Findings ({sortedFindings.length})
-                </span>
-              </div>
-              <div className="max-h-[40vh] overflow-y-auto">
-                {sortedFindings.slice(0, 20).map((f, i) => {
+          {/* Collapsible Findings Accordion */}
+          {findingsOpen && filteredFindings.length > 0 && (
+            <div className="rounded-xl bg-white/[0.02] border border-white/[0.04] overflow-hidden animate-in fade-in slide-in-from-top-2 duration-300">
+              <div className="max-h-[30vh] overflow-y-auto">
+                {filteredFindings.map((f, i) => {
                   const sevClass = severityColors[f.severity?.toLowerCase()] || severityColors.info;
                   return (
-                    <div key={i} className="flex items-center gap-2 px-3 py-1 text-[11px] border-b border-white/[0.02] last:border-0 hover:bg-white/[0.02]">
-                      <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold uppercase border ${sevClass}`}>
+                    <div key={i} className="flex items-center gap-3 px-4 py-2 text-[11px] border-b border-white/[0.02] last:border-0 hover:bg-white/[0.03]">
+                      <span className={`px-2 py-0.5 rounded text-[9px] font-bold uppercase border min-w-[60px] text-center ${sevClass}`}>
                         {f.severity?.toUpperCase() || 'N/A'}
                       </span>
-                      <span className="font-semibold text-white/90 w-14 truncate">{f.type}</span>
+                      <span className="font-bold text-white/90 w-20 truncate">{f.type}</span>
                       {f.parameter && (
-                        <span className="text-coral/80 font-mono truncate max-w-[100px]">{f.parameter}</span>
+                        <span className="text-coral/80 font-mono px-1.5 py-0.5 bg-coral/5 rounded truncate max-w-[120px]">{f.parameter}</span>
                       )}
-                      <span className="text-muted truncate flex-1">{f.url || f.details}</span>
+                      <span className="text-muted truncate flex-1 font-mono opacity-80">{f.url || f.details}</span>
                     </div>
                   );
                 })}

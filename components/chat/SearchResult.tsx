@@ -35,7 +35,7 @@ export const SearchResult: React.FC<SearchResultProps> = ({
 
     return parts.map((part, i) =>
       regex.test(part) ? (
-        <mark key={i} className="bg-yellow-400/50 text-inherit px-0.5 rounded">
+        <mark key={i} className="bg-ui-accent/20 text-ui-accent px-0.5 rounded-sm font-bold">
           {part}
         </mark>
       ) : (
@@ -48,17 +48,17 @@ export const SearchResult: React.FC<SearchResultProps> = ({
     <div
       onClick={onClick}
       data-testid="search-result"
-      className="p-3 cursor-pointer hover:bg-purple-medium/50 rounded-lg transition-colors border-b border-0 last:border-b-0"
+      className="p-3 cursor-pointer hover:bg-ui-accent/5 rounded-xl transition-all border border-transparent hover:border-ui-accent/20 mb-1 last:mb-0"
     >
-      <div className="flex items-center justify-between mb-1">
-        <span className="font-medium text-sm text-white">
+      <div className="flex items-center justify-between mb-1.5">
+        <span className="font-bold text-[13px] text-ui-text-main group-hover:text-ui-accent transition-colors">
           {result.session_title}
         </span>
-        <span className="text-xs text-coral bg-coral-hover/10 px-2 py-0.5 rounded">
+        <span className="label-mini !text-[9px] text-ui-accent bg-ui-accent/10 px-2 py-0.5 rounded-lg border border-ui-accent/20 shadow-[0_0_10px_rgba(255,127,80,0.1)]">
           {result.match_count} {result.match_count === 1 ? 'match' : 'matches'}
         </span>
       </div>
-      <p className="text-xs text-muted mt-1 line-clamp-2">
+      <p className="text-[11px] text-ui-text-dim leading-relaxed line-clamp-2">
         {highlightText(result.snippet, searchQuery)}
       </p>
     </div>

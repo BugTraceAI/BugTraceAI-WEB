@@ -56,56 +56,73 @@ export const JwtAnalyzer: React.FC<JwtAnalyzerProps> = ({ initialToken, report, 
             description="Paste a JSON Web Token to decode it. Then, use the AI auditor to analyze its security."
         >
             <div>
-                <label htmlFor="jwt-input" className="block text-sm font-medium text-purple-gray mb-2">Encoded JWT</label>
+                <label htmlFor="jwt-input" className="label-mini mb-2 block">Encoded JWT Payload</label>
                 <textarea
                     id="jwt-input"
                     value={encodedJwt}
                     onChange={e => setEncodedJwt(e.target.value)}
                     placeholder="ey...[header]....ey...[payload]....[signature]"
-                    className="w-full h-40 p-4 font-mono text-xs bg-purple-medium/60 border-0 rounded-lg text-white focus:ring-2 focus:ring-coral/50 focus:border-coral focus:outline-none transition-all duration-300 resize-y"
+                    className="input-premium w-full h-40 p-5 font-mono text-xs resize-y transition-all duration-300 shadow-inner"
                 />
-                {error && <p className="text-red-400 text-sm mt-2">{error}</p>}
+                {error && <p className="text-red-400 text-xs mt-2 font-mono flex items-center gap-2">
+                    <span className="w-1 h-1 rounded-full bg-red-400 animate-pulse" />
+                    {error}
+                </p>}
             </div>
 
-            <div className="mt-6 flex flex-col sm:flex-row gap-4 justify-center">
-                <button onClick={() => handleAudit('blue_team')} disabled={loadingState !== 'none' || !decodedJwt} className="group relative w-full sm:w-auto inline-flex items-center justify-center px-6 py-3 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-lg transition-all duration-300 transform hover:scale-105 disabled:scale-100 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-blue-500/20 hover:shadow-blue-500/40">
-                    {loadingState === 'blue' ? <Spinner /> : <ShieldCheckIcon className="h-5 w-5 mr-2" />}
-                    Blue Team Audit
+            <div className="mt-8 flex flex-col sm:flex-row gap-4 justify-center">
+                <button
+                    onClick={() => handleAudit('blue_team')}
+                    disabled={loadingState !== 'none' || !decodedJwt}
+                    className="btn-mini !bg-blue-500/10 !border-blue-500/40 !text-blue-400 hover:!bg-blue-500/20 !py-4 px-8 !rounded-2xl gap-3 group shadow-glow-blue/10"
+                >
+                    {loadingState === 'blue' ? <Spinner /> : <ShieldCheckIcon className="h-5 w-5 group-hover:scale-110 transition-transform" />}
+                    BLUE TEAM AUDIT
                 </button>
-                <button onClick={() => handleAudit('red_team')} disabled={loadingState !== 'none' || !decodedJwt} className="group relative w-full sm:w-auto inline-flex items-center justify-center px-6 py-3 bg-red-600 hover:bg-red-500 text-white font-bold rounded-lg transition-all duration-300 transform hover:scale-105 disabled:scale-100 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-red-500/20 hover:shadow-red-500/40">
-                    {loadingState === 'red' ? <Spinner /> : <FireIcon className="h-5 w-5 mr-2" />}
-                    Red Team Audit
+                <button
+                    onClick={() => handleAudit('red_team')}
+                    disabled={loadingState !== 'none' || !decodedJwt}
+                    className="btn-mini !bg-red-500/10 !border-red-500/40 !text-red-400 hover:!bg-red-500/20 !py-4 px-8 !rounded-2xl gap-3 group shadow-glow-coral/10"
+                >
+                    {loadingState === 'red' ? <Spinner /> : <FireIcon className="h-5 w-5 group-hover:scale-110 transition-transform" />}
+                    RED TEAM AUDIT
                 </button>
             </div>
 
             {decodedJwt && (
                 <div className="mt-8 grid grid-cols-1 lg:grid-cols-3 gap-x-6 gap-y-8 animate-fade-in">
                     <div>
-                        <h4 className="font-semibold text-purple-300 mb-1">Header</h4>
-                        <pre className="bg-black/40 p-3 rounded-md font-mono text-xs text-purple-200 overflow-x-auto border border-purple-500/20"><code>{decodedJwt.header}</code></pre>
+                        <h4 className="label-mini !text-blue-400 mb-2">JWT HEADER</h4>
+                        <pre className="bg-black/40 p-4 rounded-xl font-mono text-[10px] text-blue-300/80 overflow-x-auto border border-blue-500/10"><code>{decodedJwt.header}</code></pre>
                     </div>
                     <div>
-                        <h4 className="font-semibold text-coral-hover mb-1">Payload / Claims</h4>
-                        <pre className="bg-black/40 p-3 rounded-md font-mono text-xs text-coral-hover overflow-x-auto border border-coral/20"><code>{decodedJwt.payload}</code></pre>
+                        <h4 className="label-mini !text-ui-accent mb-2">CLAIMS PAYLOAD</h4>
+                        <pre className="bg-black/40 p-4 rounded-xl font-mono text-[10px] text-ui-accent/80 overflow-x-auto border border-ui-accent/10"><code>{decodedJwt.payload}</code></pre>
                     </div>
                     <div>
-                        <h4 className="font-semibold text-orange-400 mb-1">Signature</h4>
-                        <pre className="bg-black/40 p-3 rounded-md font-mono text-xs text-orange-300 overflow-x-auto border border-orange-500/20 break-all"><code>{decodedJwt.signature}</code></pre>
+                        <h4 className="label-mini !text-orange-400 mb-2">SIGNATURE DATA</h4>
+                        <pre className="bg-black/40 p-4 rounded-xl font-mono text-[10px] text-orange-300/80 overflow-x-auto border border-orange-500/10 break-all"><code>{decodedJwt.signature}</code></pre>
                     </div>
                 </div>
             )}
 
             {loadingState !== 'none' && (
-                <div className="flex flex-col items-center justify-center text-purple-gray animate-pulse mt-6">
-                    <p>AI is performing the {loadingState} team audit (this may take a moment)...</p>
+                <div className="flex flex-col items-center justify-center text-ui-text-dim animate-pulse mt-8 space-y-2">
+                    <div className="w-12 h-1 bg-ui-accent/20 rounded-full overflow-hidden">
+                        <div className="w-full h-full bg-ui-accent animate-scan-slow" />
+                    </div>
+                    <p className="label-mini !text-[9px]">AI is performing {loadingState} team audit intelligence sync...</p>
                 </div>
             )}
 
             {(blueTeamResult || redTeamResult) && loadingState === 'none' && (
                 <div className="mt-12">
-                    <div className="mb-4 pb-4 border-b border-0">
-                        <h3 className="text-xl font-semibold text-white">Analysis Report</h3>
-                        <div className="mt-4 pt-4 border-t border-0 flex items-center gap-2">
+                    <div className="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                        <div>
+                            <span className="label-mini !text-ui-accent block mb-1">Intelligence Report</span>
+                            <h3 className="title-standard !text-2xl">Forensic Audit Results</h3>
+                        </div>
+                        <div className="flex items-center gap-2">
                             <button
                                 onClick={() => {
                                     const content = getCurrentResult();
@@ -116,11 +133,11 @@ export const JwtAnalyzer: React.FC<JwtAnalyzerProps> = ({ initialToken, report, 
                                     triggerDownload(`jwt-audit-${team}-${truncatedJwt}-${date}.md`, content, 'text/markdown;charset=utf-8');
                                 }}
                                 disabled={!getCurrentResult()}
-                                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-purple-200 bg-purple-900/40 border border-purple-700/80 rounded-lg hover:bg-purple-900/60 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                className="btn-mini btn-mini-secondary !h-10 !px-4 gap-2"
                                 title={`Download ${activeTab === 'blue' ? 'Blue' : 'Red'} Team report as Markdown`}
                             >
                                 <DocumentTextIcon className="h-4 w-4" />
-                                Download as Markdown (.md)
+                                MARKDOWN
                             </button>
                             <button
                                 onClick={() => {
@@ -145,37 +162,51 @@ export const JwtAnalyzer: React.FC<JwtAnalyzerProps> = ({ initialToken, report, 
                                     }
                                 }}
                                 disabled={!getCurrentResult()}
-                                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-coral-hover bg-purple-elevated/40 border border-coral/80 rounded-lg hover:bg-purple-elevated/60 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                className="btn-mini btn-mini-secondary !h-10 !px-4 gap-2"
                                 title="Download report as structured JSON"
                             >
                                 <CodeBracketSquareIcon className="h-4 w-4" />
-                                Download as JSON (.json)
+                                JSON LOG
                             </button>
                         </div>
                     </div>
 
-                    <div className="bg-purple-medium/60/50 p-4 rounded-lg border-0 min-h-[24rem] flex flex-col">
-                        <div className="border-b border-0 mb-4">
-                            <div className="flex bg-purple-medium/60/50 p-1 rounded-lg border-0 max-w-sm">
-                                <button onClick={() => setActiveTab('blue')} className={`w-1/2 py-2 text-sm font-semibold rounded-md transition-colors ${activeTab === 'blue' ? 'bg-blue-500/50 text-white' : 'text-muted hover:bg-white/5'}`}>Blue Team</button>
-                                <button onClick={() => setActiveTab('red')} className={`w-1/2 py-2 text-sm font-semibold rounded-md transition-colors ${activeTab === 'red' ? 'bg-red-500/50 text-white' : 'text-muted hover:bg-white/5'}`}>Red Team</button>
-                            </div>
+                    <div className="card-premium p-6 sm:p-8 flex flex-col !bg-ui-bg/40">
+                        <div className="flex bg-ui-input-bg/40 p-1.5 rounded-2xl border border-ui-border self-start mb-8 min-w-[300px]">
+                            <button
+                                onClick={() => setActiveTab('blue')}
+                                className={`w-1/2 h-9 text-[10px] font-black uppercase tracking-wider rounded-xl transition-all ${activeTab === 'blue' ? 'bg-blue-500 text-ui-bg shadow-glow-blue/20' : 'text-ui-text-dim hover:text-ui-text-main hover:bg-white/5'}`}
+                            >
+                                Defensive Analysis
+                            </button>
+                            <button
+                                onClick={() => setActiveTab('red')}
+                                className={`w-1/2 h-9 text-[10px] font-black uppercase tracking-wider rounded-xl transition-all ${activeTab === 'red' ? 'bg-red-500 text-ui-bg shadow-glow-coral' : 'text-ui-text-dim hover:text-ui-text-main hover:bg-white/5'}`}
+                            >
+                                Attack Surface
+                            </button>
                         </div>
-                        <div className="flex-1 overflow-y-auto p-2">
+
+                        <div className="flex-1 overflow-y-auto min-h-[400px]">
                             {activeTab === 'blue' && blueTeamResult && (
                                 <div className="animate-fade-in">
-                                    <h3 className="text-xl font-bold text-blue-300 mb-4">Blue Team Report: Defensive Analysis</h3>
-                                    <MarkdownRenderer content={blueTeamResult} />
+                                    <h3 className="label-mini !text-blue-400 mb-6">DEFENSIVE COMPLIANCE REPORT</h3>
+                                    <div className="prose-v3">
+                                        <MarkdownRenderer content={blueTeamResult} />
+                                    </div>
                                 </div>
                             )}
                             {activeTab === 'red' && redTeamResult && (
                                 <div className="animate-fade-in">
-                                    <h3 className="text-xl font-bold text-red-300 mb-4">Red Team Report: Attack Surface</h3>
-                                    <MarkdownRenderer content={redTeamResult} />
+                                    <h3 className="label-mini !text-red-400 mb-6">ATTACK VECTOR DISCOVERY</h3>
+                                    <div className="prose-v3">
+                                        <MarkdownRenderer content={redTeamResult} />
+                                    </div>
                                 </div>
                             )}
                         </div>
-                        <div className="mt-4 pt-4 border-t border-0 flex flex-wrap items-center gap-2">
+
+                        <div className="mt-8 pt-6 border-t border-ui-border">
                             <button
                                 onClick={() => {
                                     const result = getCurrentResult();
@@ -185,11 +216,11 @@ export const JwtAnalyzer: React.FC<JwtAnalyzerProps> = ({ initialToken, report, 
                                     }
                                 }}
                                 disabled={!getCurrentResult()}
-                                className="flex-grow flex items-center justify-center gap-2 px-4 py-2 text-sm font-semibold text-coral-hover bg-purple-elevated/40 border border-coral/80 rounded-lg hover:bg-purple-elevated/60 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                className="btn-mini btn-mini-primary !h-12 !w-full !rounded-xl gap-3 shadow-glow-coral"
                                 title="Analyze this report with the WebSec Agent"
                             >
                                 <ChatIcon className="h-5 w-5" />
-                                Analyze with Agent
+                                DEEP ANALYZE MISSION INTEL WITH AI AGENT
                             </button>
                         </div>
                     </div>

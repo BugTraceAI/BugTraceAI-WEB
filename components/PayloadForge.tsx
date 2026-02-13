@@ -18,7 +18,7 @@ interface PayloadForgeProps {
 
 export const PayloadForge: React.FC<PayloadForgeProps> = ({ payloadForForge, onPayloadUsed, onShowApiKeyWarning }) => {
   const [basePayload, setBasePayload] = useState<string>('<script>alert(1)</script>');
-  
+
   const [forgedPayloads, setForgedPayloads] = useState<ForgedPayload[] | null>(null);
   const [isForging, setIsForging] = useState<boolean>(false);
   const [forgeError, setForgeError] = useState<string | null>(null);
@@ -39,15 +39,15 @@ export const PayloadForge: React.FC<PayloadForgeProps> = ({ payloadForForge, onP
 
   const handleForge = useCallback(async () => {
     if (!isApiKeySet) {
-        onShowApiKeyWarning();
-        return;
+      onShowApiKeyWarning();
+      return;
     }
     if (!basePayload.trim()) {
       setForgeError('Please enter a base payload to forge.');
       return;
     }
     setForgeError(null);
-    
+
     setIsForging(true);
     setForgedPayloads(null);
     setPayloadList('');
@@ -60,33 +60,33 @@ export const PayloadForge: React.FC<PayloadForgeProps> = ({ payloadForForge, onP
       // --- Enhanced Fuzzing List Generation ---
       if (result.payloads && result.payloads.length > 0) {
         const fuzzingPrefixes = [
-            '', // The payload itself
-            "'",
-            '"',
-            "`",
-            ">",
-            "'>",
-            "\">",
-            "`>",
-            "</script>",
-            "</form>",
-            "</div>",
-            "</textarea>",
-            "-->",
-            "'-",
-            "\"-",
-            "`-",
-            "');",
-            "\");",
-            "`));",
-            "'});",
-            "\"});",
-            "`});",
+          '', // The payload itself
+          "'",
+          '"',
+          "`",
+          ">",
+          "'>",
+          "\">",
+          "`>",
+          "</script>",
+          "</form>",
+          "</div>",
+          "</textarea>",
+          "-->",
+          "'-",
+          "\"-",
+          "`-",
+          "');",
+          "\");",
+          "`));",
+          "'});",
+          "\"});",
+          "`});",
         ];
 
         const allFuzzStrings = result.payloads.flatMap(forged => {
-            const singleLinePayload = forged.payload.replace(/[\r\n\t]/g, '');
-            return fuzzingPrefixes.map(prefix => `${prefix}${singleLinePayload}`);
+          const singleLinePayload = forged.payload.replace(/[\r\n\t]/g, '');
+          return fuzzingPrefixes.map(prefix => `${prefix}${singleLinePayload}`);
         });
         const uniqueList = Array.from(new Set(allFuzzStrings));
         setPayloadList(uniqueList.join('\n'));
@@ -101,7 +101,7 @@ export const PayloadForge: React.FC<PayloadForgeProps> = ({ payloadForForge, onP
       setIsForging(false);
     }
   }, [basePayload, apiOptions, isApiKeySet, onShowApiKeyWarning]);
-  
+
   const handleCopy = (text: string, index: number) => {
     navigator.clipboard.writeText(text);
     setCopiedIndex(index);
@@ -122,97 +122,119 @@ export const PayloadForge: React.FC<PayloadForgeProps> = ({ payloadForForge, onP
       description="Enter a base payload (e.g., an XSS script) and let the AI generate advanced variations for WAF bypass testing."
     >
       <div className="relative">
-        <label htmlFor="basePayload" className="block text-sm font-medium text-purple-gray mb-2">Base Payload</label>
+        <label htmlFor="basePayload" className="label-mini mb-2 block">Base Payload String</label>
         <textarea
           id="basePayload"
           value={basePayload}
           onChange={(e) => setBasePayload(e.target.value)}
           placeholder="e.g., <script>alert(1)</script>"
-          className="w-full h-24 p-4 font-mono text-sm bg-purple-medium/60 border-2 border-0 rounded-lg text-white focus:ring-2 focus:ring-purple-500 focus:border-purple-500 focus:outline-none transition-all duration-300 resize-y"
+          className="input-premium w-full h-28 p-5 font-mono text-sm resize-y"
           disabled={isForging}
         />
       </div>
 
-      <div className="flex justify-center mt-6">
+      <div className="flex justify-center mt-8">
         <button
           onClick={handleForge}
           disabled={isForging || !basePayload.trim()}
-          className="group relative inline-flex items-center justify-center px-8 py-3 bg-gradient-to-r from-orange-600 to-red-500 hover:from-orange-500 hover:to-red-400 disabled:from-gray-600 disabled:to-gray-700 text-white font-bold rounded-lg transition-all duration-300 transform hover:scale-105 disabled:scale-100 disabled:cursor-not-allowed shadow-lg shadow-orange-500/20 overflow-hidden"
+          className="btn-mini btn-mini-primary !h-12 !px-10 !rounded-xl shadow-glow-coral gap-3 group"
         >
-          {isForging ? <Spinner /> : <FireIcon className="h-5 w-5 mr-2" />}
-          <span className="relative">Forge Payloads</span>
+          {isForging ? <Spinner /> : <FireIcon className="h-5 w-5 group-hover:rotate-12 transition-transform" />}
+          FORGE ADVANCED VARIATIONS
         </button>
       </div>
 
       {isForging && (
-        <div className="mt-8 text-center text-purple-gray animate-pulse">
-            <p>AI is forging payload variations...</p>
+        <div className="mt-8 text-center animate-pulse flex flex-col items-center gap-2">
+          <div className="w-16 h-1 bg-ui-accent/20 rounded-full overflow-hidden">
+            <div className="w-full h-full bg-ui-accent animate-scan-slow" />
+          </div>
+          <p className="label-mini !text-[9px] !text-ui-text-dim/60">SYNTHESIZING BYPASS LOGIC...</p>
         </div>
       )}
 
       {forgeError && !isForging && (
-        <div className="mt-6 p-4 bg-red-900/50 border border-red-700 text-red-200 rounded-lg font-mono max-w-3xl mx-auto">{forgeError}</div>
+        <div className="mt-8 p-5 bg-red-500/10 border border-red-500/30 text-red-400 rounded-xl font-mono text-xs max-w-3xl mx-auto flex items-center gap-3">
+          <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+          {forgeError}
+        </div>
       )}
 
       {forgedPayloads && !isForging && (
-        <div className="mt-8">
-            <div className="flex bg-purple-medium/60 p-1 rounded-lg border-0 mb-4 max-w-sm mx-auto">
-                <button onClick={() => setActiveTab('ai')} className={`w-1/2 py-2 text-sm font-semibold rounded-md transition-colors ${activeTab === 'ai' ? 'bg-purple-500/50 text-white' : 'text-muted hover:bg-white/5'}`}>AI Variations</button>
-                <button onClick={() => setActiveTab('fuzz')} className={`w-1/2 py-2 text-sm font-semibold rounded-md transition-colors ${activeTab === 'fuzz' ? 'bg-purple-500/50 text-white' : 'text-muted hover:bg-white/5'}`}>Fuzzing List</button>
-            </div>
+        <div className="mt-10">
+          <div className="flex bg-ui-input-bg/40 p-1.5 rounded-2xl border border-ui-border self-start mb-8 min-w-[300px] mx-auto sm:mx-0">
+            <button
+              onClick={() => setActiveTab('ai')}
+              className={`w-1/2 h-9 text-[10px] font-black uppercase tracking-wider rounded-xl transition-all ${activeTab === 'ai' ? 'bg-ui-accent text-ui-bg shadow-glow-coral' : 'text-ui-text-dim hover:text-ui-text-main hover:bg-white/5'}`}
+            >
+              AI Variations
+            </button>
+            <button
+              onClick={() => setActiveTab('fuzz')}
+              className={`w-1/2 h-9 text-[10px] font-black uppercase tracking-wider rounded-xl transition-all ${activeTab === 'fuzz' ? 'bg-ui-accent text-ui-bg shadow-glow-coral' : 'text-ui-text-dim hover:text-ui-text-main hover:bg-white/5'}`}
+            >
+              Fuzzing List
+            </button>
+          </div>
 
-            {activeTab === 'ai' ? (
-                <div className="space-y-6 animate-fade-in">
-                {forgedPayloads.length > 0 ? forgedPayloads.map((p, index) => (
-                    <div key={index} className="bg-purple-medium/60/50 p-4 rounded-lg border-0 transition-all hover:border-coral/50">
-                    <h5 className="text-lg font-bold text-coral-hover">{p.technique}</h5>
-                    <p className="text-purple-gray text-sm my-2">{p.description}</p>
-                    <div className="bg-black/40 p-3 rounded-md font-mono text-sm text-purple-300 relative group">
-                        <pre className="overflow-x-auto"><code className="whitespace-pre-wrap break-all">{p.payload}</code></pre>
-                        <button 
-                            onClick={() => handleCopy(p.payload, index)}
-                            className="absolute top-2 right-2 p-1.5 rounded-md bg-purple-800/50 text-purple-200 opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity"
-                            aria-label="Copy payload"
-                            title="Copy payload"
-                        >
-                        {copiedIndex === index ? (
-                            <span className="text-xs font-bold px-1">Copied!</span>
-                        ) : (
-                            <ClipboardDocumentListIcon className="h-5 w-5" />
-                        )}
-                        </button>
-                    </div>
-                    </div>
-                )) : (
-                    <div className="text-center p-6 bg-green-900/40 border border-green-700 text-green-300 rounded-lg backdrop-blur-sm">
-                        <p className="font-semibold">The AI did not return any forged payloads. Try rephrasing your base payload.</p>
-                    </div>
-                )}
+          {activeTab === 'ai' ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 animate-fade-in">
+              {forgedPayloads.length > 0 ? forgedPayloads.map((p, index) => (
+                <div key={index} className="card-premium p-5 !bg-ui-bg/40 hover:!border-ui-accent/40 transition-all group/card">
+                  <div className="flex items-center justify-between mb-3">
+                    <h5 className="text-[11px] font-black uppercase tracking-widest text-ui-accent">{p.technique}</h5>
+                    <span className="label-mini !text-[8px] opacity-40">BYPASS-{index + 1}</span>
+                  </div>
+                  <p className="text-ui-text-dim text-[11px] leading-relaxed mb-4 min-h-[32px]">{p.description}</p>
+                  <div className="bg-black/40 p-3 rounded-xl font-mono text-xs text-ui-accent/90 relative group border border-white/5">
+                    <pre className="overflow-x-auto no-scrollbar"><code className="whitespace-pre-wrap break-all">{p.payload}</code></pre>
+                    <button
+                      onClick={() => handleCopy(p.payload, index)}
+                      className="absolute top-2 right-2 p-1.5 rounded-lg bg-ui-accent/10 border border-ui-accent/30 text-ui-accent opacity-0 group-hover:opacity-100 focus:opacity-100 transition-all hover:bg-ui-accent/20"
+                      aria-label="Copy"
+                    >
+                      {copiedIndex === index ? (
+                        <span className="text-[8px] font-black px-1">COPIED</span>
+                      ) : (
+                        <ClipboardDocumentListIcon className="h-4 w-4" />
+                      )}
+                    </button>
+                  </div>
                 </div>
-            ) : (
-                <div className="animate-fade-in">
-                    <p className="text-center text-purple-gray text-sm mb-4">A comprehensive list for fuzzing tools like Burp Intruder, combining all variations with common prefixes.</p>
-                    <div className="relative">
-                        <textarea
-                            readOnly
-                            value={payloadList}
-                            className="w-full h-96 p-4 font-mono text-xs bg-black/40 border-0 rounded-lg text-green-300"
-                        />
-                        <button 
-                            onClick={handleListCopy}
-                            className="absolute top-3 right-3 p-1.5 rounded-md bg-purple-800/50 text-purple-200 hover:bg-purple-700/50 transition-colors"
-                            aria-label="Copy fuzzing list"
-                            title="Copy fuzzing list"
-                        >
-                        {listCopied ? (
-                            <span className="text-xs font-bold px-1">Copied!</span>
-                        ) : (
-                            <ClipboardDocumentListIcon className="h-5 w-5" />
-                        )}
-                        </button>
-                    </div>
+              )) : (
+                <div className="col-span-full text-center p-12 bg-ui-bg/20 border border-dashed border-ui-border rounded-xl">
+                  <p className="label-mini !text-ui-text-dim/60">No variations generated. Try a different base payload.</p>
                 </div>
-            )}
+              )}
+            </div>
+          ) : (
+            <div className="animate-fade-in space-y-4">
+              <div className="flex items-center gap-3 p-4 rounded-xl bg-ui-accent/5 border border-ui-accent/20">
+                <div className="w-1 h-10 bg-ui-accent rounded-full" />
+                <p className="text-[11px] text-ui-text-dim italic leading-relaxed">
+                  Comprehensive list for fuzzing tools like Burp Intruder, combining all variations with common bypass prefixes.
+                </p>
+              </div>
+              <div className="relative group">
+                <textarea
+                  readOnly
+                  value={payloadList}
+                  className="w-full h-80 p-5 font-mono text-[11px] bg-black/60 border border-ui-border rounded-2xl text-ui-accent/70 focus:outline-none scrollbar-mission"
+                />
+                <button
+                  onClick={handleListCopy}
+                  className="absolute top-4 right-4 btn-mini btn-mini-secondary !h-9 !px-4 gap-2 opacity-80 group-hover:opacity-100"
+                >
+                  {listCopied ? 'COPIED TO CLIPBOARD' : (
+                    <>
+                      <ClipboardDocumentListIcon className="h-4 w-4" />
+                      COPY MISSION LIST
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       )}
     </ToolLayout>

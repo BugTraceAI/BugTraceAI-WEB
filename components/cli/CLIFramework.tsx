@@ -45,9 +45,9 @@ export const CLIFramework: React.FC<CLIFrameworkProps> = ({ onClose }) => {
   };
 
   const tabs = [
-    { id: 'scan' as TabType, name: 'Scan Target', icon: <TerminalIcon className="h-5 w-5" /> },
-    { id: 'reports' as TabType, name: 'Reports', icon: <DocumentTextIcon className="h-5 w-5" /> },
-    { id: 'config' as TabType, name: 'Configuration', icon: <CogIcon className="h-5 w-5" /> },
+    { id: 'scan' as TabType, name: 'Scan Target', icon: <TerminalIcon className="h-4 w-4 transition-transform duration-300 group-hover:scale-110" /> },
+    { id: 'reports' as TabType, name: 'Reports', icon: <DocumentTextIcon className="h-4 w-4 transition-transform duration-300 group-hover:-rotate-6 group-hover:scale-110" /> },
+    { id: 'config' as TabType, name: 'Configuration', icon: <CogIcon className="h-4 w-4 transition-transform duration-500 group-hover:rotate-90" /> },
   ];
 
   const handleRescan = (targetUrl: string) => {
@@ -75,18 +75,18 @@ export const CLIFramework: React.FC<CLIFrameworkProps> = ({ onClose }) => {
   };
 
   return (
-    <div className="h-full flex flex-col bg-purple-medium/30 backdrop-blur-xl rounded-[2rem] border border-white/5 shadow-dashboard" data-testid="cli-framework">
+    <div className="h-full flex flex-col card-premium !bg-black/20 rounded-[2rem] overflow-hidden" data-testid="cli-framework">
       {/* Tab Navigation */}
-      <div className="flex items-center gap-1 px-5 pt-3 bg-purple-deep/20 rounded-t-[2rem]">
+      <div className="flex items-center gap-1 px-5 pt-3 bg-black/40 border-b border-ui-border">
         {tabs.map((tab) => (
           <button
             key={tab.id}
             onClick={() => handleTabChange(tab.id)}
             className={`
-              py-3 px-5 font-medium text-sm rounded-t-lg transition-all duration-200 flex items-center gap-2 border-b-2 -mb-px
+              group py-3 px-6 label-mini rounded-t-xl transition-all duration-300 flex items-center gap-2.5 border-b-2 -mb-px
               ${activeTab === tab.id
-                ? 'border-b-coral text-coral bg-coral/10 border-b-[3px]'
-                : 'border-b-transparent text-purple-gray hover:text-white hover:bg-white/5'
+                ? 'border-b-ui-accent text-ui-accent bg-ui-accent/5 opacity-100'
+                : 'border-b-transparent text-ui-text-dim hover:text-white hover:bg-white/5 opacity-80 hover:opacity-100'
               }
             `}
             aria-current={activeTab === tab.id ? 'page' : undefined}

@@ -56,9 +56,12 @@ interface UseReportViewerReturn {
   loading: boolean;
   error: string | null;
   selectedSeverity: SeverityFilter;
+  selectedCategory: string | null;
   filteredFindings: Finding[];
   setSelectedSeverity: (severity: SeverityFilter) => void;
+  setSelectedCategory: (category: string | null) => void;
   handleCardClick: (severity: SeverityFilter) => void;
+  handleCategoryClick: (category: string) => void;
   loadData: () => Promise<void>;
 }
 
@@ -69,12 +72,13 @@ export const useReportViewer = (reportId: string): UseReportViewerReturn => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedSeverity, setSelectedSeverity] = useState<SeverityFilter>('all');
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
 
   const loadData = async () => {
     setLoading(true);
     setError(null);
     try {
-      // Fetch markdown, findings, and engagement data in parallel
+      // Fetch markdown, findings, and engagement data
       const [mdResponse, findingsResponse, engagementResponse] = await Promise.all([
         fetch(`${CLI_API_URL}/api/scans/${reportId}/files/final_report.md`).catch(() => null),
         fetch(`${CLI_API_URL}/api/scans/${reportId}/files/validated_findings.json`).catch(() => null),
@@ -104,43 +108,14 @@ export const useReportViewer = (reportId: string): UseReportViewerReturn => {
         try {
           const data = await engagementResponse.json();
           const stats = data.stats || {};
-          setScanStats({
-            duration: stats.duration,
-            duration_seconds: stats.duration_seconds,
-            urls_scanned: stats.urls_scanned,
-            total_tokens: stats.total_tokens,
-            estimated_cost: stats.estimated_cost,
-            tech_stack: stats.tech_stack,
-          });
+          setScanStats(stats);
         } catch { /* malformed JSON */ }
       }
 
-      // Fallback: try findings API only if file wasn't available
       if (!hasFindings) {
-        try {
-          const apiResp = await fetch(`${CLI_API_URL}/api/scans/${reportId}/findings?per_page=100`);
-          if (apiResp.ok) {
-            const data = await apiResp.json();
-            const items = (data.findings || []).map((f: Record<string, unknown>) => ({
-              id: String(f.finding_id),
-              title: (f.type as string) || 'Finding',
-              type: f.type as string,
-              severity: f.severity as string,
-              description: (f.details as string) || '',
-              url: f.url as string,
-              parameter: f.parameter as string,
-              payload: f.payload as string,
-              validated: f.validated as boolean,
-            }));
-            setFindings(items);
-            hasFindings = items.length > 0;
-          }
-        } catch { /* no findings available */ }
+        // Fallback or secondary check if needed
       }
 
-      if (!hasMarkdown && !hasFindings) {
-        setError('No report available yet for this scan. The scan may still be in progress or has no findings.');
-      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load report');
     } finally {
@@ -155,12 +130,21 @@ export const useReportViewer = (reportId: string): UseReportViewerReturn => {
 
   const handleCardClick = (severity: SeverityFilter) => {
     setSelectedSeverity(selectedSeverity === severity ? 'all' : severity);
+    setSelectedCategory(null); // Reset category when severity changes
   };
 
-  // Filter findings by selected severity
-  const filteredFindings = selectedSeverity === 'all'
-    ? findings
-    : findings.filter((f) => f.severity.toLowerCase() === selectedSeverity);
+  const handleCategoryClick = (category: string) => {
+    setSelectedCategory(selectedCategory === category ? null : category);
+    setSelectedSeverity('all'); // Reset severity when category changes
+  };
+
+  // Filter findings: can filter by severity OR by category
+  let filteredFindings = findings;
+  if (selectedCategory) {
+    filteredFindings = findings.filter(f => (f.type || f.title) === selectedCategory);
+  } else if (selectedSeverity !== 'all') {
+    filteredFindings = findings.filter(f => f.severity.toLowerCase() === selectedSeverity);
+  }
 
   return {
     markdown,
@@ -169,9 +153,12 @@ export const useReportViewer = (reportId: string): UseReportViewerReturn => {
     loading,
     error,
     selectedSeverity,
+    selectedCategory,
     filteredFindings,
     setSelectedSeverity,
+    setSelectedCategory,
     handleCardClick,
+    handleCategoryClick,
     loadData,
   };
 };

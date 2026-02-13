@@ -11,23 +11,28 @@ export const DevDocumentationModal: React.FC<DevDocumentationModalProps> = ({ is
     if (!isOpen) return null;
 
     return (
-        <div 
+        <div
             className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fade-in"
             onClick={onClose}
             aria-modal="true"
             role="dialog"
         >
-            <div 
+            <div
                 className="bg-purple-medium/50 backdrop-blur-xl border-0 rounded-2xl w-full max-w-6xl h-[90vh] overflow-hidden shadow-2xl flex flex-col"
                 onClick={(e) => e.stopPropagation()}
             >
-                <header className="flex-shrink-0 flex justify-between items-center p-4 border-b border-0 bg-purple-medium/50/80 backdrop-blur-lg">
+                <header className="flex-shrink-0 flex justify-between items-center p-4 bg-purple-deep/60 backdrop-blur-xl border-b border-white/5">
                     <div className="flex items-center gap-3">
-                        <BookOpenIcon className="h-6 w-6 text-coral" />
-                        <h2 className="text-xl font-bold text-white">Developer Documentation</h2>
+                        <div className="p-2 rounded-xl bg-coral/10 border border-coral/20">
+                            <BookOpenIcon className="h-4 w-4 text-coral" />
+                        </div>
+                        <div className="flex flex-col">
+                            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-coral opacity-70">Internal Docs</span>
+                            <h2 className="text-sm font-bold text-off-white">Developer Documentation</h2>
+                        </div>
                     </div>
-                    <button onClick={onClose} className="p-1 rounded-full text-muted hover:text-white hover:bg-black/10 dark:hover:bg-white/10 transition-colors" title="Close documentation">
-                        <XMarkIcon className="h-6 w-6" />
+                    <button onClick={onClose} className="p-2 rounded-xl text-purple-gray hover:text-white hover:bg-white/10 transition-all active:scale-95 border border-transparent hover:border-white/10" title="Close documentation">
+                        <XMarkIcon className="h-4 w-4" />
                     </button>
                 </header>
 

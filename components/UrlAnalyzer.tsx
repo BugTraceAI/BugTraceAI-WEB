@@ -31,16 +31,16 @@ interface UrlAnalyzerProps {
 }
 
 const scanOptions: { id: DastScanType; name: string; description: string; }[] = [
-    { id: 'recon', name: 'Recon Scan', description: 'Fast. Uses public intelligence (e.g., known exploits) to find vulnerabilities. Low invasiveness.' },
-    { id: 'active', name: 'Active Scan (Simulated)', description: 'Thorough. Analyzes inputs and application structure to hypothesize vulnerabilities.' },
-    { id: 'greybox', name: 'Grey Box Scan (DAST + SAST)', description: 'Most Powerful. Combines Active Scan with an analysis of the site\'s live JavaScript code for higher accuracy.' },
+  { id: 'recon', name: 'Recon Scan', description: 'Fast. Uses public intelligence (e.g., known exploits) to find vulnerabilities. Low invasiveness.' },
+  { id: 'active', name: 'Active Scan (Simulated)', description: 'Thorough. Analyzes inputs and application structure to hypothesize vulnerabilities.' },
+  { id: 'greybox', name: 'Grey Box Scan (DAST + SAST)', description: 'Most Powerful. Combines Active Scan with an analysis of the site\'s live JavaScript code for higher accuracy.' },
 ];
 
 export const UrlAnalyzer: React.FC<UrlAnalyzerProps> = ({
-    onAnalysisStart, onAnalysisComplete, onAnalysisError, onShowApiKeyWarning,
-    report, isLoading, analysisLog,
-    onSendToPayloadForge, onSendToJwtAnalyzer, onShowExploitAssistant, onShowSqlExploitAssistant, onAnalyzeWithAgent,
-    setAnalysisLog
+  onAnalysisStart, onAnalysisComplete, onAnalysisError, onShowApiKeyWarning,
+  report, isLoading, analysisLog,
+  onSendToPayloadForge, onSendToJwtAnalyzer, onShowExploitAssistant, onShowSqlExploitAssistant, onAnalyzeWithAgent,
+  setAnalysisLog
 }) => {
   const { apiOptions, isApiKeySet } = useApiOptions();
   const { saveAnalysis } = useAnalysisContext();
@@ -80,132 +80,131 @@ export const UrlAnalyzer: React.FC<UrlAnalyzerProps> = ({
 
   return (
     <ToolLayout
-        icon={<LinkIcon className="h-8 w-8 text-purple-400" />}
-        title="URL Analysis (DAST)"
-        description="Enter a URL for the AI to analyze using one of the scan modes below."
+      icon={<LinkIcon className="h-8 w-8 text-purple-400" />}
+      title="URL Analysis (DAST)"
+      description="Enter a URL for the AI to analyze using one of the scan modes below."
     >
       <div className="max-w-2xl mx-auto mb-4">
-          {/* Scan Type Options - Compact horizontal cards */}
-          <fieldset className="grid grid-cols-1 md:grid-cols-3 gap-2 mb-4">
-              <legend className="sr-only">Scan Type</legend>
-              {scanOptions.map(option => (
-                  <div key={option.id} className={`relative cursor-pointer p-3 rounded-lg transition-all duration-200 ${
-                      scanType === option.id
-                          ? 'bg-gradient-to-r from-purple-500/20 to-blue-500/20 shadow-md shadow-purple-500/10 ring-1 ring-purple-500/30'
-                          : 'bg-purple-medium/50 hover:bg-purple-medium/70'
-                  }`} onClick={() => setScanType(option.id)}>
-                      <div className="flex items-center gap-2 mb-1">
-                          <input
-                              id={option.id}
-                              name="scan-type"
-                              type="radio"
-                              checked={scanType === option.id}
-                              onChange={() => setScanType(option.id)}
-                              className="focus:ring-purple-500 h-3.5 w-3.5 text-purple-600 border-0 bg-purple-medium/60 rounded-full"
-                              disabled={isLoading}
-                          />
-                          <label htmlFor={option.id} className="font-medium text-white text-sm cursor-pointer">
-                              {option.name}
-                          </label>
-                      </div>
-                      <p className="text-purple-gray text-xs leading-tight">{option.description}</p>
-                  </div>
-              ))}
-          </fieldset>
-
-          {/* Options Row: Depth + Checkboxes */}
-          <div className="flex flex-wrap items-center gap-3 p-3 bg-purple-medium/30 rounded-xl">
-              {/* Depth Selector */}
-              <div className="flex items-center gap-2">
-                  <label htmlFor="depth-select" className="text-xs text-purple-gray whitespace-nowrap">
-                      Depth:
-                  </label>
-                  <select
-                      id="depth-select"
-                      value={depth}
-                      onChange={(e) => setDepth(Number(e.target.value))}
-                      className="py-1.5 pl-3 pr-8 bg-purple-medium/60 border-0 rounded-lg text-white text-sm focus:ring-1 focus:ring-coral/50 focus:outline-none cursor-pointer"
-                      disabled={isLoading}
-                  >
-                      <option value="1">1 (Fast)</option>
-                      <option value="2">2</option>
-                      <option value="3">3 (Default)</option>
-                      <option value="4">4</option>
-                      <option value="5">5 (Thorough)</option>
-                  </select>
+        {/* Scan Type Options - Compact horizontal cards */}
+        <fieldset className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-6">
+          <legend className="sr-only">Scan Type</legend>
+          {scanOptions.map(option => (
+            <div key={option.id} className={`relative cursor-pointer p-4 rounded-xl transition-all duration-300 border ${scanType === option.id
+              ? 'bg-ui-accent/10 border-ui-accent shadow-[0_0_15px_rgba(255,127,80,0.15)] scale-[1.02]'
+              : 'bg-ui-input-bg/40 border-ui-border hover:border-ui-accent/30 hover:bg-ui-input-bg/60'
+              }`} onClick={() => setScanType(option.id)}>
+              <div className="flex items-center gap-2 mb-2">
+                <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center transition-all ${scanType === option.id ? 'border-ui-accent' : 'border-ui-text-dim/40'
+                  }`}>
+                  {scanType === option.id && <div className="w-1.5 h-1.5 rounded-full bg-ui-accent shadow-[0_0_8px_rgba(255,127,80,0.8)]" />}
+                </div>
+                <label htmlFor={option.id} className={`font-bold text-sm cursor-pointer transition-colors ${scanType === option.id ? 'text-ui-text-main' : 'text-ui-text-dim'
+                  }`}>
+                  {option.name}
+                </label>
               </div>
+              <p className="text-ui-text-dim/80 text-[11px] leading-relaxed pl-6">{option.description}</p>
+            </div>
+          ))}
+        </fieldset>
 
-              <div className="h-4 w-px bg-purple-gray/30" />
-
-              {/* Deep Analysis Checkbox */}
-              <label className="flex items-center gap-2 cursor-pointer group" title="Performs a second, specialized analysis on each finding">
-                  <input
-                      id="deep-analysis"
-                      type="checkbox"
-                      checked={deepAnalysis}
-                      onChange={(e) => setDeepAnalysis(e.target.checked)}
-                      className="focus:ring-coral h-3.5 w-3.5 text-coral-active border-0 bg-purple-light rounded"
-                      disabled={isLoading}
-                  />
-                  <span className="text-sm text-purple-gray group-hover:text-white transition-colors">Deep Analysis</span>
-              </label>
-
-              <div className="h-4 w-px bg-purple-gray/30" />
-
-              {/* Validation Checkbox */}
-              <label className="flex items-center gap-2 cursor-pointer group" title="Filter out AI hallucinations and false positives">
-                  <input
-                      id="validate-findings"
-                      type="checkbox"
-                      checked={validateFindings}
-                      onChange={(e) => setValidateFindings(e.target.checked)}
-                      className="focus:ring-coral h-3.5 w-3.5 text-coral-active border-0 bg-purple-light rounded"
-                      disabled={isLoading}
-                  />
-                  <span className="text-sm text-purple-gray group-hover:text-white transition-colors">Validate Findings</span>
-              </label>
+        {/* Options Row: Depth + Checkboxes */}
+        <div className="flex flex-wrap items-center gap-4 p-4 bg-dashboard-bg/50 border border-ui-border rounded-2xl shadow-inner">
+          {/* Depth Selector */}
+          <div className="flex items-center gap-3">
+            <span className="label-mini !text-[9px]">Depth</span>
+            <select
+              id="depth-select"
+              value={depth}
+              onChange={(e) => setDepth(Number(e.target.value))}
+              className="input-premium py-1 px-3 !text-xs !bg-ui-bg"
+              disabled={isLoading}
+            >
+              <option value="1">1 (Fast)</option>
+              <option value="2">2</option>
+              <option value="3">3 (Default)</option>
+              <option value="4">4</option>
+              <option value="5">5 (Thorough)</option>
+            </select>
           </div>
-      </div>
-      
-      <div className="flex flex-col sm:flex-row gap-3 items-center justify-center mt-4">
-        <div className="relative flex-grow w-full max-w-lg">
+
+          <div className="h-4 w-px bg-white/5" />
+
+          {/* Deep Analysis Checkbox */}
+          <label className="flex items-center gap-2 cursor-pointer group" title="Performs a second, specialized analysis on each finding">
+            <div className={`w-4 h-4 rounded-lg border flex items-center justify-center transition-all ${deepAnalysis ? 'bg-ui-accent border-ui-accent shadow-[0_0_8px_rgba(255,127,80,0.4)]' : 'bg-ui-input-bg border-ui-border'
+              }`}>
+              {deepAnalysis && <div className="w-2 h-2 bg-white rounded-sm" />}
+            </div>
             <input
-                type="url"
-                value={url}
-                onChange={(e) => setUrl(e.target.value)}
-                placeholder="https://ginandjuice.shop/"
-                className="w-full pl-4 pr-12 py-3 bg-purple-medium/50 backdrop-blur-sm border-0 rounded-xl text-white placeholder-muted focus:ring-2 focus:ring-coral/50 focus:border-coral/30 focus:outline-none transition-all duration-200"
-                disabled={isLoading}
-                onKeyDown={(e) => e.key === 'Enter' && !isLoading && handleAnalyze()}
+              type="checkbox"
+              className="sr-only"
+              checked={deepAnalysis}
+              onChange={(e) => setDeepAnalysis(e.target.checked)}
+              disabled={isLoading}
             />
+            <span className="text-xs font-semibold text-ui-text-dim group-hover:text-ui-text-main transition-colors">Deep Analysis</span>
+          </label>
+
+          <div className="h-4 w-px bg-white/5" />
+
+          {/* Validation Checkbox */}
+          <label className="flex items-center gap-2 cursor-pointer group" title="Filter out AI hallucinations and false positives">
+            <div className={`w-4 h-4 rounded-lg border flex items-center justify-center transition-all ${validateFindings ? 'bg-ui-accent border-ui-accent shadow-[0_0_8px_rgba(255,127,80,0.4)]' : 'bg-ui-input-bg border-ui-border'
+              }`}>
+              {validateFindings && <div className="w-2 h-2 bg-white rounded-sm" />}
+            </div>
+            <input
+              type="checkbox"
+              className="sr-only"
+              checked={validateFindings}
+              onChange={(e) => setValidateFindings(e.target.checked)}
+              disabled={isLoading}
+            />
+            <span className="text-xs font-semibold text-ui-text-dim group-hover:text-ui-text-main transition-colors">Validate Findings</span>
+          </label>
+        </div>
+      </div>
+
+      <div className="flex flex-col sm:flex-row gap-4 items-center justify-center mt-6">
+        <div className="relative flex-grow w-full max-w-lg">
+          <input
+            type="url"
+            value={url}
+            onChange={(e) => setUrl(e.target.value)}
+            placeholder="https://ginandjuice.shop/"
+            className="input-premium w-full !py-3.5 px-6 !rounded-2xl !text-base"
+            disabled={isLoading}
+            onKeyDown={(e) => e.key === 'Enter' && !isLoading && handleAnalyze()}
+          />
         </div>
         <button
           onClick={handleAnalyze}
           disabled={isLoading || !url.trim()}
-          className="group w-full sm:w-auto relative inline-flex items-center justify-center px-8 py-3 bg-gradient-to-r from-coral to-coral-hover text-white font-bold rounded-xl transition-all duration-200 transform hover:scale-105 hover:shadow-lg hover:shadow-coral/25 disabled:scale-100 disabled:opacity-50 disabled:cursor-not-allowed shadow-md"
+          className="btn-mini btn-mini-primary !py-4 px-10 !rounded-2xl !text-sm group"
         >
-          {isLoading ? <Spinner /> : <ScanIcon className="h-5 w-5 mr-2" />}
-          <span className="relative">Analyze URL</span>
+          {isLoading ? <Spinner /> : <ScanIcon className="h-5 w-5 mr-3 group-hover:rotate-12 transition-transform" />}
+          Analyze URL
         </button>
       </div>
 
-       {isLoading && (
-         <div className="mt-6 bg-purple-medium/50 backdrop-blur-sm p-5 rounded-xl border-0 max-w-3xl mx-auto">
-            <div className="flex items-center gap-2 text-purple-300 mb-3">
-              <TerminalIcon className="h-5 w-5 animate-pulse" />
-              <h3 className="font-semibold">Live Analysis Log</h3>
-            </div>
-            <div className="text-sm text-purple-gray space-y-1.5 font-mono">
-              {analysisLog.map((log, index) => (
-                <p key={index} className="opacity-90">{`> ${log}`}</p>
-              ))}
-            </div>
-         </div>
-       )}
+      {isLoading && (
+        <div className="mt-6 bg-purple-medium/50 backdrop-blur-sm p-5 rounded-xl border-0 max-w-3xl mx-auto">
+          <div className="flex items-center gap-2 text-purple-300 mb-3">
+            <TerminalIcon className="h-5 w-5 animate-pulse" />
+            <h3 className="font-semibold">Live Analysis Log</h3>
+          </div>
+          <div className="text-sm text-purple-gray space-y-1.5 font-mono">
+            {analysisLog.map((log, index) => (
+              <p key={index} className="opacity-90">{`> ${log}`}</p>
+            ))}
+          </div>
+        </div>
+      )}
 
       {error && !isLoading && <div className="mt-6 p-4 gradient-red-pink rounded-lg font-mono max-w-3xl mx-auto shadow-lg shadow-red-500/30 text-white">{error}</div>}
 
-      {report && !isLoading &&(
+      {report && !isLoading && (
         <div className="mt-8">
           <ReportHeader report={report} />
 
@@ -213,14 +212,14 @@ export const UrlAnalyzer: React.FC<UrlAnalyzerProps> = ({
             <div className="space-y-4">
               {report.vulnerabilities.map((vuln, index) => (
                 <VulnerabilityCard
-                    key={index}
-                    vulnerability={vuln}
-                    analyzedTarget={report.analyzedTarget}
-                    onSendToPayloadForge={onSendToPayloadForge}
-                    onSendToJwtAnalyzer={onSendToJwtAnalyzer}
-                    onShowExploitAssistant={() => onShowExploitAssistant(vuln, report.analyzedTarget)}
-                    onShowSqlExploitAssistant={() => onShowSqlExploitAssistant(vuln, report.analyzedTarget)}
-                    onAnalyzeWithAgent={() => onAnalyzeWithAgent(vuln, report.analyzedTarget)}
+                  key={index}
+                  vulnerability={vuln}
+                  analyzedTarget={report.analyzedTarget}
+                  onSendToPayloadForge={onSendToPayloadForge}
+                  onSendToJwtAnalyzer={onSendToJwtAnalyzer}
+                  onShowExploitAssistant={() => onShowExploitAssistant(vuln, report.analyzedTarget)}
+                  onShowSqlExploitAssistant={() => onShowSqlExploitAssistant(vuln, report.analyzedTarget)}
+                  onAnalyzeWithAgent={() => onAnalyzeWithAgent(vuln, report.analyzedTarget)}
                 />
               ))}
             </div>

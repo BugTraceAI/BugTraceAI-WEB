@@ -1,11 +1,6 @@
 // components/cli/ReportList.tsx
-/* eslint-disable max-lines -- CLI report list component (228 lines).
- * Displays and manages historical CLI scan reports with filtering.
- * Includes report fetching, severity filtering, selection handling, and refresh.
- * List management with complex filtering logic - splitting would fragment list operations.
- */
 import React, { useState, useEffect } from 'react';
-import { ArrowPathIcon } from '../Icons.tsx';
+import { ArrowPathIcon, MagnifyingGlassIcon } from '../Icons.tsx';
 
 interface Report {
   id: string;
@@ -64,7 +59,6 @@ export const ReportList: React.FC<ReportListProps> = ({ selectedReportId, onSele
         throw new Error(`Failed to sync reports: ${response.statusText}`);
       }
 
-      // Refresh the list after syncing
       await fetchReports();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to sync reports');
@@ -79,152 +73,117 @@ export const ReportList: React.FC<ReportListProps> = ({ selectedReportId, onSele
   }, []);
 
   const formatDate = (dateString: string | null): string => {
-    if (!dateString) return 'Unknown date';
-
+    if (!dateString) return 'Unknown';
     const date = new Date(dateString);
     return date.toLocaleDateString('en-US', {
       month: 'short',
       day: 'numeric',
       hour: '2-digit',
       minute: '2-digit',
+      hour12: false
     });
   };
 
-  const truncateUrl = (url: string | null, maxLength: number = 30): string => {
+  const truncateUrl = (url: string | null): string => {
     if (!url) return 'Unknown target';
-    if (url.length <= maxLength) return url;
-    return url.substring(0, maxLength - 3) + '...';
+    return url.replace(/^https?:\/\//, '').replace(/\/$/, '');
   };
 
   if (loading) {
     return (
-      <div className="w-64 bg-gray-800 border-r border-gray-700 flex items-center justify-center">
-        <div className="text-purple-gray text-sm">Loading reports...</div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="w-64 bg-gray-800 border-r border-gray-700 p-4">
-        <div className="text-red-400 text-sm mb-4">{error}</div>
-        <button
-          onClick={fetchReports}
-          className="w-full px-3 py-2 bg-coral-active hover:bg-coral-active text-white rounded-lg transition-colors text-sm"
-        >
-          Retry
-        </button>
+      <div className="w-72 bg-purple-deep/10 border-r border-white/[0.05] flex items-center justify-center">
+        <div className="w-5 h-5 border-2 border-coral/20 border-t-coral animate-spin rounded-full" />
       </div>
     );
   }
 
   return (
-    <div className="w-64 bg-gray-800 border-r border-gray-700 flex flex-col" data-testid="past-reports-list">
-      {/* Header with action buttons */}
-      <div className="p-3 border-b border-gray-700 space-y-2">
+    <div className="w-72 bg-black/20 backdrop-blur-md border-r border-ui-border flex flex-col h-full overflow-hidden">
+      {/* Sidebar Header */}
+      <div className="p-4 space-y-4">
         <div className="flex items-center justify-between">
-          <h3 className="text-sm font-semibold text-white">Past Reports</h3>
+          <h3 className="label-mini !text-ui-text-dim/60">Assessments</h3>
           <button
             onClick={fetchReports}
-            disabled={loading}
-            className="p-1 text-muted hover:text-coral transition-colors disabled:opacity-50"
-            title="Refresh list"
+            className="p-1.5 text-ui-text-dim hover:text-white bg-white/5 border border-white/5 hover:bg-white/10 rounded-lg transition-all duration-200"
+            title="Refresh"
           >
-            <ArrowPathIcon className="h-4 w-4" />
+            <ArrowPathIcon className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} />
           </button>
         </div>
 
         <button
           onClick={handleSync}
           disabled={syncing}
-          data-testid="past-reports-sync-button"
-          className="w-full px-3 py-1.5 bg-coral-active hover:bg-coral-active disabled:bg-gray-600 text-white rounded text-xs transition-colors flex items-center justify-center gap-2"
+          className="w-full btn-mini btn-mini-secondary !bg-coral/10 !text-coral !border-coral/20 hover:!bg-coral/20"
         >
           {syncing ? (
-            <>
-              <ArrowPathIcon className="h-3 w-3 animate-spin" />
-              Syncing...
-            </>
+            <ArrowPathIcon className="h-3 w-3 animate-spin" />
           ) : (
-            'Sync Reports'
+            'Synchronize'
           )}
         </button>
       </div>
 
-      {/* Reports list */}
-      <div className="flex-1 overflow-y-auto">
+      {/* Reports List */}
+      <div className="flex-1 overflow-y-auto no-scrollbar pb-6 px-3">
         {reports.length === 0 ? (
-          <div className="p-4 text-center text-purple-gray text-sm">
-            <p>No reports found</p>
-            <p className="text-xs text-muted mt-2">
-              Run a scan or click "Sync Reports"
-            </p>
+          <div className="px-4 py-8 text-center bg-white/[0.02] border border-dashed border-white/5 rounded-xl">
+            <MagnifyingGlassIcon className="h-6 w-6 text-muted/20 mx-auto mb-2" />
+            <p className="text-[10px] uppercase font-bold text-muted">No data found</p>
           </div>
         ) : (
-          <div className="divide-y divide-gray-700">
-            {reports.map((report) => (
-              <div
-                key={report.id}
-                onClick={() => onSelectReport(report)}
-                data-testid={`past-reports-item-${report.id}`}
-                className={`
-                  p-3 cursor-pointer transition-colors
-                  ${selectedReportId === report.id
-                    ? 'bg-gray-600'
-                    : 'hover:bg-gray-700'
-                  }
-                `}
-              >
-                {/* Target URL */}
+          <div className="space-y-1">
+            {reports.map((report) => {
+              const isActive = selectedReportId === report.id;
+              return (
                 <div
-                  className="text-sm font-medium text-white mb-1 truncate"
-                  title={report.target_url || 'Unknown target'}
+                  key={report.id}
+                  onClick={() => onSelectReport(report)}
+                  className={`
+                    group relative p-3 rounded-xl cursor-pointer transition-all duration-200
+                    ${isActive
+                      ? 'bg-white/[0.05] shadow-[inset_0_0_20px_rgba(255,255,255,0.02)]'
+                      : 'hover:bg-white/[0.03]'
+                    }
+                  `}
                 >
-                  {truncateUrl(report.target_url)}
-                </div>
+                  {/* Selector mark */}
+                  {isActive && (
+                    <div className="absolute left-0 top-3 bottom-3 w-0.5 bg-coral rounded-full" />
+                  )}
 
-                {/* Scan date */}
-                <div className="text-xs text-muted mb-2">
-                  {formatDate(report.scan_date)}
-                </div>
+                  <div className="flex flex-col gap-1.5">
+                    <div className="flex items-start justify-between gap-2">
+                      <span className={`text-[11px] font-bold transition-colors truncate ${isActive ? 'text-coral' : 'text-white/80 group-hover:text-white'}`}>
+                        {truncateUrl(report.target_url)}
+                      </span>
+                    </div>
 
-                {/* Severity badges */}
-                {report.severity_summary && (
-                  <div className="flex items-center gap-2 text-xs">
-                    {report.severity_summary.critical > 0 && (
-                      <div className="flex items-center gap-1" title="Critical">
-                        <span className="inline-block w-2 h-2 rounded-full bg-red-500"></span>
-                        <span className="text-purple-gray">{report.severity_summary.critical}</span>
-                      </div>
-                    )}
-                    {report.severity_summary.high > 0 && (
-                      <div className="flex items-center gap-1" title="High">
-                        <span className="inline-block w-2 h-2 rounded-full bg-orange-500"></span>
-                        <span className="text-purple-gray">{report.severity_summary.high}</span>
-                      </div>
-                    )}
-                    {report.severity_summary.medium > 0 && (
-                      <div className="flex items-center gap-1" title="Medium">
-                        <span className="inline-block w-2 h-2 rounded-full bg-yellow-500"></span>
-                        <span className="text-purple-gray">{report.severity_summary.medium}</span>
-                      </div>
-                    )}
-                    {report.severity_summary.low > 0 && (
-                      <div className="flex items-center gap-1" title="Low">
-                        <span className="inline-block w-2 h-2 rounded-full bg-gray-400"></span>
-                        <span className="text-purple-gray">{report.severity_summary.low}</span>
-                      </div>
-                    )}
-                    {!report.severity_summary.critical &&
-                      !report.severity_summary.high &&
-                      !report.severity_summary.medium &&
-                      !report.severity_summary.low && (
-                      <span className="text-muted">No findings</span>
-                    )}
+                    <div className="flex items-center justify-between">
+                      <span className="text-[9px] font-mono text-muted uppercase tracking-tighter">
+                        {formatDate(report.scan_date)}
+                      </span>
+
+                      {/* Mini Severity Indicators */}
+                      {report.severity_summary && (
+                        <div className="flex items-center gap-1">
+                          {report.severity_summary.critical > 0 && (
+                            <div className="w-1 h-1 rounded-full bg-red-500 shadow-[0_0_5px_rgba(239,68,68,0.5)]" />
+                          )}
+                          {report.severity_summary.high > 0 && (
+                            <div className="w-1 h-1 rounded-full bg-orange-500" />
+                          )}
+                          {(report.severity_summary.medium > 0 || report.severity_summary.low > 0) && (
+                            <div className="w-1 h-1 rounded-full bg-blue-500/50" />
+                          )}
+                        </div>
+                      )}
+                    </div>
                   </div>
-                )}
-              </div>
-            ))}
+                </div>
+              );
+            })}
           </div>
         )}
       </div>

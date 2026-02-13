@@ -98,16 +98,19 @@ export const AnalysisHistory: React.FC<AnalysisHistoryProps> = ({
 
   return (
     <div
-      className="bg-purple-medium/50 backdrop-blur-xl p-6 sm:p-8 rounded-xl border-0 shadow-xl animate-fade-in"
+      className="card-premium p-6 sm:p-8 animate-fade-in !bg-ui-bg/40"
       data-testid="analysis-history"
     >
       {/* Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
-        <div className="flex items-center gap-3">
-          <HistoryIcon className="h-8 w-8 text-coral" />
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
+        <div className="flex items-center gap-4">
+          <div className="w-12 h-12 rounded-xl bg-ui-accent/10 border border-ui-accent/20 flex items-center justify-center shadow-lg shadow-ui-accent/5 rotate-3 hover:rotate-0 transition-transform duration-500">
+            <HistoryIcon className="h-6 w-6 text-ui-accent" />
+          </div>
           <div>
-            <h3 className="text-2xl font-bold text-white">Analysis History</h3>
-            <p className="text-purple-gray text-sm">Browse and filter your saved analyses</p>
+            <span className="label-mini text-ui-accent mb-0.5 block">Archive Retrieval</span>
+            <h3 className="title-standard !text-2xl">Mission Intelligence</h3>
+            <p className="text-ui-text-dim/60 text-xs">Access centralized security audit logs and mission reports</p>
           </div>
         </div>
 
@@ -119,27 +122,27 @@ export const AnalysisHistory: React.FC<AnalysisHistoryProps> = ({
               loadAnalyses({ limit: itemsPerPage, offset: 0 });
             }}
             disabled={loading}
-            className="flex items-center gap-2 px-3 py-2 text-sm font-semibold text-purple-gray bg-purple-medium/60 border-0 rounded-lg hover:bg-coral/20 hover:text-coral disabled:opacity-50 transition-colors"
-            title="Refresh list"
+            className="btn-mini btn-mini-secondary !h-10 !px-4"
+            title="Update Mission Logs"
           >
-            <ArrowPathIcon className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-            <span className="hidden sm:inline">Refresh</span>
+            <ArrowPathIcon className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
+            REFRESH LOGS
           </button>
 
           {/* Toggle Filters Button (Mobile) */}
           <button
             onClick={() => setFiltersVisible(!filtersVisible)}
-            className="sm:hidden flex items-center gap-2 px-3 py-2 text-sm font-semibold text-purple-gray bg-purple-medium/60 border-0 rounded-lg hover:bg-purple-medium/60/80 transition-colors"
+            className="sm:hidden btn-mini btn-mini-secondary !h-10 !px-4"
           >
             {filtersVisible ? (
               <>
-                <ChevronUpIcon className="h-4 w-4" />
-                Hide Filters
+                <ChevronUpIcon className="h-4 w-4 mr-2" />
+                HIDE FILTERS
               </>
             ) : (
               <>
-                <ChevronDownIcon className="h-4 w-4" />
-                Show Filters
+                <ChevronDownIcon className="h-4 w-4 mr-2" />
+                SHOW FILTERS
               </>
             )}
           </button>
@@ -159,9 +162,10 @@ export const AnalysisHistory: React.FC<AnalysisHistoryProps> = ({
 
       {/* Results Summary */}
       {!loading && analyses.length > 0 && (
-        <div className="mb-4 text-sm text-purple-gray">
-          Showing {(currentPage - 1) * itemsPerPage + 1}–
-          {(currentPage - 1) * itemsPerPage + analyses.length} analyses
+        <div className="mb-4">
+          <span className="label-mini !text-[10px] text-ui-text-dim/50">
+            RETRIEVED RECORDS: {(currentPage - 1) * itemsPerPage + 1} TO {(currentPage - 1) * itemsPerPage + analyses.length}
+          </span>
         </div>
       )}
 
@@ -182,19 +186,19 @@ export const AnalysisHistory: React.FC<AnalysisHistoryProps> = ({
           <button
             onClick={handlePrevPage}
             disabled={!hasPrevPage}
-            className="px-4 py-2 text-sm font-semibold text-white bg-purple-medium/60 border-0 rounded-lg hover:bg-purple-medium/60/80 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            className="btn-mini btn-mini-secondary !px-6"
           >
-            Previous
+            PREVIOUS STAGE
           </button>
 
-          <span className="text-sm text-purple-gray">Page {currentPage}</span>
+          <span className="label-mini !text-ui-accent tracking-widest">LAYER {currentPage}</span>
 
           <button
             onClick={handleNextPage}
             disabled={!hasNextPage}
-            className="px-4 py-2 text-sm font-semibold text-white bg-purple-medium/60 border-0 rounded-lg hover:bg-purple-medium/60/80 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            className="btn-mini btn-mini-secondary !px-6"
           >
-            Next
+            NEXT STAGE
           </button>
         </div>
       )}

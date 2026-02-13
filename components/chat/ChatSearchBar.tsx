@@ -105,17 +105,19 @@ export const ChatSearchBar: React.FC<ChatSearchBarProps> = ({ onResultSelect }) 
           type="text"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder="Search messages..."
+          placeholder="Search mission logs..."
           data-testid="search-input"
-          className="w-full px-4 py-2 pl-10 bg-purple-medium/50 border-0 rounded-lg text-sm text-white placeholder-text-tertiary focus:outline-none focus:border-coral/50 transition-colors"
+          className="input-premium w-full !h-10 pl-10 pr-10 !text-xs !bg-dashboard-bg/50"
         />
 
         {/* Search icon */}
-        <span className="absolute left-3 top-2.5 text-muted text-base">
+        <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-ui-text-dim/60">
           {isSearching ? (
-            <span className="inline-block animate-spin">⟳</span>
+            <div className="h-3.5 w-3.5 border-2 border-ui-accent/30 border-t-ui-accent rounded-full animate-spin" />
           ) : (
-            '🔍'
+            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
           )}
         </span>
 
@@ -123,17 +125,18 @@ export const ChatSearchBar: React.FC<ChatSearchBarProps> = ({ onResultSelect }) 
         {query && (
           <button
             onClick={handleClear}
-            className="absolute right-3 top-2.5 text-muted hover:text-white transition-colors"
+            className="absolute right-3 top-1/2 -translate-y-1/2 p-1 rounded-lg text-ui-text-dim hover:text-ui-accent hover:bg-ui-accent/10 transition-all"
             aria-label="Clear search"
           >
-            ✕
+            <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M6 18L18 6M6 6l12 12" />
+            </svg>
           </button>
         )}
       </div>
 
-      {/* Results dropdown */}
       {showResults && results.length > 0 && (
-        <div className="absolute top-full left-0 right-0 mt-2 bg-purple-medium/50 border-0 rounded-lg shadow-xl max-h-80 overflow-y-auto z-50">
+        <div className="absolute top-full left-0 right-0 mt-3 card-premium !p-2 !bg-ui-bg/95 border-ui-accent/20 shadow-2xl max-h-80 overflow-y-auto z-50">
           {results.map((result) => (
             <SearchResult
               key={`${result.session_id}-${result.message_id}`}
@@ -147,8 +150,9 @@ export const ChatSearchBar: React.FC<ChatSearchBarProps> = ({ onResultSelect }) 
 
       {/* No results message */}
       {showResults && query.length >= 2 && results.length === 0 && !isSearching && (
-        <div className="absolute top-full left-0 right-0 mt-2 bg-purple-medium/50 border-0 rounded-lg p-4 text-center text-muted text-sm z-50">
-          No results found for "{query}"
+        <div className="absolute top-full left-0 right-0 mt-3 card-premium p-6 text-center z-50">
+          <span className="label-mini text-ui-text-dim block mb-1">NO DATA RETRIEVED</span>
+          <p className="text-[11px] text-ui-text-dim/60">No records matching "{query}"</p>
         </div>
       )}
     </div>

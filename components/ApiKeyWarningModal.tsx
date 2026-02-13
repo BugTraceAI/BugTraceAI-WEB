@@ -12,38 +12,43 @@ export const ApiKeyWarningModal: React.FC<ApiKeyWarningModalProps> = ({ isOpen, 
     if (!isOpen) return null;
 
     return (
-        <div 
+        <div
             className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fade-in"
             onClick={onClose}
             aria-modal="true"
             role="dialog"
         >
-            <div 
-                className="bg-purple-medium/50 backdrop-blur-xl border-0 rounded-2xl w-full max-w-lg shadow-2xl shadow-yellow-500/10 flex flex-col"
+            <div
+                className="card-premium w-full max-w-lg shadow-2xl shadow-ui-accent/10 flex flex-col overflow-hidden"
                 onClick={e => e.stopPropagation()}
             >
-                <header className="flex-shrink-0 flex items-center gap-3 p-4 border-b border-0 bg-purple-medium/50/80">
-                    <ShieldExclamationIcon className="h-6 w-6 text-yellow-400" />
-                    <h2 className="text-xl font-bold text-white">API Key Required</h2>
+                <header className="flex-shrink-0 flex items-center gap-3 p-4 border-b border-ui-border bg-ui-bg/50">
+                    <div className="p-2 rounded-xl bg-ui-accent/10 border border-ui-accent/20">
+                        <ShieldExclamationIcon className="h-4 w-4 text-ui-accent" />
+                    </div>
+                    <div className="flex flex-col">
+                        <span className="label-mini text-ui-accent">Configuration Required</span>
+                        <h2 className="title-standard">API Key Required</h2>
+                    </div>
                 </header>
 
-                <main className="p-6 text-purple-gray text-center">
-                     <p className="text-lg">An API key is required to use this feature.</p>
-                     <p className="mt-2 text-sm">Please configure your API key in the settings menu to proceed.</p>
+                <main className="p-8 text-center bg-dashboard-bg/30">
+                    <p className="text-base text-ui-text-main font-semibold">An API key is required to use this feature.</p>
+                    <p className="mt-2 text-xs text-ui-text-dim">Please configure your OpenRouter API key in the settings menu to proceed with AI-powered analysis.</p>
                 </main>
 
-                <footer className="p-4 bg-black/10 dark:bg-black/20 flex justify-end items-center gap-4">
-                     <button
+                <footer className="p-4 bg-ui-bg/80 flex justify-end items-center gap-3 border-t border-ui-border">
+                    <button
                         onClick={onClose}
-                        className="px-6 py-2 bg-gray-500/20 text-purple-gray font-bold rounded-lg transition-all transform hover:scale-105 hover:bg-gray-500/30"
+                        className="btn-mini btn-mini-secondary px-6"
                     >
-                        Close
+                        Dismiss
                     </button>
                     <button
                         onClick={onGoToSettings}
-                        className="flex items-center gap-2 px-6 py-2 bg-gradient-to-r from-purple-elevated to-coral text-white font-bold rounded-lg transition-transform transform hover:scale-105"
+                        className="btn-mini btn-mini-primary px-6 gap-2"
                     >
-                        <CogIcon className="h-5 w-5" />
+                        <CogIcon className="h-3.5 w-3.5" />
                         Go to Settings
                     </button>
                 </footer>

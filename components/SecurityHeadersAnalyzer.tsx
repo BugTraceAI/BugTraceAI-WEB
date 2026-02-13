@@ -11,12 +11,12 @@ import { ToolLayout } from './ToolLayout.tsx';
 import { HeadersReportHeader } from './HeadersReportHeader.tsx';
 
 interface SecurityHeadersAnalyzerProps {
-  onAnalysisStart: () => void;
-  onAnalysisComplete: (report: VulnerabilityReport) => void;
-  onAnalysisError: (message: string) => void;
-  onShowApiKeyWarning: () => void;
-  isLoading: boolean;
-  report: VulnerabilityReport | null;
+    onAnalysisStart: () => void;
+    onAnalysisComplete: (report: VulnerabilityReport) => void;
+    onAnalysisError: (message: string) => void;
+    onShowApiKeyWarning: () => void;
+    isLoading: boolean;
+    report: VulnerabilityReport | null;
 }
 
 const SEVERITY_STYLES: Record<HeaderFinding['severity'], string> = {
@@ -27,21 +27,25 @@ const SEVERITY_STYLES: Record<HeaderFinding['severity'], string> = {
 };
 
 const FindingCard: React.FC<{ finding: HeaderFinding }> = ({ finding }) => {
+    const isPassing = finding.status === 'Present - Good';
+
     return (
-        <div className={`p-4 rounded-lg border-l-4 ${SEVERITY_STYLES[finding.severity]} bg-purple-medium/60/50`}>
-            <div className="flex justify-between items-center mb-2">
-                <h4 className="font-bold text-lg text-coral-hover font-mono">{finding.name}</h4>
-                <span className={`px-3 py-1 text-xs font-semibold rounded-full ${finding.status === 'Missing' ? 'bg-red-900/70 text-red-200' : 'bg-green-900/70 text-green-200'}`}>{finding.status}</span>
+        <div className={`card-premium p-5 !bg-ui-bg/40 border-l-4 ${SEVERITY_STYLES[finding.severity]}`}>
+            <div className="flex justify-between items-start mb-3">
+                <h4 className="font-black text-sm uppercase tracking-wide text-ui-text-main font-mono">{finding.name}</h4>
+                <span className={`badge-mini ${isPassing ? 'badge-mini-success' : 'badge-mini-error'}`}>
+                    {finding.status}
+                </span>
             </div>
             {finding.value && (
-                <div className="mb-3">
-                    <p className="text-xs text-muted mb-1">Value:</p>
-                    <pre className="bg-black/40 p-2 rounded-md font-mono text-xs text-purple-300 overflow-x-auto"><code>{finding.value}</code></pre>
+                <div className="mb-4">
+                    <p className="label-mini mb-1.5 opacity-60">DETECTED VALUE</p>
+                    <pre className="bg-black/40 p-3 rounded-xl font-mono text-[10px] text-ui-accent/90 overflow-x-auto border border-white/5"><code>{finding.value}</code></pre>
                 </div>
             )}
             <div>
-                <p className="text-xs text-muted mb-1">Recommendation:</p>
-                <p className="text-sm text-purple-gray">{finding.recommendation}</p>
+                <p className="label-mini mb-1 opacity-60">REMEDIATION INTELLIGENCE</p>
+                <p className="text-xs text-ui-text-dim leading-relaxed">{finding.recommendation}</p>
             </div>
         </div>
     );
@@ -59,7 +63,7 @@ const convertToVulnerabilityReport = (report: HeadersReport): VulnerabilityRepor
 
     const findingVulnerabilities: Vulnerability[] = report.findings.map(finding => {
         let severity: Severity;
-        switch(finding.severity) {
+        switch (finding.severity) {
             case 'High': severity = Severity.HIGH; break;
             case 'Medium': severity = Severity.MEDIUM; break;
             case 'Low': severity = Severity.LOW; break;
@@ -134,9 +138,9 @@ export const SecurityHeadersAnalyzer: React.FC<SecurityHeadersAnalyzerProps> = (
 
     return (
         <ToolLayout
-          icon={<ShieldCheckIcon className="h-8 w-8 text-coral" />}
-          title="Security Headers Analyzer"
-          description="Enter a URL to analyze its HTTP security headers. The AI will assess headers like CSP and HSTS against best practices."
+            icon={<ShieldCheckIcon className="h-8 w-8 text-coral" />}
+            title="Security Headers Analyzer"
+            description="Enter a URL to analyze its HTTP security headers. The AI will assess headers like CSP and HSTS against best practices."
         >
             <div className="flex-shrink-0">
                 <div className="flex flex-col sm:flex-row gap-4 items-center justify-center">
@@ -146,7 +150,7 @@ export const SecurityHeadersAnalyzer: React.FC<SecurityHeadersAnalyzerProps> = (
                             value={url}
                             onChange={(e) => setUrl(e.target.value)}
                             placeholder="https://example.com"
-                            className="w-full pl-4 pr-12 py-3 bg-purple-medium/60 border-0 rounded-lg text-white placeholder-text-tertiary focus:ring-2 focus:ring-coral/50 focus:border-coral focus:outline-none transition-all duration-300"
+                            className="input-premium w-full !py-3.5 px-6 !rounded-2xl !text-base"
                             disabled={isLoading}
                             onKeyDown={(e) => e.key === 'Enter' && !isLoading && handleAnalyze()}
                         />
@@ -154,21 +158,21 @@ export const SecurityHeadersAnalyzer: React.FC<SecurityHeadersAnalyzerProps> = (
                     <button
                         onClick={handleAnalyze}
                         disabled={isLoading || !url.trim()}
-                        className="group w-full sm:w-auto relative inline-flex items-center justify-center px-8 py-3 bg-coral-active hover:bg-coral text-white font-bold rounded-lg transition-all duration-300 transform hover:scale-105 disabled:scale-100 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-coral/20 hover:shadow-coral/40"
+                        className="btn-mini btn-mini-primary w-full sm:w-auto !py-4 px-10 !rounded-2xl !text-sm group"
                     >
-                        {isLoading ? <Spinner /> : <ScanIcon className="h-5 w-5 mr-2" />}
-                        <span className="relative">Analyze Headers</span>
+                        {isLoading ? <Spinner /> : <ScanIcon className="h-5 w-5 mr-3 group-hover:rotate-12 transition-transform" />}
+                        Analyze Headers
                     </button>
                 </div>
             </div>
 
             <div className="mt-6">
                 {isLoading && (
-                     <div className="mt-8 text-center text-purple-gray animate-pulse">
+                    <div className="mt-8 text-center text-ui-text-dim animate-pulse">
                         <p>AI is fetching and analyzing headers...</p>
                     </div>
                 )}
-                
+
                 {error && !isLoading && <div className="mt-6 p-4 bg-red-900/50 border border-red-700 text-red-200 rounded-lg font-mono max-w-3xl mx-auto">{error}</div>}
 
                 {localReport && !isLoading && (

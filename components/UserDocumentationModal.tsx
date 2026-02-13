@@ -548,9 +548,12 @@ const TEXT = {
 };
 
 const DocSection = ({ id, title, children }: { id: string, title: string, children: React.ReactNode }) => (
-    <section id={id} className="space-y-4 pt-6 first:pt-0">
-        <h3 className="text-2xl font-bold text-coral-hover border-b border-coral/30 pb-2">{title}</h3>
-        <div className="prose prose-invert prose-sm max-w-none text-purple-gray prose-headings:text-coral prose-strong:text-white prose-a:text-purple-400 hover:prose-a:text-purple-300 prose-kbd:bg-gray-700 prose-kbd:text-gray-200 prose-kbd:border-0 prose-code:text-purple-300 prose-code:bg-black/30 prose-code:p-1 prose-code:rounded-md prose-ul:list-disc prose-ul:pl-6 prose-ol:list-decimal prose-ol:pl-6">
+    <section id={id} className="space-y-4 pt-8 first:pt-0">
+        <div className="flex flex-col gap-1 border-b border-white/5 pb-3">
+            <span className="text-[10px] font-black uppercase tracking-[0.3em] text-coral/60">Module</span>
+            <h3 className="text-sm font-bold text-off-white">{title}</h3>
+        </div>
+        <div className="prose prose-invert prose-sm max-w-none text-purple-gray/90 prose-headings:text-coral prose-strong:text-white prose-a:text-purple-accent hover:prose-a:text-purple-accent-hover prose-kbd:bg-black/40 prose-kbd:text-purple-accent prose-kbd:border-white/10 prose-code:text-purple-accent prose-code:bg-black/30 prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded-md prose-ul:list-disc prose-ul:pl-6 prose-ol:list-decimal prose-ol:pl-6 leading-relaxed">
             {children}
         </div>
     </section>
@@ -589,44 +592,49 @@ export const UserDocumentationModal: React.FC<UserDocumentationModalProps> = ({ 
 
 
     return (
-        <div 
+        <div
             className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4"
             onClick={onClose}
             aria-modal="true"
             role="dialog"
         >
             <div
-                className="bg-purple-medium/80 backdrop-blur-xl border-0 rounded-2xl w-full max-w-5xl h-[90vh] overflow-hidden shadow-2xl flex flex-col"
+                className="card-premium w-full max-w-5xl h-[90vh] overflow-hidden flex flex-col !bg-dashboard-bg"
                 onClick={(e) => e.stopPropagation()}
             >
-                <header className="flex-shrink-0 flex justify-between items-center p-4 border-b border-0">
+                <header className="flex-shrink-0 flex justify-between items-center p-4 bg-black/40 backdrop-blur-xl border-b border-ui-border">
                     <div className="flex items-center gap-3">
-                        <BookOpenIcon className="h-5 w-5 text-coral" />
-                        <h2 className="text-lg font-bold text-coral-hover">{TEXT.titles[language]}</h2>
+                        <div className="p-2 rounded-xl bg-ui-accent/10 border border-ui-accent/20">
+                            <BookOpenIcon className="h-4 w-4 text-ui-accent" />
+                        </div>
+                        <div className="flex flex-col">
+                            <span className="label-mini !text-ui-accent/70">Documentation</span>
+                            <h2 className="title-standard !text-xl">{TEXT.titles[language]}</h2>
+                        </div>
                     </div>
                     <div className="flex items-center gap-2">
-                        <button onClick={toggleLanguage} className="py-1 px-3 rounded-xl text-sm text-purple-gray bg-purple-light/50 border-0 hover:text-white hover:bg-purple-light/70 transition-colors">
+                        <button onClick={toggleLanguage} className="btn-mini btn-mini-secondary">
                             {TEXT.languageButton[language]}
                         </button>
-                        <button onClick={onClose} className="p-2 rounded-xl text-purple-gray hover:text-white hover:bg-white/10 transition-colors">
-                            <XMarkIcon className="h-5 w-5" />
+                        <button onClick={onClose} className="p-2 rounded-xl text-ui-text-muted hover:text-white hover:bg-white/10 transition-all active:scale-95 border border-transparent hover:border-white/10">
+                            <XMarkIcon className="h-4 w-4" />
                         </button>
                     </div>
                 </header>
 
                 <div className="flex flex-1 overflow-hidden">
                     {/* Table of Contents */}
-                    <nav className="w-1/4 flex-shrink-0 p-4 border-r border-0 overflow-y-auto">
+                    <nav className="w-1/4 flex-shrink-0 p-4 bg-black/20 border-r border-ui-border overflow-y-auto">
                         <ul className="space-y-1">
                             {sections.map(section => (
                                 <li key={section.id}>
                                     <a href={`#${section.id}`} onClick={e => {
                                         e.preventDefault();
                                         document.querySelector(`#doc-content #${section.id}`)?.scrollIntoView({ behavior: 'smooth' });
-                                      }}
-                                      className="text-sm font-medium text-purple-gray hover:text-coral-hover hover:bg-white/5 transition-colors block px-3 py-2 rounded-lg"
+                                    }}
+                                        className="text-[10px] font-bold uppercase tracking-wider text-ui-text-muted hover:text-ui-accent hover:bg-ui-accent/5 transition-all block px-3 py-2 rounded-lg border border-transparent hover:border-ui-accent/10"
                                     >
-                                      {section.text[language]}
+                                        {section.text[language]}
                                     </a>
                                 </li>
                             ))}
@@ -634,7 +642,7 @@ export const UserDocumentationModal: React.FC<UserDocumentationModalProps> = ({ 
                     </nav>
 
                     {/* Content */}
-                    <main id="doc-content" className="flex-1 p-8 overflow-y-auto scroll-smooth" style={{scrollPaddingTop: '20px'}}>
+                    <main id="doc-content" className="flex-1 p-8 overflow-y-auto scroll-smooth" style={{ scrollPaddingTop: '20px' }}>
                         <div className="space-y-10">
 
                             <DocSection id="introduction" title={TEXT.sections.introduction.title[language]}>
@@ -643,7 +651,7 @@ export const UserDocumentationModal: React.FC<UserDocumentationModalProps> = ({ 
                             </DocSection>
 
                             <DocSection id="agent" title={TEXT.sections.agent.title[language]}>
-                                <div className="flex items-center gap-2 not-prose mb-2"> <ChatIcon className="w-5 h-5"/> <h4 className="text-lg font-semibold text-coral">{TEXT.sections.agent.purposeTitle[language]}</h4></div>
+                                <div className="flex items-center gap-2 not-prose mb-2"> <ChatIcon className="w-5 h-5" /> <h4 className="text-lg font-semibold text-coral">{TEXT.sections.agent.purposeTitle[language]}</h4></div>
                                 <p>{TEXT.sections.agent.purposeText[language]}</p>
                                 <p>{TEXT.sections.agent.listP[language]}</p>
                                 <ul>
@@ -652,7 +660,7 @@ export const UserDocumentationModal: React.FC<UserDocumentationModalProps> = ({ 
                             </DocSection>
 
                             <DocSection id="url-analysis" title={TEXT.sections.urlAnalysis.title[language]}>
-                                <div className="flex items-center gap-2 not-prose mb-2"> <LinkIcon className="w-5 h-5"/> <h4 className="text-lg font-semibold text-coral">{TEXT.sections.urlAnalysis.methodologyTitle[language]}</h4></div>
+                                <div className="flex items-center gap-2 not-prose mb-2"> <LinkIcon className="w-5 h-5" /> <h4 className="text-lg font-semibold text-coral">{TEXT.sections.urlAnalysis.methodologyTitle[language]}</h4></div>
                                 <p dangerouslySetInnerHTML={{ __html: TEXT.sections.urlAnalysis.methodologyP1[language] }} />
                                 <p dangerouslySetInnerHTML={{ __html: TEXT.sections.urlAnalysis.methodologyP2[language] }} />
                                 <h4 className="text-lg font-semibold text-coral pt-4">{TEXT.sections.urlAnalysis.scanModesTitle[language]}</h4>
@@ -667,19 +675,19 @@ export const UserDocumentationModal: React.FC<UserDocumentationModalProps> = ({ 
                             </DocSection>
 
                             <DocSection id="code-analysis" title={TEXT.sections.codeAnalysis.title[language]}>
-                                <div className="flex items-center gap-2 not-prose mb-2"> <CodeBracketIcon className="w-5 h-5"/> <h4 className="text-lg font-semibold text-coral">{TEXT.sections.codeAnalysis.methodologyTitle[language]}</h4></div>
+                                <div className="flex items-center gap-2 not-prose mb-2"> <CodeBracketIcon className="w-5 h-5" /> <h4 className="text-lg font-semibold text-coral">{TEXT.sections.codeAnalysis.methodologyTitle[language]}</h4></div>
                                 <p>{TEXT.sections.codeAnalysis.methodologyP1[language]}</p>
                                 <p>{TEXT.sections.codeAnalysis.methodologyP2[language]}</p>
                                 <ul>
                                     {TEXT.sections.codeAnalysis.listItems[language].map((item, index) => <li key={index} dangerouslySetInnerHTML={{ __html: item }} />)}
                                 </ul>
                                 <h4 className="text-lg font-semibold text-coral pt-4">{TEXT.sections.codeAnalysis.howToTitle[language]}</h4>
-                                <p dangerouslySetInnerHTML={{ __html: TEXT.sections.codeAnalysis.howToP1[language] }}/>
+                                <p dangerouslySetInnerHTML={{ __html: TEXT.sections.codeAnalysis.howToP1[language] }} />
                                 <ol>
                                     {TEXT.sections.codeAnalysis.howToSteps[language].map((step, index) => <li key={index} dangerouslySetInnerHTML={{ __html: step }} />)}
                                 </ol>
                             </DocSection>
-                            
+
                             <DocSection id="reliability" title={TEXT.sections.reliability.title[language]}>
                                 <p>{TEXT.sections.reliability.p1[language]}</p>
                                 <h4 className="text-lg font-semibold text-coral pt-4">{TEXT.sections.reliability.depthTitle[language]}</h4>
@@ -699,7 +707,7 @@ export const UserDocumentationModal: React.FC<UserDocumentationModalProps> = ({ 
                             </DocSection>
 
                             <DocSection id="js-recon" title={TEXT.sections.jsRecon.title[language]}>
-                                <div className="flex items-center gap-2 not-prose mb-2"> <CodeSearchIcon className="w-5 h-5"/> <h4 className="text-lg font-semibold text-coral">{TEXT.sections.jsRecon.methodologyTitle[language]}</h4></div>
+                                <div className="flex items-center gap-2 not-prose mb-2"> <CodeSearchIcon className="w-5 h-5" /> <h4 className="text-lg font-semibold text-coral">{TEXT.sections.jsRecon.methodologyTitle[language]}</h4></div>
                                 <p>{TEXT.sections.jsRecon.p1[language]}</p>
                                 <p>{TEXT.sections.jsRecon.p2[language]}</p>
                                 <ul>
@@ -707,13 +715,13 @@ export const UserDocumentationModal: React.FC<UserDocumentationModalProps> = ({ 
                                 </ul>
                                 <p>{TEXT.sections.jsRecon.p3[language]}</p>
                             </DocSection>
-                            
+
                             <DocSection id="dom-xss-pathfinder" title={TEXT.sections.domXSS.title[language]}>
-                                <div className="flex items-center gap-2 not-prose mb-2"> <FlowChartIcon className="w-5 h-5"/> <h4 className="text-lg font-semibold text-coral">{TEXT.sections.domXSS.methodologyTitle[language]}</h4></div>
+                                <div className="flex items-center gap-2 not-prose mb-2"> <FlowChartIcon className="w-5 h-5" /> <h4 className="text-lg font-semibold text-coral">{TEXT.sections.domXSS.methodologyTitle[language]}</h4></div>
                                 <p>{TEXT.sections.domXSS.p1[language]}</p>
                                 <p>{TEXT.sections.domXSS.p2[language]}</p>
                                 <ol>
-                                    {TEXT.sections.domXSS.steps[language].map((step, index) => <li key={index} dangerouslySetInnerHTML={{ __html: step }}/>)}
+                                    {TEXT.sections.domXSS.steps[language].map((step, index) => <li key={index} dangerouslySetInnerHTML={{ __html: step }} />)}
                                     <ul>
                                         {TEXT.sections.domXSS.subListItems[language].map((subItem, index) => <li key={index} dangerouslySetInnerHTML={{ __html: subItem }} />)}
                                     </ul>
@@ -721,7 +729,7 @@ export const UserDocumentationModal: React.FC<UserDocumentationModalProps> = ({ 
                             </DocSection>
 
                             <DocSection id="jwt-analyzer" title={TEXT.sections.jwtAnalyzer.title[language]}>
-                                <div className="flex items-center gap-2 not-prose mb-2"> <JwtTokenIcon className="w-5 h-5"/> <h4 className="text-lg font-semibold text-coral">{TEXT.sections.jwtAnalyzer.purposeTitle[language]}</h4></div>
+                                <div className="flex items-center gap-2 not-prose mb-2"> <JwtTokenIcon className="w-5 h-5" /> <h4 className="text-lg font-semibold text-coral">{TEXT.sections.jwtAnalyzer.purposeTitle[language]}</h4></div>
                                 <p>{TEXT.sections.jwtAnalyzer.purposeP[language]}</p>
                                 <h4 className="text-lg font-semibold text-coral pt-4">{TEXT.sections.jwtAnalyzer.howToTitle[language]}</h4>
                                 <ol>
@@ -736,21 +744,21 @@ export const UserDocumentationModal: React.FC<UserDocumentationModalProps> = ({ 
                                     <li dangerouslySetInnerHTML={{ __html: TEXT.sections.jwtAnalyzer.steps[language][2] }} />
                                 </ol>
                             </DocSection>
-                            
+
                             <DocSection id="header-analysis" title={TEXT.sections.headerAnalysis.title[language]}>
-                                <div className="flex items-center gap-2 not-prose mb-2"> <ShieldCheckIcon className="w-5 h-5"/> <h4 className="text-lg font-semibold text-coral">{TEXT.sections.headerAnalysis.methodologyTitle[language]}</h4></div>
+                                <div className="flex items-center gap-2 not-prose mb-2"> <ShieldCheckIcon className="w-5 h-5" /> <h4 className="text-lg font-semibold text-coral">{TEXT.sections.headerAnalysis.methodologyTitle[language]}</h4></div>
                                 <p>{TEXT.sections.headerAnalysis.p1[language]}</p>
                                 <p dangerouslySetInnerHTML={{ __html: TEXT.sections.headerAnalysis.p2[language] }} />
                             </DocSection>
 
                             <DocSection id="privesc-pathfinder" title={TEXT.sections.privEsc.title[language]}>
-                                <div className="flex items-center gap-2 not-prose mb-2"> <KeyIcon className="w-5 h-5"/> <h4 className="text-lg font-semibold text-coral">{TEXT.sections.privEsc.methodologyTitle[language]}</h4></div>
+                                <div className="flex items-center gap-2 not-prose mb-2"> <KeyIcon className="w-5 h-5" /> <h4 className="text-lg font-semibold text-coral">{TEXT.sections.privEsc.methodologyTitle[language]}</h4></div>
                                 <p>{TEXT.sections.privEsc.p1[language]}</p>
                                 <p>{TEXT.sections.privEsc.p2[language]}</p>
                             </DocSection>
 
                             <DocSection id="file-upload-auditor" title={TEXT.sections.fileUpload.title[language]}>
-                                <div className="flex items-center gap-2 not-prose mb-2"> <ArrowUpTrayIcon className="w-5 h-5"/> <h4 className="text-lg font-semibold text-coral">{TEXT.sections.fileUpload.methodologyTitle[language]}</h4></div>
+                                <div className="flex items-center gap-2 not-prose mb-2"> <ArrowUpTrayIcon className="w-5 h-5" /> <h4 className="text-lg font-semibold text-coral">{TEXT.sections.fileUpload.methodologyTitle[language]}</h4></div>
                                 <p>{TEXT.sections.fileUpload.p1[language]}</p>
                                 <h4 className="text-lg font-semibold text-coral pt-4">{TEXT.sections.fileUpload.step1Title[language]}</h4>
                                 <ol>
@@ -761,7 +769,7 @@ export const UserDocumentationModal: React.FC<UserDocumentationModalProps> = ({ 
                             </DocSection>
 
                             <DocSection id="discovery-tools" title={TEXT.sections.discoveryTools.title[language]}>
-                                <div className="flex items-center gap-2 not-prose mb-2"> <MagnifyingGlassIcon className="w-5 h-5"/> <h4 className="text-lg font-semibold text-coral">{TEXT.sections.discoveryTools.purposeTitle[language]}</h4></div>
+                                <div className="flex items-center gap-2 not-prose mb-2"> <MagnifyingGlassIcon className="w-5 h-5" /> <h4 className="text-lg font-semibold text-coral">{TEXT.sections.discoveryTools.purposeTitle[language]}</h4></div>
                                 <p>{TEXT.sections.discoveryTools.p1[language]}</p>
                                 <h4 className="text-lg font-semibold text-coral pt-4">{TEXT.sections.discoveryTools.urlFinderTitle[language]}</h4>
                                 <p dangerouslySetInnerHTML={{ __html: TEXT.sections.discoveryTools.urlFinderP[language] }} />
@@ -770,7 +778,7 @@ export const UserDocumentationModal: React.FC<UserDocumentationModalProps> = ({ 
                             </DocSection>
 
                             <DocSection id="payload-tools" title={TEXT.sections.payloadTools.title[language]}>
-                                <div className="flex items-center gap-2 not-prose mb-2"> <PencilDocumentIcon className="w-5 h-5"/> <h4 className="text-lg font-semibold text-coral">{TEXT.sections.payloadTools.purposeTitle[language]}</h4></div>
+                                <div className="flex items-center gap-2 not-prose mb-2"> <PencilDocumentIcon className="w-5 h-5" /> <h4 className="text-lg font-semibold text-coral">{TEXT.sections.payloadTools.purposeTitle[language]}</h4></div>
                                 <p>{TEXT.sections.payloadTools.p1[language]}</p>
                                 <h4 className="text-lg font-semibold text-coral pt-4">{TEXT.sections.payloadTools.forgeTitle[language]}</h4>
                                 <p>{TEXT.sections.payloadTools.forgeP[language]}</p>
@@ -782,15 +790,15 @@ export const UserDocumentationModal: React.FC<UserDocumentationModalProps> = ({ 
 
                             <DocSection id="vulnerability-actions" title={TEXT.sections.vulnerabilityActions.title[language]}>
                                 <p>{TEXT.sections.vulnerabilityActions.p1[language]}</p>
-                                <div className="flex items-center gap-2 not-prose mt-4 mb-2"> <BeakerIcon className="w-5 h-5 text-purple-300"/> <h4 className="text-lg font-semibold text-coral">{TEXT.sections.vulnerabilityActions.analyzeTitle[language]}</h4></div>
+                                <div className="flex items-center gap-2 not-prose mt-4 mb-2"> <BeakerIcon className="w-5 h-5 text-purple-300" /> <h4 className="text-lg font-semibold text-coral">{TEXT.sections.vulnerabilityActions.analyzeTitle[language]}</h4></div>
                                 <p>{TEXT.sections.vulnerabilityActions.analyzeP[language]}</p>
-                                <div className="flex items-center gap-2 not-prose mt-4 mb-2"> <ShieldExclamationIcon className="w-5 h-5 text-yellow-300"/> <h4 className="text-lg font-semibold text-coral">{TEXT.sections.vulnerabilityActions.generateTitle[language]}</h4></div>
+                                <div className="flex items-center gap-2 not-prose mt-4 mb-2"> <ShieldExclamationIcon className="w-5 h-5 text-yellow-300" /> <h4 className="text-lg font-semibold text-coral">{TEXT.sections.vulnerabilityActions.generateTitle[language]}</h4></div>
                                 <p dangerouslySetInnerHTML={{ __html: TEXT.sections.vulnerabilityActions.generateP[language] }} />
                             </DocSection>
 
                             <DocSection id="api-config" title={TEXT.sections.apiConfig.title[language]}>
-                                <div className="flex items-center gap-2 not-prose mb-2"> <CogIcon className="w-5 h-5"/> <h4 className="text-lg font-semibold text-coral">{TEXT.sections.apiConfig.overviewTitle[language]}</h4></div>
-                                <p>{TEXT.sections.apiConfig.p1[language]} <CogIcon className="inline h-4 w-4"/> {language === 'en' ? 'in the header.' : 'en el encabezado.'}</p>
+                                <div className="flex items-center gap-2 not-prose mb-2"> <CogIcon className="w-5 h-5" /> <h4 className="text-lg font-semibold text-coral">{TEXT.sections.apiConfig.overviewTitle[language]}</h4></div>
+                                <p>{TEXT.sections.apiConfig.p1[language]} <CogIcon className="inline h-4 w-4" /> {language === 'en' ? 'in the header.' : 'en el encabezado.'}</p>
                                 <p dangerouslySetInnerHTML={{ __html: TEXT.sections.apiConfig.p2[language] }} />
                                 <div className="p-4 bg-purple-elevated/20 border border-coral/40 text-coral-hover rounded-lg text-sm not-prose mt-4">
                                     <span dangerouslySetInnerHTML={{ __html: TEXT.sections.apiConfig.modelNote[language] }} />
@@ -798,7 +806,7 @@ export const UserDocumentationModal: React.FC<UserDocumentationModalProps> = ({ 
                                 <h4 className="text-lg font-semibold text-coral pt-4">{TEXT.sections.apiConfig.savingKeyTitle[language]}</h4>
                                 <p dangerouslySetInnerHTML={{ __html: TEXT.sections.apiConfig.savingKeyP[language] }} />
                             </DocSection>
-                            
+
                             <DocSection id="disclaimer" title={TEXT.sections.disclaimer.title[language]}>
                                 <div className="p-4 bg-red-900/40 border border-red-700/50 text-red-200 rounded-lg text-sm not-prose">
                                     <p className="font-bold mb-2">{TEXT.sections.disclaimer.noteTitle[language]}</p>

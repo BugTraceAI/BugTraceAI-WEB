@@ -33,9 +33,9 @@ const ITEMS_PER_PAGE = 10;
 
 const SEVERITY_COLORS: Record<string, { bg: string; text: string; dot: string; bar: string; fill: string }> = {
   critical: { bg: 'bg-red-500/15', text: 'text-red-400', dot: 'bg-red-500', bar: 'bg-red-500', fill: '#ef4444' },
-  high:     { bg: 'bg-orange-500/15', text: 'text-orange-400', dot: 'bg-orange-500', bar: 'bg-orange-500', fill: '#f97316' },
-  medium:   { bg: 'bg-yellow-500/15', text: 'text-yellow-400', dot: 'bg-yellow-500', bar: 'bg-yellow-500', fill: '#eab308' },
-  low:      { bg: 'bg-blue-500/15', text: 'text-blue-400', dot: 'bg-blue-500', bar: 'bg-blue-500', fill: '#3b82f6' },
+  high: { bg: 'bg-orange-500/15', text: 'text-orange-400', dot: 'bg-orange-500', bar: 'bg-orange-500', fill: '#f97316' },
+  medium: { bg: 'bg-yellow-500/15', text: 'text-yellow-400', dot: 'bg-yellow-500', bar: 'bg-yellow-500', fill: '#eab308' },
+  low: { bg: 'bg-blue-500/15', text: 'text-blue-400', dot: 'bg-blue-500', bar: 'bg-blue-500', fill: '#3b82f6' },
 };
 
 const downloadFiles = [
@@ -80,9 +80,12 @@ export const ReportMarkdownViewer: React.FC<ReportMarkdownViewerProps> = ({ repo
     loading,
     error,
     selectedSeverity,
+    selectedCategory,
     filteredFindings,
     setSelectedSeverity,
+    setSelectedCategory,
     handleCardClick,
+    handleCategoryClick,
     loadData,
   } = useReportViewer(report.id);
 
@@ -90,6 +93,7 @@ export const ReportMarkdownViewer: React.FC<ReportMarkdownViewerProps> = ({ repo
   const [currentPage, setCurrentPage] = useState(1);
   const [activeTab, setActiveTab] = useState<'findings' | 'report'>('findings');
   const [expandedIdx, setExpandedIdx] = useState<number | null>(null);
+  const [showMetrics, setShowMetrics] = useState(false);
   const CLI_API_URL = import.meta.env.VITE_CLI_API_URL || 'http://localhost:8000';
 
   // Compute severity counts
@@ -127,6 +131,11 @@ export const ReportMarkdownViewer: React.FC<ReportMarkdownViewerProps> = ({ repo
     setCurrentPage(1);
     handleCardClick(sev);
   };
+
+  const onCategoryClick = (cat: string) => {
+    setCurrentPage(1);
+    handleCategoryClick(cat);
+  }
 
   const handleDownload = (filename: string) => {
     const fileUrl = `${CLI_API_URL}/api/scans/${report.id}/files/${filename}`;
@@ -188,275 +197,248 @@ export const ReportMarkdownViewer: React.FC<ReportMarkdownViewerProps> = ({ repo
   }
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-5 p-6 md:p-8">
       {/* ═══ HEADER BAR ═══ */}
-      <div className="dashboard-card p-4">
-        <div className="flex items-start justify-between gap-4">
-          <div className="min-w-0">
-            {/* Breadcrumb */}
-            <div className="flex items-center gap-2 mb-2">
-              <button
-                onClick={onBack}
-                className="text-xs text-purple-gray hover:text-coral transition-colors uppercase tracking-wider font-semibold"
-              >
-                Reports
-              </button>
-              <span className="text-muted text-xs">&rsaquo;</span>
-              <span className="text-xs text-white uppercase tracking-wider font-semibold">Detailed Assessment</span>
-            </div>
+      <div className="dashboard-card px-4 py-3">
+        <div className="flex items-center justify-between gap-4">
+          <div className="min-w-0 flex items-center gap-4">
             {/* Target URL */}
-            <h1 className="text-lg font-bold text-white truncate">{report.target_url || 'Unknown Target'}</h1>
-          </div>
-          <div className="flex-shrink-0 text-right">
-            <div className="text-xs text-purple-gray font-medium">
-              SCAN #{report.id} &bull; {formatDate(report.scan_date)}
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* ═══ METRIC CARDS ═══ */}
-      <div className="grid grid-cols-4 gap-3">
-        {/* Total Findings */}
-        <div className="dashboard-card p-4 border-l-4 border-purple-500">
-          <p className="text-[10px] text-muted uppercase tracking-wider font-semibold mb-1">Total Findings</p>
-          <p className="text-3xl font-bold text-white">{totalFindings}</p>
-          <div className="mt-2 h-1.5 bg-purple-medium/40 rounded-full overflow-hidden">
-            <div className="h-full bg-purple-500 rounded-full" style={{ width: '100%' }} />
-          </div>
-        </div>
-
-        {/* Critical */}
-        <button
-          onClick={() => handleSeverityClick('critical')}
-          className={`dashboard-card p-4 border-l-4 border-red-500 text-left transition-all hover:scale-[1.02] ${selectedSeverity === 'critical' ? 'ring-1 ring-red-500/50' : ''}`}
-        >
-          <p className="text-[10px] text-muted uppercase tracking-wider font-semibold mb-1">Critical</p>
-          <p className="text-3xl font-bold text-white">{String(severityCounts.critical).padStart(2, '0')}</p>
-          <div className="mt-2 h-1.5 bg-purple-medium/40 rounded-full overflow-hidden">
-            <div className="h-full bg-red-500 rounded-full transition-all" style={{ width: totalFindings > 0 ? `${(severityCounts.critical / totalFindings) * 100}%` : '0%' }} />
-          </div>
-        </button>
-
-        {/* High */}
-        <button
-          onClick={() => handleSeverityClick('high')}
-          className={`dashboard-card p-4 border-l-4 border-orange-500 text-left transition-all hover:scale-[1.02] ${selectedSeverity === 'high' ? 'ring-1 ring-orange-500/50' : ''}`}
-        >
-          <p className="text-[10px] text-muted uppercase tracking-wider font-semibold mb-1">High Risk</p>
-          <p className="text-3xl font-bold text-white">{String(severityCounts.high).padStart(2, '0')}</p>
-          <div className="mt-2 h-1.5 bg-purple-medium/40 rounded-full overflow-hidden">
-            <div className="h-full bg-orange-500 rounded-full transition-all" style={{ width: totalFindings > 0 ? `${(severityCounts.high / totalFindings) * 100}%` : '0%' }} />
-          </div>
-        </button>
-
-        {/* Medium */}
-        <button
-          onClick={() => handleSeverityClick('medium')}
-          className={`dashboard-card p-4 border-l-4 border-yellow-500 text-left transition-all hover:scale-[1.02] ${selectedSeverity === 'medium' ? 'ring-1 ring-yellow-500/50' : ''}`}
-        >
-          <p className="text-[10px] text-muted uppercase tracking-wider font-semibold mb-1">Medium</p>
-          <p className="text-3xl font-bold text-white">{String(severityCounts.medium).padStart(2, '0')}</p>
-          <div className="mt-2 h-1.5 bg-purple-medium/40 rounded-full overflow-hidden">
-            <div className="h-full bg-yellow-500 rounded-full transition-all" style={{ width: totalFindings > 0 ? `${(severityCounts.medium / totalFindings) * 100}%` : '0%' }} />
-          </div>
-        </button>
-      </div>
-
-      {/* ═══ CHARTS ROW ═══ */}
-      {totalFindings > 0 && (
-        <div className="grid grid-cols-2 gap-4">
-          {/* Vulnerability Distribution - Donut + Legend */}
-          <div className="dashboard-card p-5">
-            <h3 className="text-xs font-semibold text-purple-gray uppercase tracking-wider mb-4">Vulnerability Distribution</h3>
-            <div className="flex items-center gap-6">
-              <div className="relative w-32 h-32 flex-shrink-0">
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie
-                      data={chartData}
-                      cx="50%" cy="50%"
-                      innerRadius={36} outerRadius={56}
-                      paddingAngle={3}
-                      dataKey="value"
-                      stroke="none"
-                    >
-                      {chartData.map((_, i) => (
-                        <Cell key={i} fill={chartColors[i]} />
-                      ))}
-                    </Pie>
-                  </PieChart>
-                </ResponsiveContainer>
-                <div className="absolute inset-0 flex flex-col items-center justify-center">
-                  <span className="text-xl font-bold text-white">{totalFindings}</span>
-                  <span className="text-[9px] text-muted uppercase tracking-wider">Total</span>
-                </div>
-              </div>
-              {/* Legend */}
-              <div className="flex-1 space-y-2">
-                {chartData.map((entry) => {
-                  const colors = SEVERITY_COLORS[entry.name.toLowerCase()];
-                  return (
-                    <div key={entry.name} className="flex items-center justify-between text-sm">
-                      <div className="flex items-center gap-2">
-                        <span className={`w-2.5 h-2.5 rounded-full ${colors?.dot || 'bg-gray-500'}`} />
-                        <span className="text-purple-gray">{entry.name}</span>
-                      </div>
-                      <span className="text-white font-semibold">{entry.value}</span>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          </div>
-
-          {/* Finding Categories Breakdown */}
-          <div className="dashboard-card p-5">
-            <h3 className="text-xs font-semibold text-purple-gray uppercase tracking-wider mb-4">Findings by Category</h3>
-            <div className="space-y-2.5 max-h-[148px] overflow-y-auto pr-1">
-              {findingsByType.slice(0, 8).map((item) => {
-                const pct = totalFindings > 0 ? (item.value / totalFindings) * 100 : 0;
-                const colors = SEVERITY_COLORS[item.severity] || SEVERITY_COLORS.low;
-                return (
-                  <div key={item.name}>
-                    <div className="flex items-center justify-between mb-0.5">
-                      <span className="text-xs text-purple-gray truncate mr-2">{item.name}</span>
-                      <span className="text-xs text-white font-medium flex-shrink-0">{item.value}</span>
-                    </div>
-                    <div className="h-1.5 bg-purple-medium/40 rounded-full overflow-hidden">
-                      <div className={`h-full ${colors.bar} rounded-full transition-all`} style={{ width: `${pct}%` }} />
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ═══ SCAN INFO & TECHNOLOGY STACK ═══ */}
-      {scanStats && (scanStats.duration || scanStats.tech_stack) && (
-        <div className="grid grid-cols-2 gap-4">
-          {/* Scan Info */}
-          <div className="dashboard-card p-5">
-            <h3 className="text-xs font-semibold text-purple-gray uppercase tracking-wider mb-4">Scan Info</h3>
-            <div className="space-y-3">
+            <h1 className="text-sm font-black text-white px-3 py-1 bg-white/5 rounded-lg border border-white/5 truncate font-mono tracking-tight">
+              {report.target_url || 'Unknown Target'}
+            </h1>
+            {/* Integrated Scan Stats */}
+            <div className="flex items-center gap-3 text-[10px] font-mono text-purple-gray border-l border-white/10 pl-3">
+              <span>SCAN #{report.id.substring(0, 8)}</span>
+              <span className="text-white/20">&bull;</span>
+              <span>{formatDate(report.scan_date)}</span>
               {scanStats.duration && (
-                <div className="flex items-center justify-between">
-                  <span className="text-xs text-muted">Duration</span>
-                  <span className="text-sm text-white font-mono">{scanStats.duration}</span>
-                </div>
+                <>
+                  <span className="text-white/20">&bull;</span>
+                  <span className="text-emerald-400">{scanStats.duration}</span>
+                </>
               )}
-              {scanStats.urls_scanned != null && scanStats.urls_scanned > 0 && (
-                <div className="flex items-center justify-between">
-                  <span className="text-xs text-muted">URLs Scanned</span>
-                  <span className="text-sm text-white font-mono">{scanStats.urls_scanned}</span>
-                </div>
-              )}
-              {scanStats.total_tokens != null && scanStats.total_tokens > 0 && (
-                <div className="flex items-center justify-between">
-                  <span className="text-xs text-muted">LLM Tokens</span>
-                  <span className="text-sm text-white font-mono">{scanStats.total_tokens.toLocaleString()}</span>
-                </div>
-              )}
-              {scanStats.estimated_cost != null && scanStats.estimated_cost > 0 && (
-                <div className="flex items-center justify-between">
-                  <span className="text-xs text-muted">API Cost</span>
-                  <span className="text-sm text-emerald-400 font-mono">${scanStats.estimated_cost.toFixed(4)}</span>
-                </div>
+              {scanStats.urls_scanned != null && (
+                <>
+                  <span className="text-white/20">&bull;</span>
+                  <span>{scanStats.urls_scanned} URLs</span>
+                </>
               )}
             </div>
           </div>
 
-          {/* Technology Stack */}
-          <div className="dashboard-card p-5 overflow-hidden">
-            <h3 className="text-xs font-semibold text-purple-gray uppercase tracking-wider mb-4">Technology Stack</h3>
-            {scanStats.tech_stack?.technologies && scanStats.tech_stack.technologies.length > 0 ? (
-              <div className="space-y-2 max-h-[200px] overflow-y-auto pr-1">
-                {scanStats.tech_stack.technologies.map((tech) => (
-                  <div key={tech.name} className="flex items-center justify-between py-1 border-b border-glass-border/10 last:border-0">
-                    <div className="flex items-center gap-2 min-w-0">
-                      <span className="text-sm text-white font-medium truncate">{tech.name}</span>
-                      {tech.eol && (
-                        <span className="px-1.5 py-0.5 rounded text-[9px] font-bold uppercase bg-red-500/20 text-red-400">EOL</span>
-                      )}
-                    </div>
-                    <div className="flex items-center gap-3 flex-shrink-0">
-                      <span className="text-[10px] text-muted">{tech.category}</span>
-                      <span className="text-xs text-coral font-mono">{tech.version || '-'}</span>
-                    </div>
-                  </div>
-                ))}
-                {scanStats.tech_stack.waf && scanStats.tech_stack.waf.length > 0 && (
-                  <div className="flex items-center gap-2 pt-1">
-                    <span className="px-1.5 py-0.5 rounded text-[9px] font-bold uppercase bg-yellow-500/20 text-yellow-400">WAF</span>
-                    <span className="text-xs text-purple-gray">{scanStats.tech_stack.waf.join(', ')}</span>
-                  </div>
-                )}
-              </div>
-            ) : (
-              <p className="text-xs text-muted">No technology data available</p>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* ═══ DOWNLOAD SECTION ═══ */}
-      {(markdown || findings.length > 0) && (
-        <div className="dashboard-card p-4">
-          <div className="flex items-center gap-3 mb-3">
-            <ArrowDownTrayIcon className="h-4 w-4 text-purple-gray" />
-            <span className="text-xs font-semibold text-purple-gray uppercase tracking-wider">Download Report Files</span>
-          </div>
-          <div className="flex items-center gap-2 flex-wrap">
-            {downloadFiles.map(({ filename, label, icon }) => (
-              <button
-                key={filename}
-                onClick={() => handleDownload(filename)}
-                className="px-3 py-2 bg-purple-light/80 hover:bg-purple-elevated text-white rounded-lg text-xs font-medium transition-all flex items-center gap-2 border border-white/10 hover:border-white/25 hover:scale-105"
-                title={`Download ${filename}`}
-              >
-                <DocumentTextIcon className="h-3.5 w-3.5 text-coral" />
-                {label}
-                <span className="text-purple-gray font-mono text-[10px]">.{icon.toLowerCase()}</span>
-              </button>
-            ))}
-            <button
-              onClick={handleDownloadAll}
-              disabled={zipping}
-              className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-bold uppercase tracking-wider transition-all flex items-center gap-2 disabled:opacity-50 hover:scale-105 ml-auto"
-              title="Download all files as ZIP"
-            >
-              {zipping ? (
-                <>
-                  <div className="h-3.5 w-3.5 rounded-full border-2 border-white/30 border-t-white animate-spin" />
-                  Zipping...
-                </>
-              ) : (
-                <>
-                  <ArrowDownTrayIcon className="h-4 w-4" />
-                  Download All (.zip)
-                </>
+          {/* Tech Stack Mini-Badges */}
+          {scanStats.tech_stack?.technologies && (
+            <div className="flex items-center gap-1.5 overflow-hidden">
+              {scanStats.tech_stack.technologies.slice(0, 4).map((tech) => (
+                <span key={tech.name} className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-white/5 text-muted border border-white/5">
+                  {tech.name}
+                </span>
+              ))}
+              {(scanStats.tech_stack.technologies.length > 4) && (
+                <span className="text-[9px] text-muted">+{scanStats.tech_stack.technologies.length - 4}</span>
               )}
+            </div>
+          )}
+
+          <div className="flex-shrink-0 text-right flex items-center gap-4">
+            <button
+              onClick={() => setShowMetrics(!showMetrics)}
+              className="text-[10px] font-bold text-muted hover:text-white uppercase tracking-widest transition-colors flex items-center gap-2 bg-white/5 px-3 py-1 rounded-lg border border-white/5"
+            >
+              {showMetrics ? 'Hide Metrics' : 'Show Metrics'}
+              <svg className={`h-3 w-3 transition-transform duration-300 ${showMetrics ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              </svg>
+            </button>
+
+            <button
+              onClick={onBack}
+              className="text-[10px] font-bold text-coral hover:text-coral-hover uppercase tracking-widest transition-colors flex items-center gap-1"
+            >
+              &larr; Return
             </button>
           </div>
         </div>
-      )}
+      </div>
+
+      {showMetrics && (
+        <div className="space-y-4 animate-in fade-in slide-in-from-top-4 duration-300">
+          {/* ═══ METRIC CARDS ═══ */}
+          {totalFindings > 0 && (
+            <div className="grid grid-cols-[1.2fr_1fr] gap-4">
+              {/* Left Card: Totals + Distribution Donut */}
+              <div className="dashboard-card p-4 flex items-center justify-between gap-6">
+
+                {/* Left Side: Interactive Counters List */}
+                <div className="flex-1 flex flex-col justify-center space-y-1.5 max-w-[70%] border-r border-white/5 pr-6">
+                  <div className="flex items-center justify-between mb-1 px-2">
+                    <span className="text-[10px] font-bold text-purple-gray uppercase tracking-wider">Severity Breakdown</span>
+                    <span className="text-[10px] text-muted font-mono">{totalFindings} Total</span>
+                  </div>
+
+                  {['critical', 'high', 'medium', 'low'].map((sev) => {
+                    const count = severityCounts[sev as keyof typeof severityCounts];
+                    const colors = SEVERITY_COLORS[sev];
+                    const isSelected = selectedSeverity === sev;
+                    const pct = totalFindings > 0 ? (count / totalFindings) * 100 : 0;
+
+                    if (!colors) return null;
+
+                    return (
+                      <button
+                        key={sev}
+                        onClick={() => handleSeverityClick(sev as any)}
+                        className={`flex flex-col justify-center px-2 py-1.5 rounded-lg transition-all hover:bg-white/5 text-left group ${isSelected ? `bg-white/10 ring-1 ring-${colors.text.split('-')[1]}` : ''}`}
+                      >
+                        <div className="flex items-center justify-between mb-1">
+                          <span className={`text-[10px] uppercase font-bold tracking-wider transition-colors ${isSelected ? colors.text : 'text-muted group-hover:text-white'}`}>
+                            {sev}
+                          </span>
+                          <span className="text-[10px] text-white font-mono font-bold tabular-nums ml-auto block text-right">{String(count).padStart(2, '0')}</span>
+                        </div>
+                        <div className="h-1 bg-purple-medium/40 rounded-full overflow-hidden w-full">
+                          <div className={`h-full ${colors.bg.replace('/10', '').replace('/15', '')} rounded-full transition-all group-hover:brightness-125`} style={{ width: `${pct}%`, backgroundColor: colors.fill }} />
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {/* Right Side: Donut Chart */}
+                <div className="flex-1 flex items-center justify-center">
+                  <div className="relative w-32 h-32 flex-shrink-0">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie
+                          data={chartData}
+                          cx="50%" cy="50%"
+                          innerRadius={30} outerRadius={50}
+                          paddingAngle={5}
+                          dataKey="value"
+                          stroke="none"
+                        >
+                          {chartData.map((_, i) => (
+                            <Cell key={i} fill={chartColors[i]} />
+                          ))}
+                        </Pie>
+                      </PieChart>
+                    </ResponsiveContainer>
+                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                      <span className="text-sm font-black text-white/50">{totalFindings}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Right Card: Finding Categories Breakdown */}
+              <div className="dashboard-card px-4 py-3">
+                <h3 className="text-[10px] font-bold text-purple-gray uppercase tracking-wider mb-2">Top Categories</h3>
+                <div className="grid grid-cols-2 gap-x-8 gap-y-2">
+                  {findingsByType.slice(0, 6).map((item) => {
+                    const pct = totalFindings > 0 ? (item.value / totalFindings) * 100 : 0;
+                    const colors = SEVERITY_COLORS[item.severity] || SEVERITY_COLORS.low;
+                    const isSelected = selectedCategory === item.name;
+                    return (
+                      <button
+                        key={item.name}
+                        onClick={() => onCategoryClick(item.name)}
+                        className={`flex flex-col justify-center p-2 rounded-lg transition-all hover:bg-white/5 text-left group ${isSelected ? 'bg-white/10 ring-1 ring-coral/50' : ''}`}
+                      >
+                        <div className="flex items-center justify-between mb-1">
+                          <span className={`text-[10px] truncate max-w-[100px] transition-colors ${isSelected ? 'text-coral font-bold' : 'text-muted group-hover:text-white'}`}>
+                            {item.name}
+                          </span>
+                          <span className="text-[9px] text-white font-bold">{item.value}</span>
+                        </div>
+                        <div className="h-1 bg-purple-medium/40 rounded-full overflow-hidden w-full">
+                          <div className={`h-full ${colors.bar} rounded-full transition-all group-hover:brightness-125`} style={{ width: `${pct}%` }} />
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ═══ DOWNLOAD SECTION ═══ */}
+
+          {/* ═══ DOWNLOAD SECTION ═══ */}
+          {(markdown || findings.length > 0) && (
+            <div className="dashboard-card p-4">
+              <div className="flex items-center gap-3 mb-3">
+                <ArrowDownTrayIcon className="h-4 w-4 text-purple-gray" />
+                <span className="text-xs font-semibold text-purple-gray uppercase tracking-wider">Download Report Files</span>
+              </div>
+              <div className="flex items-center gap-2 flex-wrap">
+                {downloadFiles.map(({ filename, label, icon }) => (
+                  <button
+                    key={filename}
+                    onClick={() => handleDownload(filename)}
+                    className="px-3 py-2 bg-purple-light/80 hover:bg-purple-elevated text-white rounded-lg text-xs font-medium transition-all flex items-center gap-2 border border-white/10 hover:border-white/25 hover:scale-105"
+                    title={`Download ${filename}`}
+                  >
+                    <DocumentTextIcon className="h-3.5 w-3.5 text-coral" />
+                    {label}
+                    <span className="text-purple-gray font-mono text-[10px]">.{icon.toLowerCase()}</span>
+                  </button>
+                ))}
+                <button
+                  onClick={handleDownloadAll}
+                  disabled={zipping}
+                  className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-bold uppercase tracking-wider transition-all flex items-center gap-2 disabled:opacity-50 hover:scale-105 ml-auto"
+                  title="Download all files as ZIP"
+                >
+                  {zipping ? (
+                    <>
+                      <div className="h-3.5 w-3.5 rounded-full border-2 border-white/30 border-t-white animate-spin" />
+                      Zipping...
+                    </>
+                  ) : (
+                    <>
+                      <ArrowDownTrayIcon className="h-4 w-4" />
+                      Download All (.zip)
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      )
+      }
+
 
       {/* ═══ ACTIVE FILTER BANNER ═══ */}
-      {selectedSeverity !== 'all' && (
-        <div className="flex items-center justify-between bg-purple-medium/50 rounded-xl p-3">
-          <span className="text-purple-gray text-sm">
-            Showing <span className="font-semibold text-white capitalize">{selectedSeverity}</span> findings ({filteredFindings.length})
-          </span>
-          <button
-            onClick={() => { setSelectedSeverity('all'); setCurrentPage(1); }}
-            className="text-coral hover:text-coral-hover text-sm transition-colors"
-          >
-            Clear filter
-          </button>
-        </div>
-      )}
+      {
+        (selectedSeverity !== 'all' || selectedCategory) && (
+          <div className="flex items-center justify-between bg-purple-medium/50 rounded-xl p-3 border border-white/5">
+            <span className="text-purple-gray text-sm flex items-center gap-2">
+              Showing
+              {selectedSeverity !== 'all' && (
+                <span className={`font-bold px-2 py-0.5 rounded text-[10px] uppercase ${SEVERITY_COLORS[selectedSeverity]?.bg} ${SEVERITY_COLORS[selectedSeverity]?.text}`}>
+                  {selectedSeverity}
+                </span>
+              )}
+              {selectedCategory && (
+                <span className="font-bold text-coral bg-coral/10 px-2 py-0.5 rounded text-[10px]">
+                  {selectedCategory}
+                </span>
+              )}
+              findings ({filteredFindings.length})
+            </span>
+            <button
+              onClick={() => { setSelectedSeverity('all'); setSelectedCategory(null); setCurrentPage(1); }}
+              className="text-xs font-bold text-muted hover:text-white uppercase tracking-wider transition-colors flex items-center gap-1"
+            >
+              <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+              Clear Filter
+            </button>
+          </div>
+        )
+      }
 
       {/* ═══ CONTENT TABS ═══ */}
       <div className="dashboard-card overflow-hidden">
@@ -464,22 +446,20 @@ export const ReportMarkdownViewer: React.FC<ReportMarkdownViewerProps> = ({ repo
         <div className="flex border-b border-glass-border/20">
           <button
             onClick={() => setActiveTab('findings')}
-            className={`px-5 py-3 text-xs font-semibold uppercase tracking-wider transition-colors ${
-              activeTab === 'findings'
-                ? 'text-coral border-b-2 border-coral'
-                : 'text-muted hover:text-purple-gray'
-            }`}
+            className={`px-5 py-3 text-xs font-semibold uppercase tracking-wider transition-colors ${activeTab === 'findings'
+              ? 'text-coral border-b-2 border-coral'
+              : 'text-muted hover:text-purple-gray'
+              }`}
           >
             Findings ({filteredFindings.length})
           </button>
           {markdown && (
             <button
               onClick={() => setActiveTab('report')}
-              className={`px-5 py-3 text-xs font-semibold uppercase tracking-wider transition-colors ${
-                activeTab === 'report'
-                  ? 'text-coral border-b-2 border-coral'
-                  : 'text-muted hover:text-purple-gray'
-              }`}
+              className={`px-5 py-3 text-xs font-semibold uppercase tracking-wider transition-colors ${activeTab === 'report'
+                ? 'text-coral border-b-2 border-coral'
+                : 'text-muted hover:text-purple-gray'
+                }`}
             >
               Full Report
             </button>
@@ -496,12 +476,12 @@ export const ReportMarkdownViewer: React.FC<ReportMarkdownViewerProps> = ({ repo
             ) : (
               <>
                 {/* Table header */}
-                <div className="grid grid-cols-[1fr_100px_90px_70px_180px] text-[10px] text-muted uppercase tracking-wider px-5 py-2.5 border-b border-glass-border/20">
-                  <span className="font-semibold">Finding Name</span>
-                  <span className="font-semibold">Severity</span>
-                  <span className="font-semibold">Status</span>
-                  <span className="font-semibold">CVSS</span>
-                  <span className="font-semibold">URL</span>
+                <div className="grid grid-cols-[1fr_90px_80px_60px_160px] text-[9px] text-muted uppercase tracking-widest px-4 py-2 border-b border-glass-border/10">
+                  <span className="font-bold">Finding Name</span>
+                  <span className="font-bold">Severity</span>
+                  <span className="font-bold">Status</span>
+                  <span className="font-bold">CVSS</span>
+                  <span className="font-bold">URL</span>
                 </div>
 
                 {/* Rows */}
@@ -522,16 +502,16 @@ export const ReportMarkdownViewer: React.FC<ReportMarkdownViewerProps> = ({ repo
                         <button
                           type="button"
                           onClick={() => setExpandedIdx(isExpanded ? null : globalIdx)}
-                          className={`w-full grid grid-cols-[1fr_100px_90px_70px_180px] items-center px-5 py-3 text-left transition-colors hover:bg-purple-light/20 ${isExpanded ? 'bg-purple-light/15' : ''}`}
+                          className={`w-full grid grid-cols-[1fr_90px_80px_60px_160px] items-center px-4 py-2 text-left transition-colors hover:bg-purple-light/20 ${isExpanded ? 'bg-purple-light/15' : ''}`}
                         >
                           <div className="flex items-center gap-2 min-w-0">
                             <svg className={`h-3 w-3 flex-shrink-0 text-muted transition-transform ${isExpanded ? 'rotate-90' : ''}`} fill="currentColor" viewBox="0 0 20 20">
                               <path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd" />
                             </svg>
                             <div className="min-w-0">
-                              <p className="text-sm text-white font-medium truncate">{finding.title}</p>
+                              <p className="text-xs font-bold text-white tracking-tight truncate group-hover:text-coral transition-colors">{finding.title}</p>
                               {finding.type && finding.type !== finding.title && (
-                                <p className="text-[10px] text-muted truncate">{finding.type}</p>
+                                <p className="text-[9px] text-muted/70 truncate">{finding.type}</p>
                               )}
                             </div>
                           </div>
@@ -557,9 +537,34 @@ export const ReportMarkdownViewer: React.FC<ReportMarkdownViewerProps> = ({ repo
                               {/* Left column: main details */}
                               <div className="col-span-2 space-y-4">
                                 {/* Exploitation Details (rendered as markdown) */}
+                                {/* Exploitation Details (rendered as markdown) */}
                                 {finding.exploitation_details && (
                                   <div>
-                                    <MarkdownRenderer content={finding.exploitation_details} />
+                                    {finding.exploitation_details.trim().startsWith('{"result":') ? (
+                                      (() => {
+                                        try {
+                                          const json = JSON.parse(finding.exploitation_details);
+                                          return (
+                                            <div className="bg-white/5 border border-white/10 rounded-lg p-3">
+                                              <p className="text-xs text-muted uppercase tracking-wider font-bold mb-1">Validation Note</p>
+                                              <p className="text-sm text-purple-gray">
+                                                {json.reason || json.result || 'No details available.'}
+                                              </p>
+                                              {json.confidence && (
+                                                <div className="mt-2 flex items-center gap-2">
+                                                  <span className="text-[10px] text-muted">Confidence:</span>
+                                                  <span className="text-[10px] text-white font-mono">{(json.confidence * 100).toFixed(0)}%</span>
+                                                </div>
+                                              )}
+                                            </div>
+                                          );
+                                        } catch (e) {
+                                          return <MarkdownRenderer content={finding.exploitation_details} />;
+                                        }
+                                      })()
+                                    ) : (
+                                      <MarkdownRenderer content={finding.exploitation_details} />
+                                    )}
                                   </div>
                                 )}
 
@@ -677,6 +682,6 @@ export const ReportMarkdownViewer: React.FC<ReportMarkdownViewerProps> = ({ repo
           </div>
         )}
       </div>
-    </div>
+    </div >
   );
 };

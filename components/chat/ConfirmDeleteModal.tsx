@@ -43,43 +43,46 @@ export const ConfirmDeleteModal: React.FC<ConfirmDeleteModalProps> = ({
       role="dialog"
     >
       <div
-        className="bg-purple-medium/50 backdrop-blur-xl border-0 rounded-2xl w-full max-w-md overflow-hidden shadow-2xl shadow-red-500/10"
+        className="card-premium w-full max-w-md overflow-hidden flex flex-col shadow-2xl shadow-red-500/10"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Content */}
-        <div className="p-6">
+        <div className="p-8 flex flex-col items-center">
           {/* Warning icon */}
-          <div className="flex justify-center mb-4">
-            <div className="p-3 rounded-full bg-red-500/20">
-              <ShieldExclamationIcon className="h-8 w-8 text-red-400" />
+          <div className="mb-6">
+            <div className="p-4 rounded-xl bg-red-500/10 border border-red-500/20 shadow-[0_0_15px_rgba(239,68,68,0.2)]">
+              <ShieldExclamationIcon className="h-8 w-8 text-red-500" />
             </div>
           </div>
 
           {/* Title */}
-          <h2 className="text-xl font-bold text-white text-center mb-2">Delete Chat?</h2>
+          <h2 className="title-standard !text-xl text-center mb-2">Confirm Deletion</h2>
 
           {/* Message */}
-          <p className="text-sm text-purple-gray text-center">
-            Are you sure you want to delete <span className="font-semibold text-white">"{sessionTitle}"</span>?
-            <br />
-            <span className="text-red-400 mt-2 inline-block">This action cannot be undone.</span>
+          <p className="text-sm text-ui-text-dim text-center leading-relaxed">
+            Are you sure you want to scrub the mission log <br />
+            <span className="font-bold text-white">"{sessionTitle}"</span>?
           </p>
+
+          <div className="mt-4 p-3 rounded-lg bg-red-500/5 border border-red-500/10 w-full text-center">
+            <span className="label-mini !text-[10px] text-red-400">Warning: This action is irreversible</span>
+          </div>
         </div>
 
         {/* Actions */}
-        <div className="p-4 bg-black/20 flex justify-end gap-3">
+        <div className="p-4 bg-black/20 flex justify-center gap-3 border-t border-white/5">
           <button
             onClick={onCancel}
-            className="px-6 py-2 bg-gray-500/20 text-purple-gray font-semibold rounded-lg transition-all transform hover:scale-105 hover:bg-gray-500/30"
+            className="btn-mini btn-mini-secondary px-6"
           >
-            Cancel
+            Abort
           </button>
           <button
             ref={deleteButtonRef}
             onClick={onConfirm}
-            className="px-6 py-2 bg-red-600 text-white font-semibold rounded-lg transition-all transform hover:scale-105 hover:bg-red-500"
+            className="btn-mini px-8 bg-red-500/10 text-red-500 border border-red-500/20 hover:bg-red-500/20 hover:border-red-500/30 hover:shadow-[0_0_15px_rgba(239,68,68,0.2)]"
           >
-            Delete
+            CONFIRM DELETE
           </button>
         </div>
       </div>

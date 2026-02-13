@@ -40,17 +40,17 @@ export const UrlListFinder: React.FC = () => {
                         value={urlInput}
                         onChange={(e) => setUrlInput(e.target.value)}
                         placeholder="https://example.com"
-                        className="w-full pl-4 pr-12 py-3 bg-purple-medium/60 border-0 rounded-lg text-white placeholder-text-tertiary focus:ring-2 focus:ring-coral/50 focus:border-coral focus:outline-none transition-all duration-300"
+                        className="input-premium w-full !py-3.5 px-6 !rounded-2xl !text-base"
                         onKeyDown={(e) => e.key === 'Enter' && handleOpenUrlList()}
                     />
                 </div>
                 <button
                     onClick={handleOpenUrlList}
                     disabled={!urlInput.trim()}
-                    className="group w-full sm:w-auto relative inline-flex items-center justify-center px-8 py-3 bg-coral-active hover:bg-coral text-white font-bold rounded-lg transition-all duration-300 transform hover:scale-105 disabled:scale-100 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-coral/20 hover:shadow-coral/40"
+                    className="btn-mini btn-mini-primary w-full sm:w-auto !py-4 px-10 !rounded-2xl !text-sm group"
                 >
-                    <ScanIcon className="h-5 w-5 mr-2" />
-                    <span className="relative">Open URL List</span>
+                    <ScanIcon className="h-5 w-5 mr-3 group-hover:rotate-12 transition-transform" />
+                    Open URL List
                 </button>
             </div>
             {error && (

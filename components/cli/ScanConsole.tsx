@@ -66,16 +66,16 @@ export const ScanConsole: React.FC<ScanConsoleProps> = ({
 
   useEffect(() => {
     if (autoScroll && consoleRef.current && logs.length > prevLogsLength.current) {
-      consoleRef.current.scrollTop = consoleRef.current.scrollHeight;
+      consoleRef.current.scrollTop = 0;
     }
     prevLogsLength.current = logs.length;
   }, [logs, autoScroll]);
 
   const handleScroll = () => {
     if (consoleRef.current) {
-      const { scrollTop, scrollHeight, clientHeight } = consoleRef.current;
-      const isAtBottom = Math.abs(scrollHeight - clientHeight - scrollTop) < 50;
-      setAutoScroll(isAtBottom);
+      const { scrollTop } = consoleRef.current;
+      const isAtTop = scrollTop < 50;
+      setAutoScroll(isAtTop);
     }
   };
 
@@ -111,7 +111,7 @@ export const ScanConsole: React.FC<ScanConsoleProps> = ({
     } catch { return timestamp; }
   };
 
-  const displayLogs = logs.slice(-MAX_BUFFER_SIZE);
+  const displayLogs = logs.slice(-MAX_BUFFER_SIZE).reverse();
   const droppedCount = logs.length - displayLogs.length;
 
   return (
@@ -119,69 +119,44 @@ export const ScanConsole: React.FC<ScanConsoleProps> = ({
       {/* Scanning scanline effect */}
       {isScanning && isConnected && <div className="scan-line" />}
 
-      {/* Header bar */}
-      <div className="console-header">
+      {/* Header bar - Silmmer and without redundant buttons */}
+      <div className="console-header !py-1 flex items-center justify-between">
         <div className="flex items-center gap-3">
           {/* Connection Status */}
           <div className="flex items-center gap-2">
             <div className="relative">
-              <div className={`w-2 h-2 rounded-full transition-all duration-300 ${
-                isConnected
-                  ? 'bg-success shadow-lg shadow-success/50'
-                  : 'bg-muted'
-              }`} />
+              <div className={`w-1.5 h-1.5 rounded-full transition-all duration-300 ${isConnected
+                ? 'bg-success shadow-lg shadow-success/50'
+                : 'bg-muted'
+                }`} />
               {isConnected && (
-                <div className="absolute inset-0 w-2 h-2 rounded-full bg-success radar-ping" />
+                <div className="absolute inset-0 w-1.5 h-1.5 rounded-full bg-success radar-ping" />
               )}
             </div>
-            <span className={`text-xs font-semibold uppercase tracking-wider transition-colors duration-300 ${
-              isConnected ? 'text-success' : 'text-muted'
-            }`}>
-              {isConnected ? 'Live Output' : 'Disconnected'}
+            <span className={`text-[10px] font-bold uppercase tracking-widest transition-colors duration-300 ${isConnected ? 'text-success/80' : 'text-muted'
+              }`}>
+              {isConnected ? 'Live' : 'Offline'}
             </span>
           </div>
 
           {/* Separator */}
-          <span className="text-purple-medium/60">|</span>
+          <span className="text-purple-medium/30">|</span>
 
           {/* Line count */}
-          <span className="text-xs text-muted">
-            Lines: {displayLogs.length}
+          <span className="text-[10px] text-muted/60 font-mono">
+            {displayLogs.length} Events
           </span>
-          {droppedCount > 0 && (
-            <span className="text-xs text-warning">({droppedCount} dropped)</span>
-          )}
 
           {/* Scanning indicator */}
           {isScanning && isConnected && (
             <>
-              <span className="text-purple-medium/60">|</span>
-              <span className="flex items-center gap-1.5 text-xs text-coral">
-                <span className="flex items-end gap-0.5 h-3">
-                  <span className="w-0.5 h-1.5 bg-coral/80 rounded-full animate-pulse" style={{ animationDelay: '0ms' }} />
-                  <span className="w-0.5 h-2.5 bg-coral/60 rounded-full animate-pulse" style={{ animationDelay: '150ms' }} />
-                  <span className="w-0.5 h-1 bg-coral/80 rounded-full animate-pulse" style={{ animationDelay: '300ms' }} />
-                  <span className="w-0.5 h-2 bg-coral/60 rounded-full animate-pulse" style={{ animationDelay: '450ms' }} />
-                </span>
-                Analyzing Traffic
+              <span className="text-purple-medium/30">|</span>
+              <span className="flex items-center gap-1.5 text-[10px] text-coral/80 font-bold uppercase tracking-wider">
+                Stream Active
               </span>
             </>
           )}
         </div>
-
-        <button
-          onClick={onClear}
-          disabled={displayLogs.length === 0}
-          data-testid="scan-console-clear"
-          className="px-3 py-1.5 rounded-lg text-[11px] font-semibold uppercase tracking-wider transition-all duration-200
-            bg-purple-medium/60 text-purple-gray border border-glass-border/50
-            hover:bg-error/20 hover:text-error hover:border-error/30
-            disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1.5"
-          title="Clear console output"
-        >
-          <TrashIcon className="h-3 w-3" />
-          Clear Terminal
-        </button>
       </div>
 
       {/* Console body */}
@@ -225,8 +200,8 @@ export const ScanConsole: React.FC<ScanConsoleProps> = ({
         ) : (
           <div className="space-y-px">
             {displayLogs.map((log, index) => {
-              const isNew = index >= displayLogs.length - 3;
-              const isLast = index === displayLogs.length - 1;
+              const isNew = index < 3;
+              const isLast = index === 0;
               const specialStyle = getLogStyle(log);
               const icon = getLogIcon(log);
 
@@ -234,10 +209,10 @@ export const ScanConsole: React.FC<ScanConsoleProps> = ({
                 <div
                   key={index}
                   className={`
-                    flex items-start gap-2.5 py-1 px-3 rounded-md
+                    flex items-start gap-2.5 py-1.5 px-3 rounded-lg
                     ${specialStyle}
                     ${isNew ? 'log-entry-animated' : ''}
-                    hover:bg-white/[0.03] transition-colors duration-100
+                    hover:bg-white/[0.04] hover:shadow-[inset_0_0_20px_rgba(255,255,255,0.01)] hover:scale-[1.002] transition-all duration-200
                   `}
                 >
                   {/* Icon */}

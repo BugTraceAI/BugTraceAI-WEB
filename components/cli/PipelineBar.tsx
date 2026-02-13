@@ -20,7 +20,7 @@ export const PipelineBar: React.FC<PipelineBarProps> = ({ pipeline }) => {
   const isComplete = pipeline.currentPhase === 'complete';
 
   return (
-    <div className="flex items-center gap-1 px-3 py-2 rounded-lg bg-white/[0.02] border border-white/[0.04]">
+    <div className="flex items-center gap-1 px-3 py-2 rounded-xl bg-white/[0.02] border border-white/[0.04] backdrop-blur-sm">
       {PHASES.map((phase, idx) => {
         const isDone = isComplete || idx < currentIdx;
         const isActive = !isComplete && idx === currentIdx;
@@ -32,9 +32,9 @@ export const PipelineBar: React.FC<PipelineBarProps> = ({ pipeline }) => {
               <div className={`flex-shrink-0 w-4 h-px ${isDone ? 'bg-emerald-500/60' : isActive ? 'bg-coral/40' : 'bg-white/10'}`} />
             )}
             <div className={`
-              flex items-center gap-1.5 px-2 py-1 rounded-md text-[10px] font-semibold tracking-wider transition-all
-              ${isDone ? 'text-emerald-400 bg-emerald-500/10' : ''}
-              ${isActive ? 'text-coral bg-coral/10 border border-coral/20' : ''}
+              flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[10px] font-semibold tracking-wider transition-all
+              ${isDone ? 'text-emerald-400 bg-emerald-500/10 shadow-[0_0_10px_rgba(16,185,129,0.1)]' : ''}
+              ${isActive ? 'text-coral bg-coral/10 border border-coral/20 shadow-[0_0_10px_rgba(255,127,80,0.15)]' : ''}
               ${isPending ? 'text-white/25' : ''}
             `}>
               <span className="flex-shrink-0">

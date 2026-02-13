@@ -39,10 +39,11 @@ export const AgentGrid: React.FC<AgentGridProps> = ({ agents }) => {
           <div
             key={agent.agent}
             className={`
-              flex items-center gap-2 px-2.5 py-1.5 rounded-md
+              flex items-center gap-2 px-2.5 py-2 rounded-lg
               bg-white/[0.02] border border-white/[0.04]
-              ${agent.status === 'active' ? 'border-coral/20 bg-coral/[0.03]' : ''}
+              ${agent.status === 'active' ? 'border-coral/20 bg-coral/[0.03] shadow-[0_0_10px_rgba(255,127,80,0.05)]' : ''}
               ${agent.status === 'complete' && agent.vulns > 0 ? 'border-red-500/20 bg-red-500/[0.03]' : ''}
+              transition-all duration-300 hover:bg-white/[0.04]
             `}
           >
             <span className={`text-xs ${color} flex-shrink-0`}>

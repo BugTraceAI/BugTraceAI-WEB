@@ -16,19 +16,19 @@ import { ToolLayout } from './ToolLayout.tsx';
 import { MarkdownRenderer } from './MarkdownRenderer.tsx';
 
 interface FileUploadAuditorProps {
-  onAnalysisStart: () => void;
-  onAnalysisComplete: (report: VulnerabilityReport) => void;
-  onAnalysisError: (message: string) => void;
-  onShowApiKeyWarning: () => void;
-  isLoading: boolean;
+    onAnalysisStart: () => void;
+    onAnalysisComplete: (report: VulnerabilityReport) => void;
+    onAnalysisError: (message: string) => void;
+    onShowApiKeyWarning: () => void;
+    isLoading: boolean;
 }
 
 interface GeneratedFile {
-  name: string;
-  blob: Blob;
-  description: string;
-  technique: string;
-  content?: string;
+    name: string;
+    blob: Blob;
+    description: string;
+    technique: string;
+    content?: string;
 }
 
 const ResultCard: React.FC<{ result: FileUploadAnalysisResult }> = ({ result }) => (
@@ -90,13 +90,13 @@ const GeneratedFileCard: React.FC<{ file: GeneratedFile }> = ({ file }) => {
                         className="flex items-center gap-2 px-3 py-1.5 text-xs font-semibold text-gray-300 bg-gray-700/40 border border-0/80 rounded-lg hover:bg-gray-700/60 transition-colors"
                         title={showContent ? 'Hide file content' : 'View file content'}
                     >
-                         <FileCodeIcon className="h-4 w-4" />
+                        <FileCodeIcon className="h-4 w-4" />
                         {showContent ? 'Hide' : 'View'} Content
                     </button>
                 )}
             </div>
             {showContent && file.content && (
-                 <pre className="mt-4 bg-black/40 p-3 rounded-md font-mono text-xs text-orange-300 overflow-x-auto border border-orange-900/50">
+                <pre className="mt-4 bg-black/40 p-3 rounded-md font-mono text-xs text-orange-300 overflow-x-auto border border-orange-900/50">
                     <code>{file.content}</code>
                 </pre>
             )}
@@ -110,10 +110,10 @@ export const FileUploadAuditor: React.FC<FileUploadAuditorProps> = ({ onAnalysis
     const [error, setError] = useState<string | null>(null);
     const [analysisResult, setAnalysisResult] = useState<FileUploadAnalysisResult | null>(null);
     const { apiOptions, isApiKeySet } = useApiOptions();
-    
+
     const [payload, setPayload] = useState<string>('<script>alert("XSS from file upload")</script>');
     const [generatedFiles, setGeneratedFiles] = useState<GeneratedFile[]>([]);
-    
+
     const handleAnalyze = useCallback(async () => {
         if (!isApiKeySet) {
             onShowApiKeyWarning();
@@ -125,12 +125,12 @@ export const FileUploadAuditor: React.FC<FileUploadAuditorProps> = ({ onAnalysis
         }
         setError(null);
         setAnalysisResult(null);
-        
+
         onAnalysisStart();
         try {
             const result = await analyzeFileUpload(url, apiOptions!);
             setAnalysisResult(result);
-            
+
             const report: VulnerabilityReport = {
                 analyzedTarget: `File Upload Audit: ${url}`,
                 vulnerabilities: result.found ? [{
@@ -162,7 +162,7 @@ export const FileUploadAuditor: React.FC<FileUploadAuditorProps> = ({ onAnalysis
             technique: 'SVG with Embedded Script',
             content: svgContent
         });
-        
+
         const pdfJsPayload = `app.alert({cMsg: "XSS From PDF", cTitle: "Payload Executed"});`;
         const pdfContent = `%PDF-1.7\\n1 0 obj\\n<< /Type /Catalog /Pages 2 0 R /OpenAction << /S /JavaScript /JS (${pdfJsPayload}) >> >>\\nendobj\\n2 0 obj\\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\\nendobj\\n3 0 obj\\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] >>\\nendobj\\nxref\\n0 4\\n0000000000 65535 f\\n0000000010 00000 n\\n0000000099 00000 n\\n0000000161 00000 n\\ntrailer\\n<< /Size 4 /Root 1 0 R >>\\nstartxref\\n224\\n%%EOF`;
         files.push({
@@ -199,19 +199,22 @@ export const FileUploadAuditor: React.FC<FileUploadAuditorProps> = ({ onAnalysis
 
     return (
         <ToolLayout
-          icon={<ArrowUpTrayIcon className="h-8 w-8 text-coral" />}
-          title="File Upload Auditor"
-          description="A two-step tool to first find file upload forms on a website and then craft malicious files to test their security."
+            icon={<ArrowUpTrayIcon className="h-8 w-8 text-coral" />}
+            title="File Upload Auditor"
+            description="A two-step tool to first find file upload forms on a website and then craft malicious files to test their security."
         >
-            <div className="max-w-lg mx-auto space-y-4">
-                <h4 className="text-lg font-semibold text-white mb-2 text-center">Step 1: Detect Upload Form with AI</h4>
+            <div className="max-w-xl mx-auto space-y-6">
+                <div className="text-center mb-2">
+                    <span className="label-mini !text-ui-accent mb-2 block">PHASE 01</span>
+                    <h4 className="title-standard !text-lg">Upload Form Detection</h4>
+                </div>
                 <div className="relative w-full">
                     <input
                         type="url"
                         value={url}
                         onChange={(e) => setUrl(e.target.value)}
                         placeholder="https://example.com/profile-edit"
-                        className="w-full pl-4 pr-12 py-3 bg-purple-medium/60 border-0 rounded-lg text-white placeholder-text-tertiary focus:ring-2 focus:ring-coral/50 focus:border-coral focus:outline-none transition-all duration-300"
+                        className="input-premium w-full !py-4"
                         disabled={isLoading}
                         onKeyDown={(e) => e.key === 'Enter' && !isLoading && handleAnalyze()}
                     />
@@ -220,48 +223,60 @@ export const FileUploadAuditor: React.FC<FileUploadAuditorProps> = ({ onAnalysis
                     <button
                         onClick={handleAnalyze}
                         disabled={isLoading || !url.trim()}
-                        className="group w-full sm:w-auto relative inline-flex items-center justify-center px-8 py-3 bg-coral-active hover:bg-coral text-white font-bold rounded-lg transition-all duration-300 transform hover:scale-105 disabled:scale-100 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-coral/20 hover:shadow-coral/40"
+                        className="btn-mini btn-mini-primary !h-12 !px-10 !rounded-xl shadow-glow-coral group gap-3"
                         title="Scan the URL's HTML to find a file upload form"
                     >
-                        {isLoading ? <Spinner /> : <ScanIcon className="h-5 w-5 mr-2" />}
-                        <span className="relative">Analyze for Upload Form</span>
+                        {isLoading ? <Spinner /> : <ScanIcon className="h-5 w-5 group-hover:scale-110 transition-transform" />}
+                        INITIALIZE SCANNER
                     </button>
                 </div>
             </div>
 
             {isLoading && (
-                <div className="mt-6 text-center text-purple-gray animate-pulse">
-                    <p>AI is analyzing the URL for file upload forms...</p>
+                <div className="mt-8 text-center animate-pulse flex flex-col items-center gap-2">
+                    <div className="w-16 h-1 bg-ui-accent/20 rounded-full overflow-hidden">
+                        <div className="w-full h-full bg-ui-accent animate-scan-slow" />
+                    </div>
+                    <p className="label-mini !text-[9px] !text-ui-text-dim/60">ANALYZING DOM STRUCTURE...</p>
                 </div>
             )}
-            {error && !isLoading && <div className="mt-6 p-4 bg-red-900/50 border border-red-700 text-red-200 rounded-lg font-mono max-w-3xl mx-auto">{error}</div>}
+            {error && !isLoading && (
+                <div className="mt-8 p-5 bg-red-500/10 border border-red-500/30 text-red-400 rounded-xl font-mono text-xs max-w-3xl mx-auto flex items-center gap-3">
+                    <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+                    {error}
+                </div>
+            )}
             {analysisResult && !isLoading && <ResultCard result={analysisResult} />}
-            
-            <div className="mt-12 border-t border-0 pt-8">
-                <h4 className="text-lg font-semibold text-white mb-3 text-center">Step 2: Forge Malicious Files</h4>
-                 <div className="max-w-2xl mx-auto">
-                    <label htmlFor="payload" className="block text-sm font-medium text-purple-gray mb-2">Payload for SVG/PDF</label>
+
+            <div className="mt-16 border-t border-ui-border pt-10">
+                <div className="text-center mb-6">
+                    <span className="label-mini !text-ui-accent mb-2 block">PHASE 02</span>
+                    <h4 className="title-standard !text-lg">Payload Synthesis</h4>
+                </div>
+                <div className="max-w-2xl mx-auto">
+                    <label htmlFor="payload" className="label-mini mb-2 block">Custom Injection Vector</label>
                     <textarea
                         id="payload"
                         value={payload}
                         onChange={(e) => setPayload(e.target.value)}
-                        className="w-full h-24 p-4 font-mono text-sm bg-purple-medium/60 border-0 rounded-lg text-white focus:ring-2 focus:ring-coral/50 focus:border-coral focus:outline-none transition-all duration-300 resize-y"
+                        className="input-premium w-full h-32 p-5 font-mono text-sm resize-y"
                     />
                 </div>
-                <div className="mt-6 flex justify-center">
+                <div className="mt-8 flex justify-center">
                     <button
-                      onClick={handleGenerateFiles}
-                      className="group relative inline-flex items-center justify-center px-8 py-3 bg-purple-600 hover:bg-purple-500 text-white font-bold rounded-lg transition-all duration-300 transform hover:scale-105 shadow-lg shadow-purple-500/20 hover:shadow-purple-500/40"
-                      title="Create various malicious file types for testing"
+                        onClick={handleGenerateFiles}
+                        className="btn-mini btn-mini-secondary !h-12 !px-10 !rounded-xl !border-purple-500/30 !bg-purple-500/10 !text-purple-300 hover:!bg-purple-500/20 group gap-3 shadow-glow-purple/20"
+                        title="Create various malicious file types for testing"
                     >
-                        Generate Files
+                        <FileCodeIcon className="h-5 w-5 group-hover:-translate-y-0.5 transition-transform" />
+                        GENERATE POLYGLOT FILES
                     </button>
                 </div>
 
                 {generatedFiles.length > 0 && (
-                     <div className="mt-8 space-y-6">
+                    <div className="mt-10 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-4 animate-fade-in">
                         {generatedFiles.map((file, index) => (
-                           <GeneratedFileCard key={index} file={file} />
+                            <GeneratedFileCard key={index} file={file} />
                         ))}
                     </div>
                 )}

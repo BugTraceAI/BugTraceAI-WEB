@@ -105,20 +105,22 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({ isOpen, onToggle }) =>
       <div className="w-64 bg-white/[0.03] flex flex-col h-full border-r border-white/[0.06]">
         {/* Header */}
         <div className="flex-shrink-0 p-3">
-          <div className="flex items-center gap-2 mb-3">
+          <div className="flex items-center gap-2 mb-4 px-1">
             <button
               onClick={() => setShowNewChatModal(true)}
               data-testid="new-chat-button"
-              className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium text-purple-gray hover:text-white hover:bg-white/[0.06] transition-colors flex-1"
+              className="group flex items-center justify-center gap-2.5 px-4 h-10 rounded-xl bg-ui-accent/10 border border-ui-accent/20 text-ui-text-main hover:bg-ui-accent/20 transition-all flex-1 shadow-lg shadow-ui-accent/5"
             >
-              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-              </svg>
-              New chat
+              <div className="flex items-center justify-center w-5 h-5 rounded-lg bg-ui-accent text-ui-bg group-hover:scale-110 transition-transform shadow-[0_0_10px_rgba(255,127,80,0.4)]">
+                <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" strokeWidth={4} stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                </svg>
+              </div>
+              <span className="label-mini !text-[11px] !text-ui-text-main font-bold tracking-tight">New Mission</span>
             </button>
             <button
               onClick={onToggle}
-              className="p-1.5 rounded-lg text-muted hover:text-white hover:bg-white/[0.06] transition-colors flex-shrink-0"
+              className="w-10 h-10 flex items-center justify-center rounded-xl text-ui-text-dim hover:text-ui-accent hover:bg-ui-accent/10 transition-all border border-transparent hover:border-ui-accent/20 flex-shrink-0"
               title="Close sidebar"
             >
               <XMarkIcon className="h-4 w-4" />
@@ -126,7 +128,9 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({ isOpen, onToggle }) =>
           </div>
 
           {/* Search bar */}
-          <ChatSearchBar onResultSelect={handleSearchResultSelect} />
+          <div className="px-4 mb-4">
+            <ChatSearchBar onResultSelect={handleSearchResultSelect} />
+          </div>
         </div>
 
         {/* Sessions list */}
@@ -137,9 +141,9 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({ isOpen, onToggle }) =>
             </div>
           ) : filteredSessions.length === 0 ? (
             <div className="text-center py-8 text-muted">
-              <p className="text-xs">
-                {showArchived ? 'No archived chats' : 'No chats yet'}
-              </p>
+              <span className="label-mini !text-[10px]">
+                {showArchived ? 'NO ARCHIVED CHATS' : 'NO CHATS YET'}
+              </span>
             </div>
           ) : (
             filteredSessions.map((session) => (
@@ -157,16 +161,20 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({ isOpen, onToggle }) =>
         </div>
 
         {/* Footer */}
-        <div className="flex-shrink-0 p-3 border-t border-white/[0.06]">
-          <label className="flex items-center gap-2 text-xs text-muted cursor-pointer hover:text-purple-gray transition-colors">
+        <div className="flex-shrink-0 p-4 border-t border-ui-border bg-dashboard-bg/40">
+          <label className="flex items-center gap-3 cursor-pointer group">
+            <div className={`w-4 h-4 rounded-lg border flex items-center justify-center transition-all ${showArchived ? 'bg-ui-accent border-ui-accent shadow-[0_0_8px_rgba(255,127,80,0.4)]' : 'bg-ui-bg border-ui-border'
+              }`}>
+              {showArchived && <div className="w-1.5 h-1.5 bg-white rounded-sm" />}
+            </div>
             <input
               type="checkbox"
+              className="sr-only"
               checked={showArchived}
               onChange={(e) => setShowArchived(e.target.checked)}
               data-testid="show-archived-toggle"
-              className="focus:ring-coral h-3.5 w-3.5 text-coral-active border-0 rounded bg-transparent cursor-pointer"
             />
-            Show archived
+            <span className="label-mini !text-[10px] text-ui-text-dim group-hover:text-ui-text-main transition-colors">Show Archived</span>
           </label>
         </div>
       </div>

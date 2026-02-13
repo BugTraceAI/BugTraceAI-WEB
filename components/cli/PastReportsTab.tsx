@@ -1,12 +1,6 @@
 // components/cli/PastReportsTab.tsx
-// v4.0 - Refactored to use usePastReports hook
-/* eslint-disable max-lines -- Past reports tab component (288 lines).
- * Displays historical CLI scan reports with filtering and management.
- * Includes report list, markdown viewer, severity filtering, and deletion.
- * Report management UI with integrated viewer - splitting would fragment report browsing experience.
- */
 import React, { useState } from 'react';
-import { ArrowPathIcon, ShieldExclamationIcon, TrashIcon } from '../Icons.tsx';
+import { ArrowPathIcon, ShieldExclamationIcon, TrashIcon, MagnifyingGlassIcon } from '../Icons.tsx';
 import { ReportMarkdownViewer } from './dashboard/ReportMarkdownViewer.tsx';
 import { usePastReports, CLIReport } from '../../hooks/usePastReports.ts';
 
@@ -47,29 +41,23 @@ interface ReportsListProps {
 const SeverityDots: React.FC<{ summary: CLIReport['severity_summary'] }> = ({ summary }) => {
   if (!summary) return null;
   return (
-    <div className="flex items-center gap-3 text-xs flex-shrink-0">
+    <div className="flex items-center gap-2 flex-shrink-0">
       {summary.critical > 0 && (
-        <span className="flex items-center gap-1">
-          <span className="w-2 h-2 rounded-full bg-red-500"></span>
-          <span className="text-purple-gray">{summary.critical}</span>
+        <span className="flex items-center gap-1 group/sev">
+          <span className="w-1.5 h-1.5 rounded-full bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.4)]"></span>
+          <span className="text-[10px] font-bold text-white/60">{summary.critical}</span>
         </span>
       )}
       {summary.high > 0 && (
         <span className="flex items-center gap-1">
-          <span className="w-2 h-2 rounded-full bg-orange-500"></span>
-          <span className="text-purple-gray">{summary.high}</span>
+          <span className="w-1.5 h-1.5 rounded-full bg-orange-500 shadow-[0_0_8px_rgba(249,115,22,0.3)]"></span>
+          <span className="text-[10px] font-bold text-white/60">{summary.high}</span>
         </span>
       )}
-      {summary.medium > 0 && (
+      {(summary.medium > 0 || summary.low > 0) && (
         <span className="flex items-center gap-1">
-          <span className="w-2 h-2 rounded-full bg-yellow-500"></span>
-          <span className="text-purple-gray">{summary.medium}</span>
-        </span>
-      )}
-      {summary.low > 0 && (
-        <span className="flex items-center gap-1">
-          <span className="w-2 h-2 rounded-full bg-gray-400"></span>
-          <span className="text-purple-gray">{summary.low}</span>
+          <span className="w-1.5 h-1.5 rounded-full bg-blue-500/50"></span>
+          <span className="text-[10px] font-bold text-white/60">{summary.medium + summary.low}</span>
         </span>
       )}
     </div>
@@ -79,114 +67,110 @@ const SeverityDots: React.FC<{ summary: CLIReport['severity_summary'] }> = ({ su
 const ReportsList: React.FC<ReportsListProps> = ({ loading, reports, filteredReports, onSelectReport, onDeleteReport }) => {
   if (loading && reports.length === 0) {
     return (
-      <div className="flex items-center justify-center py-16">
-        <div className="h-10 w-10 rounded-full border-2 border-coral/20 border-t-coral animate-spin"></div>
+      <div className="flex items-center justify-center py-20">
+        <div className="h-8 w-8 rounded-full border-2 border-coral/20 border-t-coral animate-spin"></div>
       </div>
     );
   }
 
   if (filteredReports.length === 0) {
     return (
-      <div className="text-center py-16 bg-purple-medium/30 rounded-2xl border-0">
-        <ShieldExclamationIcon className="h-12 w-12 mx-auto text-muted mb-4" />
-        <p className="text-purple-gray text-lg">No reports found</p>
-        <p className="text-muted text-sm mt-1">
-          {reports.length === 0 ? 'Run a scan or click Sync' : 'Try adjusting your search'}
+      <div className="text-center py-16 bg-white/[0.02] rounded-2xl border border-dashed border-white/5">
+        <ShieldExclamationIcon className="h-10 w-10 mx-auto text-muted/30 mb-4" />
+        <p className="text-white/40 text-sm font-bold uppercase tracking-wider">Empty Database</p>
+        <p className="text-muted/40 text-xs mt-1">
+          {reports.length === 0 ? 'No intelligence reports found. Run a new scan.' : 'No matches for current filter.'}
         </p>
       </div>
     );
   }
 
   return (
-    <div className="dashboard-card p-0 overflow-hidden">
-      <table className="table-modern">
-        <thead>
-          <tr>
-            <th className="w-14">ID</th>
-            <th>Target URL</th>
-            <th>Date</th>
-            <th>Source</th>
-            <th>Findings</th>
-            <th className="w-16"></th>
-          </tr>
-        </thead>
-        <tbody>
-          {filteredReports.map((report) => (
-            <tr key={report.id} onClick={() => onSelectReport(report)} className="group">
-              <td>
-                <span className="text-xs font-mono text-muted">#{report.id}</span>
-              </td>
-              <td>
-                <span className="text-sm text-white font-medium truncate block max-w-xs group-hover:text-coral transition-colors" title={report.target_url}>
-                  {report.target_url || 'Unknown target'}
-                </span>
-              </td>
-              <td>
-                <span className="text-sm text-purple-gray">{formatDate(report.scan_date)}</span>
-              </td>
-              <td>
-                <span className={`status-badge ${
-                  report.origin === 'web' ? 'status-badge-coral' : 'status-badge-info'
-                }`}>
-                  {report.origin === 'web' ? 'WEB' : 'CLI'}
-                </span>
-              </td>
-              <td>
-                <SeverityDots summary={report.severity_summary} />
-              </td>
-              <td>
-                <button
-                  onClick={(e) => { e.stopPropagation(); onDeleteReport(report); }}
-                  className="p-2 text-muted hover:text-error rounded-lg hover:bg-error/10 transition-all opacity-0 group-hover:opacity-100"
-                  title="Delete report"
-                >
-                  <TrashIcon className="h-4 w-4" />
-                </button>
-              </td>
+    <div className="rounded-xl border border-white/[0.05] bg-white/[0.01] overflow-hidden">
+      <div className="overflow-x-auto no-scrollbar">
+        <table className="w-full border-collapse text-left">
+          <thead>
+            <tr className="border-b border-white/[0.05] bg-white/[0.02]">
+              <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-muted">Assessment Target</th>
+              <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-muted">Date</th>
+              <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-muted">Source</th>
+              <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-muted">Findings</th>
+              <th className="px-4 py-3 w-16"></th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody className="divide-y divide-white/[0.03]">
+            {filteredReports.map((report) => (
+              <tr
+                key={report.id}
+                onClick={() => onSelectReport(report)}
+                className="group hover:bg-white/[0.03] transition-all cursor-pointer"
+              >
+                <td className="px-4 py-3">
+                  <div className="flex flex-col">
+                    <span className="text-sm text-white/80 font-mono font-medium truncate max-w-md group-hover:text-coral transition-colors">
+                      {report.target_url?.replace(/^https?:\/\//, '') || 'Unknown'}
+                    </span>
+                    <span className="text-[9px] text-muted font-mono opacity-50">#{report.id.substring(0, 8)}</span>
+                  </div>
+                </td>
+                <td className="px-4 py-3">
+                  <span className="text-xs text-muted font-mono">{formatDate(report.scan_date)}</span>
+                </td>
+                <td className="px-4 py-3">
+                  <span className={`text-[9px] font-black px-1.5 py-0.5 rounded border ${report.origin === 'web'
+                    ? 'bg-coral/5 text-coral border-coral/20'
+                    : 'bg-blue-500/5 text-blue-400 border-blue-500/20'
+                    }`}>
+                    {report.origin?.toUpperCase() || 'CLI'}
+                  </span>
+                </td>
+                <td className="px-4 py-3">
+                  <SeverityDots summary={report.severity_summary} />
+                </td>
+                <td className="px-4 py-3 text-right">
+                  <button
+                    onClick={(e) => { e.stopPropagation(); onDeleteReport(report); }}
+                    className="p-1.5 text-muted hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all rounded-md hover:bg-red-500/10"
+                  >
+                    <TrashIcon className="h-3.5 w-3.5" />
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 };
 
 const DeleteDialog: React.FC<DeleteDialogProps> = ({ target, deleting, onCancel, onConfirm }) => (
-  <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm">
-    <div className="dashboard-card max-w-md w-full mx-4 shadow-dashboard-lg">
-      <div className="flex items-center gap-3 mb-4">
-        <div className="p-2.5 bg-error/10 rounded-card border border-error/20">
-          <TrashIcon className="h-5 w-5 text-error" />
+  <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md">
+    <div className="bg-[#0f0f14] border border-white/10 rounded-2xl max-w-sm w-full mx-4 shadow-2xl p-6">
+      <div className="flex flex-col items-center text-center">
+        <div className="p-3 bg-red-500/10 rounded-xl border border-red-500/20 mb-4">
+          <TrashIcon className="h-6 w-6 text-red-500" />
         </div>
-        <h3 className="card-title mb-0">Delete Report</h3>
+        <h3 className="text-lg font-bold text-white mb-2">Purge Intelligence?</h3>
+        <p className="text-muted text-xs leading-relaxed mb-4">
+          This operation is irreversible. All findings for <br />
+          <span className="text-coral font-mono">{target.target_url}</span> will be deleted.
+        </p>
       </div>
-      <p className="text-purple-gray text-sm mb-3">
-        Are you sure you want to delete this report?
-      </p>
-      <p className="text-purple-gray text-xs font-mono bg-purple-medium/50 rounded-lg px-4 py-3 truncate mb-5 border border-white/5">
-        {target.target_url || 'Unknown target'}
-      </p>
-      <div className="flex items-center justify-end gap-3">
+      <div className="flex gap-3">
         <button
           onClick={onCancel}
           disabled={deleting}
-          className="btn-secondary-modern btn-sm"
+          className="flex-1 py-3 rounded-xl bg-white/5 border border-white/5 text-white/60 text-[10px] font-black uppercase tracking-widest hover:bg-white/10 hover:text-white transition-all duration-300"
         >
-          Cancel
+          Abort Mission
         </button>
         <button
           onClick={onConfirm}
           disabled={deleting}
-          className="btn-primary-modern btn-sm bg-error hover:bg-red-500 flex items-center gap-2"
+          className="flex-1 py-3 rounded-xl bg-red-500/10 text-red-400 border border-red-500/20 text-[10px] font-black uppercase tracking-widest hover:bg-red-500/20 hover:border-red-500/30 hover:shadow-[0_0_15px_rgba(239,68,68,0.2)] transition-all duration-300"
         >
-          {deleting ? (
-            <>
-              <div className="h-3.5 w-3.5 rounded-full border-2 border-white/30 border-t-white animate-spin" />
-              Deleting...
-            </>
-          ) : (
-            'Delete'
-          )}
+          {deleting ? 'Purging...' : 'Confirm Purge'}
         </button>
       </div>
     </div>
@@ -223,7 +207,7 @@ export const PastReportsTab: React.FC<PastReportsTabProps> = ({ onViewScan }) =>
 
   if (selectedReport) {
     return (
-      <div className="flex-1 overflow-y-auto p-6">
+      <div className="flex-1 overflow-y-auto">
         <ReportMarkdownViewer
           report={selectedReport}
           onBack={() => setSelectedReport(null)}
@@ -233,158 +217,116 @@ export const PastReportsTab: React.FC<PastReportsTabProps> = ({ onViewScan }) =>
   }
 
   return (
-    <div className="flex-1 overflow-y-auto p-5 space-y-5">
-      {/* Header */}
-      <div className="dashboard-card">
-        <div className="flex items-center justify-between gap-4">
-          <div>
-            <h1 className="text-2xl font-bold text-white mb-1">Security Reports</h1>
-            <p className="text-purple-gray text-sm">
-              View and manage your security assessment reports
-            </p>
+    <div className="flex-1 overflow-y-auto no-scrollbar p-6">
+      {/* Super Bar: Compressed Header & Search */}
+      <div className="flex items-center justify-between gap-4 p-3 bg-purple-deep/40 border border-white/5 rounded-2xl backdrop-blur-xl mb-6 shadow-2xl">
+        <div className="flex items-center gap-6 flex-1">
+          <div className="relative flex-1 max-w-md">
+            <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted/40" />
+            <input
+              type="text"
+              placeholder="Search reports by domain..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full bg-white/[0.03] border border-white/[0.05] focus:border-coral/30 focus:bg-white/[0.05] text-white text-xs py-2 pl-9 pr-4 rounded-xl transition-all font-mono outline-none placeholder:text-muted/30"
+            />
           </div>
+        </div>
+
+        <div className="flex items-center gap-4">
+          <div className="hidden md:flex flex-col items-end">
+            <span className="text-[10px] font-bold text-muted uppercase tracking-tighter">Total Assets</span>
+            <span className="text-xs font-black text-white/80">{filteredReports.length}</span>
+          </div>
+
           <button
             onClick={handleSync}
             disabled={syncing}
-            className="btn-secondary-modern btn-sm flex items-center gap-2"
+            className="px-4 py-2 bg-coral text-white border border-coral-hover rounded-lg text-[10px] font-bold uppercase tracking-wider shadow-glow-coral transition-all flex items-center gap-2 hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50"
           >
-            <ArrowPathIcon className={`h-4 w-4 ${syncing ? 'animate-spin' : ''}`} />
-            {syncing ? 'Refreshing...' : 'Refresh'}
+            <ArrowPathIcon className={`h-3.5 w-3.5 ${syncing ? 'animate-spin' : ''}`} />
+            {syncing ? 'Syncing' : 'Sync'}
           </button>
         </div>
       </div>
 
-      {/* Search and Filters */}
-      <div className="dashboard-card p-4">
-        <div className="flex items-center gap-4">
-          <div className="flex-1">
-            <input
-              type="text"
-              placeholder="Search reports by URL..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="search-input"
-            />
-          </div>
-          <span className="text-sm text-purple-gray whitespace-nowrap">
-            {filteredReports.length} report{filteredReports.length !== 1 ? 's' : ''}
-          </span>
-        </div>
-      </div>
-
       {error && (
-        <div className={`text-sm p-3 rounded-xl border flex items-center justify-between ${
-          error.startsWith('Delete failed')
-            ? 'text-red-400 bg-red-500/10 border-red-500/20'
-            : 'text-yellow-400 bg-yellow-500/10 border-yellow-500/20'
-        }`}>
-          <span>{error}</span>
-          <button onClick={() => setError(null)} className="text-purple-gray hover:text-white text-xs ml-3">Dismiss</button>
+        <div className="mb-4 text-[10px] font-bold uppercase tracking-widest p-2 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <ShieldExclamationIcon className="h-4 w-4" />
+            {error}
+          </div>
+          <button onClick={() => setError(null)} className="hover:text-white transition-colors underline">Dismiss</button>
         </div>
       )}
 
+      {/* Compressed Active Scans Bar */}
       {activeScans.length > 0 && (
-        <div className="space-y-2">
+        <div className="space-y-2 mb-6 animate-in fade-in slide-in-from-top-4 duration-500">
+          <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-muted ml-1 mb-2">Ongoing Operations</h3>
           {activeScans.map((scan) => {
             const isPaused = scan.status === 'paused';
             return (
               <div
                 key={scan.id}
-                className={`border rounded-xl p-4 flex items-center justify-between ${
-                  isPaused
-                    ? 'bg-yellow-500/10 border-yellow-500/20'
-                    : 'bg-coral/10 border-coral/20'
-                }`}
+                className={`group flex items-center justify-between p-3 rounded-xl border backdrop-blur-md transition-all ${isPaused
+                  ? 'bg-yellow-500/[0.03] border-yellow-500/20'
+                  : 'bg-coral/[0.03] border-coral/20'
+                  }`}
               >
-                <div className="flex items-center gap-3 min-w-0">
-                  <div className={`h-2.5 w-2.5 rounded-full flex-shrink-0 ${
-                    isPaused ? 'bg-yellow-400' : 'bg-coral-hover animate-pulse'
-                  }`} />
+                <div className="flex items-center gap-4 min-w-0">
+                  <div className={`relative h-2 w-2 rounded-full flex-shrink-0 ${isPaused ? 'bg-yellow-400' : 'bg-coral-hover'
+                    }`}>
+                    {!isPaused && <div className="absolute inset-0 rounded-full bg-coral-hover animate-ping opacity-40" />}
+                  </div>
                   <div className="min-w-0">
-                    <div className="text-sm text-white font-medium truncate">{scan.target_url}</div>
-                    <div className="text-xs text-purple-gray mt-0.5">
-                      {isPaused ? 'Paused' : `Elapsed: ${formatElapsed(scan.elapsed_seconds)}`}
+                    <div className="text-xs text-white font-mono font-bold truncate group-hover:text-coral transition-colors">{scan.target_url}</div>
+                    <div className="text-[9px] text-muted flex items-center gap-2 mt-0.5">
+                      <span className="uppercase font-bold tracking-tighter">{isPaused ? 'Halted' : 'In Progress'}</span>
+                      <span className="w-1 h-1 bg-white/10 rounded-full" />
+                      <span className="font-mono">{formatElapsed(scan.elapsed_seconds)} elapsed</span>
                     </div>
                   </div>
                 </div>
+
                 <div className="flex items-center gap-2 flex-shrink-0">
-                  {/* Stop button - always visible */}
                   <button
                     onClick={() => handleStopScan(scan.id)}
                     disabled={stoppingScanId === scan.id}
-                    className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-red-500/20 text-red-400 border border-red-500/30 hover:bg-red-500/30 transition-colors flex items-center gap-1.5 disabled:opacity-50"
-                    title="Stop scan"
+                    className="p-1.5 rounded-lg bg-white/5 border border-white/5 text-muted hover:text-red-400 hover:bg-red-500/10 hover:border-red-500/20 transition-all disabled:opacity-50"
+                    title="Terminate operation"
                   >
                     {stoppingScanId === scan.id ? (
-                      <>
-                        <div className="h-3 w-3 rounded-full border-2 border-red-400/30 border-t-red-400 animate-spin" />
-                        Stopping...
-                      </>
+                      <ArrowPathIcon className="h-3.5 w-3.5 animate-spin" />
                     ) : (
-                      <>
-                        <svg className="h-3.5 w-3.5" fill="currentColor" viewBox="0 0 24 24">
-                          <rect x="6" y="6" width="12" height="12" rx="1" />
-                        </svg>
-                        Stop
-                      </>
+                      <svg className="h-3.5 w-3.5" fill="currentColor" viewBox="0 0 24 24">
+                        <rect x="7" y="7" width="10" height="10" rx="1.5" />
+                      </svg>
                     )}
                   </button>
 
-                  {isPaused ? (
-                    /* Paused state: Resume button */
-                    <button
-                      onClick={() => handleResumeScan(scan.id)}
-                      disabled={resumingScanId === scan.id}
-                      className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-green-500/20 text-green-400 border border-green-500/30 hover:bg-green-500/30 transition-colors flex items-center gap-1.5 disabled:opacity-50"
-                      title="Resume scan"
-                    >
-                      {resumingScanId === scan.id ? (
-                        <>
-                          <div className="h-3 w-3 rounded-full border-2 border-green-400/30 border-t-green-400 animate-spin" />
-                          Resuming...
-                        </>
-                      ) : (
-                        <>
-                          <svg className="h-3.5 w-3.5" fill="currentColor" viewBox="0 0 24 24">
-                            <polygon points="8,5 19,12 8,19" />
-                          </svg>
-                          Resume
-                        </>
-                      )}
-                    </button>
-                  ) : (
-                    /* Running state: Pause button */
-                    <button
-                      onClick={() => handlePauseScan(scan.id)}
-                      disabled={pausingScanId === scan.id}
-                      className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-yellow-500/20 text-yellow-400 border border-yellow-500/30 hover:bg-yellow-500/30 transition-colors flex items-center gap-1.5 disabled:opacity-50"
-                      title="Pause scan"
-                    >
-                      {pausingScanId === scan.id ? (
-                        <>
-                          <div className="h-3 w-3 rounded-full border-2 border-yellow-400/30 border-t-yellow-400 animate-spin" />
-                          Pausing...
-                        </>
-                      ) : (
-                        <>
-                          <svg className="h-3.5 w-3.5" fill="currentColor" viewBox="0 0 24 24">
-                            <rect x="6" y="5" width="4" height="14" rx="1" />
-                            <rect x="14" y="5" width="4" height="14" rx="1" />
-                          </svg>
-                          Pause
-                        </>
-                      )}
-                    </button>
-                  )}
+                  <button
+                    onClick={() => isPaused ? handleResumeScan(scan.id) : handlePauseScan(scan.id)}
+                    disabled={resumingScanId === scan.id || pausingScanId === scan.id}
+                    className={`p-1.5 rounded-lg bg-white/5 border border-white/5 transition-all disabled:opacity-50 ${isPaused ? 'text-emerald-400 hover:bg-emerald-500/10' : 'text-yellow-400 hover:bg-yellow-500/10'
+                      }`}
+                  >
+                    {isPaused ? (
+                      <svg className="h-3.5 w-3.5" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M8 5.14v14l11-7-11-7z" />
+                      </svg>
+                    ) : (
+                      <svg className="h-3.5 w-3.5" fill="currentColor" viewBox="0 0 24 24">
+                        <rect x="7" y="6" width="3" height="12" rx="1" />
+                        <rect x="14" y="6" width="3" height="12" rx="1" />
+                      </svg>
+                    )}
+                  </button>
 
-                  {/* Status badge */}
-                  <span className={`px-3 py-1 rounded-lg text-xs font-semibold border ${
-                    isPaused
-                      ? 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30'
-                      : 'bg-coral/20 text-coral-hover border-coral/30'
-                  }`}>
-                    {isPaused ? 'Paused' : 'Running'}
-                  </span>
+                  <div className={`text-[9px] font-black uppercase px-2 py-1 rounded border ${isPaused ? 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20' : 'bg-coral/10 text-coral border-coral/20'
+                    }`}>
+                    {scan.status}
+                  </div>
                 </div>
               </div>
             );
@@ -392,13 +334,16 @@ export const PastReportsTab: React.FC<PastReportsTabProps> = ({ onViewScan }) =>
         </div>
       )}
 
-      <ReportsList
-        loading={loading}
-        reports={reports}
-        filteredReports={filteredReports}
-        onSelectReport={setSelectedReport}
-        onDeleteReport={setDeleteTarget}
-      />
+      <div className="animate-in fade-in slide-in-from-bottom-4 duration-700">
+        <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-muted ml-1 mb-2">Historical Records</h3>
+        <ReportsList
+          loading={loading}
+          reports={reports}
+          filteredReports={filteredReports}
+          onSelectReport={setSelectedReport}
+          onDeleteReport={setDeleteTarget}
+        />
+      </div>
 
       {deleteTarget && (
         <DeleteDialog

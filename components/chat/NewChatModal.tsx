@@ -49,17 +49,18 @@ export const NewChatModal: React.FC<NewChatModalProps> = ({ isOpen, onClose, onS
       role="dialog"
     >
       <div
-        className="bg-purple-medium/50 backdrop-blur-xl border-0 rounded-2xl w-full max-w-md overflow-hidden shadow-2xl shadow-coral/10"
+        className="card-premium w-full max-w-md overflow-hidden shadow-2xl shadow-ui-accent/10 flex flex-col"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="p-6 border-b border-0">
-          <h2 className="text-xl font-bold text-white">Select Assistant Type</h2>
-          <p className="text-sm text-muted mt-1">Choose the type of security expert you need</p>
+        <div className="p-6 border-b border-ui-border bg-ui-bg/50">
+          <span className="label-mini text-ui-accent mb-1 block">New Mission Deployment</span>
+          <h2 className="title-standard">Select Assistant Type</h2>
+          <p className="text-xs text-ui-text-dim mt-1">Initialize a specialized security logic unit</p>
         </div>
 
         {/* Options */}
-        <div className="p-6 space-y-3">
+        <div className="p-6 space-y-3 bg-dashboard-bg/30">
           {assistantTypes.map(({ type, icon, label, description }) => (
             <button
               key={type}
@@ -68,15 +69,18 @@ export const NewChatModal: React.FC<NewChatModalProps> = ({ isOpen, onClose, onS
                 onClose();
               }}
               data-testid={`assistant-${type}`}
-              className="w-full text-left p-4 rounded-lg bg-purple-medium/50 border-0 hover:border-coral/50 transition-all group"
+              className="w-full text-left p-4 rounded-xl bg-ui-input-bg border border-ui-border hover:border-ui-accent/50 hover:bg-ui-accent/5 transition-all group relative overflow-hidden"
             >
-              <div className="flex items-center gap-4">
-                <div className="flex-shrink-0">{icon}</div>
+              <div className="absolute right-0 top-0 w-1 h-full bg-ui-accent opacity-0 group-hover:opacity-100 transition-opacity" />
+              <div className="flex items-center gap-4 relative z-10">
+                <div className="flex-shrink-0 p-3 rounded-xl bg-dashboard-bg border border-ui-border group-hover:border-ui-accent/30 transition-colors">
+                  {icon}
+                </div>
                 <div className="flex-1 min-w-0">
-                  <h3 className="font-semibold text-white group-hover:text-coral transition-colors">
+                  <h3 className="font-bold text-ui-text-main group-hover:text-ui-accent transition-colors uppercase tracking-tight">
                     {label}
                   </h3>
-                  <p className="text-sm text-muted mt-0.5">{description}</p>
+                  <p className="text-xs text-ui-text-dim mt-0.5">{description}</p>
                 </div>
               </div>
             </button>
@@ -84,12 +88,12 @@ export const NewChatModal: React.FC<NewChatModalProps> = ({ isOpen, onClose, onS
         </div>
 
         {/* Footer */}
-        <div className="p-4 bg-black/20 flex justify-end">
+        <div className="p-4 bg-ui-bg/80 flex justify-end gap-3 border-t border-ui-border">
           <button
             onClick={onClose}
-            className="px-4 py-2 text-sm text-purple-gray hover:text-white transition-colors"
+            className="btn-mini btn-mini-secondary px-8"
           >
-            Cancel
+            Abort
           </button>
         </div>
       </div>

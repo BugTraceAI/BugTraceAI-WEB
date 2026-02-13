@@ -3,8 +3,8 @@ import React from 'react';
 import { Tool } from '../types.ts';
 
 interface SubTab {
-    id: Tool;
-    name: string;
+  id: Tool;
+  name: string;
 }
 
 interface SubTabsProps {
@@ -15,16 +15,16 @@ interface SubTabsProps {
 
 export const SubTabs: React.FC<SubTabsProps> = ({ activeTool, setTool, tools }) => {
   return (
-    <div className="flex items-center gap-1 border-b border-white/5 mb-6">
+    <div className="flex items-center gap-2 mb-8 bg-ui-input-bg/40 p-1.5 rounded-2xl border border-ui-border self-start">
       {tools.map((tool) => (
         <button
           key={tool.id}
           onClick={() => setTool(tool.id)}
           className={`
-            py-2.5 px-5 font-medium text-sm rounded-none transition-all duration-500 flex items-center gap-2 border-b-2 -mb-px
+            h-9 px-5 rounded-xl font-black text-[10px] uppercase tracking-wider transition-all duration-300 flex items-center gap-2
             ${activeTool === tool.id
-              ? 'border-b-coral text-coral-hover bg-coral/10'
-              : 'border-b-transparent text-purple-gray hover:text-white hover:border-b-purple-elevated/50'
+              ? 'bg-ui-accent text-ui-bg shadow-glow-coral'
+              : 'text-ui-text-dim hover:text-ui-text-main hover:bg-ui-accent/10'
             }
           `}
           aria-current={activeTool === tool.id ? 'page' : undefined}

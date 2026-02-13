@@ -172,6 +172,10 @@ const CONFIG_SECTIONS: SectionDef[] = [
       { key: 'TIMEOUT_MS', label: 'Page Timeout', description: 'Page load timeout (ms)', type: 'number', editable: false },
       { key: 'SPA_WAIT_MS', label: 'SPA Wait', description: 'Wait time (ms) for SPA rendering', type: 'number', editable: false },
       { key: 'JWT_RATE_LIMIT_DELAY', label: 'JWT Rate Limit', description: 'Seconds between JWT attack requests', type: 'number', editable: false },
+      { key: 'DOM_CLICK_MAX_LINKS', label: 'DOM Click Max Links', description: 'Maximum link elements to click during DOM exploration', type: 'number', editable: false },
+      { key: 'DOM_CLICK_MAX_TEXT_LINKS', label: 'DOM Click Max Text Links', description: 'Maximum text-based links to click during DOM exploration', type: 'number', editable: false },
+      { key: 'DOM_CLICK_WAIT_SEC', label: 'DOM Click Wait', description: 'Seconds to wait after each DOM click action', type: 'number', editable: false },
+      { key: 'DOM_CLICK_INITIAL_WAIT_SEC', label: 'DOM Click Initial Wait', description: 'Seconds to wait before starting DOM click exploration', type: 'number', editable: false },
     ],
   },
   {
@@ -502,14 +506,10 @@ function ToggleSwitch({ checked, onChange, disabled }: { checked: boolean; onCha
       aria-checked={checked}
       disabled={disabled}
       onClick={() => !disabled && onChange(!checked)}
-      className={`relative inline-flex h-6 w-11 flex-shrink-0 rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-coral focus:ring-offset-2 focus:ring-offset-purple-deep ${
-        disabled ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'
-      } ${checked ? 'bg-coral' : 'bg-purple-elevated'}`}
+      className={`relative inline-flex h-5 w-10 flex-shrink-0 rounded-full border-2 border-transparent transition-all duration-300 ease-in-out focus:outline-none focus:ring-2 focus:ring-coral/20 ${disabled ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'} ${checked ? 'bg-coral shadow-[0_0_12px_rgba(255,127,80,0.3)]' : 'bg-ui-input-bg border-white/5'}`}
     >
       <span
-        className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
-          checked ? 'translate-x-5' : 'translate-x-0'
-        }`}
+        className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow-lg ring-0 transition duration-300 ease-in-out ${checked ? 'translate-x-5' : 'translate-x-0'}`}
       />
     </button>
   );
@@ -533,20 +533,20 @@ function ConfigField({
   const isEditable = field.editable;
 
   return (
-    <div className={`flex items-center justify-between py-3 px-4 rounded-xl ${isEdited ? 'bg-coral/5' : 'hover:bg-purple-light/30'} transition-colors`}>
+    <div className={`group flex items-center justify-between py-2 px-3 rounded-xl transition-all duration-200 ${isEdited ? 'bg-coral/5 border border-coral/10' : 'hover:bg-white/[0.03] border border-transparent'}`}>
       <div className="flex-1 min-w-0 mr-4">
         <div className="flex items-center gap-2">
-          <span className={`text-sm font-medium ${isEditable ? 'text-off-white' : 'text-purple-gray'}`}>
+          <span className={`text-[13px] font-bold tracking-tight ${isEditable ? 'text-ui-text-main' : 'text-ui-text-dim/60'}`}>
             {field.label}
           </span>
           {isEdited && (
-            <span className="text-[10px] font-medium text-coral bg-coral/10 px-1.5 py-0.5 rounded">modified</span>
+            <span className="badge-mini badge-mini-accent">modified</span>
           )}
           {!isEditable && (
-            <span className="text-[10px] font-medium text-muted bg-purple-light/50 px-1.5 py-0.5 rounded">read-only</span>
+            <span className="badge-mini !bg-white/5">read-only</span>
           )}
         </div>
-        <p className="text-xs text-muted mt-0.5">{field.description}</p>
+        <p className="text-[11px] text-ui-text-muted mt-0.5 leading-relaxed opacity-60 group-hover:opacity-100 transition-opacity">{field.description}</p>
       </div>
 
       <div className="flex-shrink-0">
@@ -563,10 +563,10 @@ function ConfigField({
               min={1}
               value={currentValue ?? ''}
               onChange={(e) => onEdit(field.key, parseInt(e.target.value) || 0)}
-              className="w-24 px-3 py-1.5 text-sm bg-purple-medium/80 border-0 rounded-lg text-off-white focus:outline-none focus:ring-2 focus:ring-coral/30"
+              className="w-24 px-3 py-1.5 input-premium font-mono"
             />
           ) : (
-            <span className="text-sm text-purple-gray font-mono">{String(currentValue ?? '')}</span>
+            <span className="text-xs text-ui-text-dim font-mono bg-black/20 px-3 py-1.5 rounded-lg border border-white/5">{String(currentValue ?? '')}</span>
           )
         ) : (
           isEditable ? (
@@ -574,10 +574,10 @@ function ConfigField({
               type="text"
               value={currentValue ?? ''}
               onChange={(e) => onEdit(field.key, e.target.value)}
-              className="w-64 px-3 py-1.5 text-sm bg-purple-medium/80 border-0 rounded-lg text-off-white focus:outline-none focus:ring-2 focus:ring-coral/30 font-mono"
+              className="w-64 px-3 py-1.5 input-premium font-mono"
             />
           ) : (
-            <span className="text-sm text-purple-gray font-mono truncate max-w-[280px] block">{String(currentValue ?? '')}</span>
+            <span className="text-xs text-ui-text-dim font-mono truncate max-w-[280px] block bg-black/20 px-3 py-1.5 rounded-lg border border-white/5">{String(currentValue ?? '')}</span>
           )
         )}
       </div>
@@ -607,22 +607,26 @@ function ConfigSection({
   if (visibleFields.length === 0) return null;
 
   return (
-    <div className="bg-purple-medium/50 backdrop-blur-xl rounded-2xl overflow-hidden">
+    <div className="card-premium overflow-hidden">
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="w-full flex items-center gap-3 px-5 py-4 text-left hover:bg-purple-light/20 transition-colors"
+        className="w-full flex items-center gap-3 px-5 py-4 text-left hover:bg-white/[0.03] transition-all duration-300"
       >
-        <span className="text-coral">{section.icon}</span>
-        <span className="text-sm font-semibold text-off-white flex-1">{section.title}</span>
+        <div className="p-2 rounded-xl bg-coral/5 border border-coral/10 text-coral group-hover:scale-110 transition-transform">
+          {section.icon}
+        </div>
+        <span className="title-standard flex-1">{section.title}</span>
         {editedCount > 0 && (
-          <span className="text-[10px] font-medium text-coral bg-coral/10 px-2 py-0.5 rounded-full">
-            {editedCount} changed
+          <span className="badge-mini badge-mini-accent">
+            {editedCount} pending changes
           </span>
         )}
-        <span className="text-muted flex-shrink-0 ml-1">
-          <span className="text-xs text-muted mr-2">{visibleFields.length}</span>
-          <ChevronIcon open={isOpen} />
-        </span>
+        <div className="flex items-center gap-3">
+          <span className="label-mini opacity-40">{visibleFields.length} fields</span>
+          <div className={`text-ui-text-dim transition-transform duration-300 ${isOpen ? 'rotate-180' : ''}`}>
+            <ChevronIcon open={false} />
+          </div>
+        </div>
       </button>
 
       {isOpen && (
@@ -683,41 +687,43 @@ export function ConfigurationTab() {
 
   return (
     <div className="h-full flex flex-col">
-      {/* Toolbar */}
-      <div className="flex-shrink-0 flex justify-between items-center p-4 bg-purple-medium/30 backdrop-blur-xl border-b border-white/5">
-        <div className="flex items-center gap-3">
-          <span className="text-purple-gray text-sm font-semibold">bugtraceaicli.conf</span>
+      {/* Toolbar - Standard Super Bar */}
+      <div className="flex-shrink-0 flex justify-between items-center p-3 m-4 card-premium !rounded-3xl border-white/10">
+        <div className="flex items-center gap-4 ml-3">
+          <div className="flex flex-col">
+            <span className="label-mini label-mini-accent">Kernel Configuration</span>
+            <span className="title-standard">bugtraceaicli.conf</span>
+          </div>
           {hasChanges && (
-            <span className="text-coral text-xs font-medium bg-coral/10 px-2 py-0.5 rounded-full">
-              {Object.keys(editedFields).length} unsaved change{Object.keys(editedFields).length !== 1 ? 's' : ''}
+            <span className="badge-mini badge-mini-accent animate-pulse shadow-[0_0_10px_rgba(255,127,80,0.2)]">
+              {Object.keys(editedFields).length} Pending Changes
             </span>
           )}
           {version && (
-            <span className="text-muted text-xs font-mono">v{version}</span>
+            <span className="badge-mini opacity-50">v{version}</span>
           )}
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-3 pr-1">
           {saveMessage && (
-            <span className={`text-xs font-medium px-3 py-1.5 rounded-lg ${
-              saveMessage.type === 'success'
-                ? 'text-emerald-400 bg-emerald-500/10'
-                : 'text-red-400 bg-red-500/10'
-            }`}>
+            <span className={`label-mini px-3 py-1.5 rounded-lg border ${saveMessage.type === 'success'
+              ? 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20'
+              : 'text-red-400 bg-red-500/10 border-red-500/20'
+              }`}>
               {saveMessage.text}
             </span>
           )}
           <button
             onClick={handleReload}
-            className="px-3 py-1.5 bg-purple-medium/50 hover:bg-purple-light/50 border-0 text-purple-gray text-sm rounded-lg transition-colors"
+            className="btn-mini btn-mini-secondary h-9 px-5"
           >
-            Reload
+            Reload Intel
           </button>
           <button
             onClick={handleSave}
             disabled={!hasChanges || isSaving}
-            className="px-4 py-1.5 bg-coral-active hover:bg-coral disabled:bg-purple-light disabled:text-muted disabled:cursor-not-allowed text-white text-sm font-medium rounded-lg transition-colors"
+            className="btn-mini btn-mini-primary h-9 px-6 disabled:opacity-30 disabled:grayscale disabled:cursor-not-allowed"
           >
-            {isSaving ? 'Saving...' : 'Save'}
+            {isSaving ? 'Synchronizing...' : 'Commit Changes'}
           </button>
         </div>
       </div>

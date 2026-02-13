@@ -26,53 +26,57 @@ export default {
       colors: {
         // Primary Purple Palette (60%)
         'purple': {
-          'deep': '#2D1B4D',      // Main background
-          'medium': '#3D2B5F',    // Cards, sections
-          'light': '#4D3B6F',     // Hover states
-          'elevated': '#5D4B7F',  // Elevated elements
+          'deep': 'var(--color-purple-deep)',      // Main background
+          'medium': 'var(--color-purple-medium)',    // Cards, sections
+          'light': 'var(--color-purple-light)',     // Hover states
+          'elevated': 'var(--color-purple-elevated)',  // Elevated elements
         },
 
         // Dashboard Colors (darker variants)
         'dashboard': {
-          'bg': '#1A0F2E',                    // Darkest - almost black-purple
-          'card': 'rgba(26, 15, 46, 0.9)',    // Card with transparency
-          'card-solid': '#1A0F2E',            // Solid card background
+          'bg': 'var(--color-dashboard-bg)',
+          'card': 'var(--color-dashboard-card)',
+          'card-solid': 'var(--color-dashboard-card-solid)',
         },
 
         // Accent Colors (10%)
         'coral': {
-          DEFAULT: '#FF7F50',     // Primary CTA
-          'hover': '#FF9B70',
-          'active': '#E56B3C',
+          DEFAULT: 'var(--color-accent-primary)',
+          'hover': 'var(--color-accent-primary-hover)',
+          'active': 'var(--color-accent-primary-active)',
         },
+
+        // Custom Accents
+        'purple-accent': 'var(--color-accent-soft)',
+        'purple-accent-hover': 'var(--color-accent-soft-hover)',
 
         // Status Colors
         'success': {
-          DEFAULT: '#2ECC71',
-          'bg': 'rgba(46, 204, 113, 0.15)',
-          'border': 'rgba(46, 204, 113, 0.3)',
+          DEFAULT: 'var(--color-success)',
+          'bg': 'var(--color-success-bg)',
+          'border': 'var(--color-success-border)',
         },
         'warning': {
-          DEFAULT: '#FFC107',
-          'bg': 'rgba(255, 193, 7, 0.15)',
-          'border': 'rgba(255, 193, 7, 0.3)',
+          DEFAULT: 'var(--color-warning)',
+          'bg': 'var(--color-warning-bg)',
+          'border': 'var(--color-warning-border)',
         },
         'error': {
-          DEFAULT: '#FF3131',
-          'bg': 'rgba(255, 49, 49, 0.15)',
-          'border': 'rgba(255, 49, 49, 0.3)',
+          DEFAULT: 'var(--color-error)',
+          'bg': 'var(--color-error-bg)',
+          'border': 'var(--color-error-border)',
         },
 
         // Text Colors (30%)
-        'off-white': '#F8F9FA',   // Primary text
-        'purple-gray': '#B0A8C0', // Secondary text
-        'muted': '#8A7FA8',       // Tertiary text
+        'off-white': 'var(--color-text-primary)',
+        'purple-gray': 'var(--color-purple-gray)',
+        'muted': 'var(--color-muted)',
 
         // Glass Effects
         'glass': {
-          'bg': 'rgba(61, 43, 95, 0.6)',
-          'border': 'rgba(93, 75, 127, 0.4)',
-          'hover': 'rgba(77, 59, 111, 0.8)',
+          'bg': 'var(--color-glass-bg)',
+          'border': 'var(--color-glass-border)',
+          'hover': 'var(--color-glass-hover)',
         },
       },
 

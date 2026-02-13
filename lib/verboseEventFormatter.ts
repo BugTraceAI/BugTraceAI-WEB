@@ -231,7 +231,7 @@ const CATEGORY_TAGS: Record<string, string> = {
 
 const HUMANIZE: Record<string, string> = {
   xss: 'XSS', sqli: 'SQLi', lfi: 'LFI', ssrf: 'SSRF',
-  csti: 'CSTI', idor: 'IDOR', rce: 'RCE', xxe: 'XXE',
+  csti: 'CSTI', idor: 'IDOR', rce: 'RCE', xxe: 'XXE', openredirect: 'Open Redirect',
   cdp: 'CDP', llm: 'LLM', dom: 'DOM', waf: 'WAF',
   go_fuzzer: 'Go Fuzzer', oob: 'OOB', fp: 'FP',
   gospider: 'GoSpider', nuclei: 'Nuclei', jwt: 'JWT',

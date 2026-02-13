@@ -7,7 +7,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { ScanConfigForm, ScanConfig } from './ScanConfigForm.tsx';
 import { ScanConsole } from './ScanConsole.tsx';
 import { ScanDashboard } from './ScanDashboard.tsx';
-import { TerminalIcon } from '../Icons.tsx';
+import { TerminalIcon, TrashIcon } from '../Icons.tsx';
 import { useScanSocket } from '../../hooks/useScanSocket.ts';
 import { cliApi } from '../../lib/cliApi.ts';
 
@@ -39,6 +39,7 @@ export const ScanTargetTab: React.FC<ScanTargetTabProps> = ({ onScanStart }) => 
   const [scanError, setScanError] = useState<string | null>(null);
   const [runningScan, setRunningScan] = useState<ActiveScan | null>(null);
   const [isStarting, setIsStarting] = useState(false);
+  const [hasFinished, setHasFinished] = useState(false);
   const startingRef = useRef(false);
   const { logs, isConnected, isScanning, subscribe, clearLogs, pipeline, agents, metrics, findings } = useScanSocket();
 
@@ -72,6 +73,7 @@ export const ScanTargetTab: React.FC<ScanTargetTabProps> = ({ onScanStart }) => 
       if (lastLog?.message.includes('[SCAN COMPLETE]') || lastLog?.message.includes('[ERROR]')) {
         setRunningScan(null);
         setIsStarting(false);
+        setHasFinished(true);
       }
     }
   }, [isScanning, logs, runningScan]);
@@ -127,6 +129,7 @@ export const ScanTargetTab: React.FC<ScanTargetTabProps> = ({ onScanStart }) => 
         elapsed_seconds: 0,
       });
 
+      setHasFinished(false);
       subscribe(response.scan_id);
 
       if (onScanStart) {
@@ -138,6 +141,15 @@ export const ScanTargetTab: React.FC<ScanTargetTabProps> = ({ onScanStart }) => 
     } finally {
       startingRef.current = false;
     }
+  };
+
+  const handleClearView = () => {
+    clearLogs();
+    setHasFinished(false);
+    setRunningScan(null);
+    // Note: useScanSocket state should ideally clear here too
+    // For now we rely on the parent/hook to handle the reset if possible
+    window.location.reload(); // Quickest way to clear all hook-based scan state
   };
 
   const isValidUrl = (): boolean => {
@@ -158,7 +170,7 @@ export const ScanTargetTab: React.FC<ScanTargetTabProps> = ({ onScanStart }) => 
       {/* Scan in progress banner - removed as it's now inline */}
 
       {/* Scan config + start button */}
-      <div className="dashboard-card p-3">
+      <div className="card-premium p-4 !rounded-3xl border-white/10">
         <ScanConfigForm
           config={config}
           onChange={handleConfigChange}
@@ -169,39 +181,47 @@ export const ScanTargetTab: React.FC<ScanTargetTabProps> = ({ onScanStart }) => 
             status: runningScan.status
           } : null}
           actionButton={
-            <button
-              onClick={handleStartScan}
-              disabled={!isValidUrl() || scanInProgress}
-              data-testid="scan-start-button"
-              className={`
-              px-6 py-2 rounded-lg font-bold text-xs h-8
-              flex items-center gap-2 transition-all duration-200
-              whitespace-nowrap mt-auto
-              ${isValidUrl() && !scanInProgress
-                  ? 'btn-primary-modern bg-gradient-to-r from-coral to-coral-hover shadow-glow-coral'
-                  : 'bg-purple-medium/50 text-muted border border-white/5 cursor-not-allowed'
+            hasFinished ? (
+              <button
+                onClick={handleClearView}
+                className="btn-mini btn-mini-secondary h-8 px-5 whitespace-nowrap mt-auto"
+              >
+                <TrashIcon className="h-3.5 w-3.5 mr-2" />
+                Clear System
+              </button>
+            ) : (
+              <button
+                onClick={handleStartScan}
+                disabled={!isValidUrl() || scanInProgress}
+                data-testid="scan-start-button"
+                className={`
+                btn-mini h-8 px-6 whitespace-nowrap mt-auto
+                ${isValidUrl() && !scanInProgress
+                    ? 'btn-mini-primary shadow-glow-coral'
+                    : 'btn-mini-secondary opacity-30 grayscale cursor-not-allowed'
+                  }
+              `}
+                title={
+                  scanInProgress
+                    ? 'A scan is already in progress'
+                    : !isValidUrl()
+                      ? 'Please enter a valid target URL'
+                      : 'Start security scan'
                 }
-            `}
-              title={
-                scanInProgress
-                  ? 'A scan is already in progress'
-                  : !isValidUrl()
-                    ? 'Please enter a valid target URL'
-                    : 'Start security scan'
-              }
-            >
-              {scanInProgress ? (
-                <>
-                  <div className="animate-spin rounded-full h-3 w-3 border-2 border-white/30 border-t-white" />
-                  Scanning...
-                </>
-              ) : (
-                <>
-                  <TerminalIcon className="h-3 w-3" />
-                  Start Scan
-                </>
-              )}
-            </button>
+              >
+                {scanInProgress ? (
+                  <>
+                    <div className="animate-spin rounded-full h-3 w-3 border-2 border-white/30 border-t-white mr-2" />
+                    Scanning
+                  </>
+                ) : (
+                  <>
+                    <TerminalIcon className="h-3.5 w-3.5 mr-2" />
+                    Start Scan
+                  </>
+                )}
+              </button>
+            )
           }
         />
 

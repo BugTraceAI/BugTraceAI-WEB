@@ -5,8 +5,8 @@ import { OPEN_ROUTER_MODELS } from '../constants.ts';
 import { DEFAULT_CLI_URL } from '../services/cliConnector.ts';
 
 interface SettingsContextType {
-    theme: 'light' | 'dark';
-    setTheme: (theme: 'light' | 'dark') => void;
+    themeId: string;
+    setThemeId: (id: string) => void;
     apiKeys: ApiKeys;
     setApiKeys: (keys: ApiKeys) => void;
     openRouterModel: string;
@@ -31,7 +31,7 @@ interface SettingsContextType {
 const SettingsContext = createContext<SettingsContextType | undefined>(undefined);
 
 export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-    const [theme, setTheme] = useState<'light' | 'dark'>('dark');
+    const [themeId, setThemeId] = useState<string>('theme-night-v3');
     const [apiKeys, setApiKeys] = useState<ApiKeys>({ openrouter: '' });
     const [openRouterModel, setOpenRouterModel] = useState<string>(OPEN_ROUTER_MODELS[0]);
     const [saveApiKeys, setSaveApiKeys] = useState<boolean>(false);
@@ -57,11 +57,9 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
     useEffect(() => {
         try {
-            const savedTheme = localStorage.getItem('theme') as 'light' | 'dark' | null;
+            const savedTheme = localStorage.getItem('themeId');
             if (savedTheme) {
-                setTheme(savedTheme);
-            } else if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
-                setTheme('dark');
+                setThemeId(savedTheme);
             }
 
             const savedSavePref = localStorage.getItem('saveApiKeys') === 'true';
@@ -71,7 +69,7 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
                 const savedKeys = localStorage.getItem('apiKeys');
                 if (savedKeys) setApiKeys(JSON.parse(savedKeys));
             }
-            
+
             const savedModel = localStorage.getItem('openRouterModel');
             if (savedModel) setOpenRouterModel(savedModel);
 
@@ -84,11 +82,14 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
     useEffect(() => {
         const root = window.document.documentElement;
-        root.classList.remove(theme === 'dark' ? 'light' : 'dark');
-        root.classList.add(theme);
-        try { localStorage.setItem('theme', theme); }
+        // Remove all possible theme classes
+        const themes = ['theme-night-v3', 'theme-cyber-pink', 'theme-forest-hunter', 'theme-deep-sea', 'theme-industrial-gold'];
+        themes.forEach(t => root.classList.remove(t));
+
+        root.classList.add(themeId);
+        try { localStorage.setItem('themeId', themeId); }
         catch (e) { console.error("Could not save theme:", e); }
-    }, [theme]);
+    }, [themeId]);
 
     useEffect(() => {
         try {
@@ -112,14 +113,14 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     }, [cliUrl]);
 
     const value = useMemo(() => ({
-        theme, setTheme,
+        themeId, setThemeId,
         apiKeys, setApiKeys,
         openRouterModel, setOpenRouterModel,
         saveApiKeys, setSaveApiKeys,
         cliUrl, setCliUrl,
         cliConnected, cliStatus, cliVersion, cliDockerAvailable,
         setCli,
-    }), [theme, apiKeys, openRouterModel, saveApiKeys, cliUrl, cliConnected, cliStatus, cliVersion, cliDockerAvailable, setCli]);
+    }), [themeId, setThemeId, apiKeys, openRouterModel, saveApiKeys, cliUrl, cliConnected, cliStatus, cliVersion, cliDockerAvailable, setCli]);
 
     return <SettingsContext.Provider value={value}>{children}</SettingsContext.Provider>;
 };

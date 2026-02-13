@@ -10,44 +10,58 @@ interface DisclaimerModalProps {
 
 export const DisclaimerModal: React.FC<DisclaimerModalProps> = ({ onAccept, onReject }) => {
     return (
-        <div 
+        <div
             className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fade-in"
             aria-modal="true"
             role="dialog"
         >
-            <div 
-                className="bg-purple-deep/95 backdrop-blur-xl border-0 rounded-2xl w-full max-w-2xl shadow-2xl flex flex-col"
+            <div
+                className="card-premium w-full max-w-2xl shadow-2xl flex flex-col overflow-hidden"
             >
-                <header className="flex-shrink-0 flex items-center gap-3 p-4 border-b border-0">
-                    <ShieldExclamationIcon className="h-6 w-6 text-coral" />
-                    <h2 className="text-xl font-bold text-coral-hover">Disclaimer & Terms of Use</h2>
+                <header className="flex-shrink-0 flex items-center gap-3 p-4 border-b border-ui-border bg-ui-bg/50">
+                    <div className="p-2 rounded-xl bg-ui-accent/10 border border-ui-accent/20">
+                        <ShieldExclamationIcon className="h-4 w-4 text-ui-accent" />
+                    </div>
+                    <div className="flex flex-col">
+                        <span className="label-mini text-ui-accent">Usage Policy</span>
+                        <h2 className="title-standard">Disclaimer & Terms of Use</h2>
+                    </div>
                 </header>
 
-                <main className="p-6 text-purple-gray space-y-4 text-sm">
-                    <p>This application is provided for <strong className="text-coral-hover">educational and research purposes only</strong>. It uses generative AI to analyze web applications and assist in identifying potential security vulnerabilities.</p>
-                    <p className="font-semibold text-purple-gray">The AI's output may contain inaccuracies, false positives, or false negatives. It is NOT a substitute for professional security auditing or manual code review.</p>
-                    <p>By using this tool, you acknowledge and agree that:</p>
-                    <ul className="list-disc list-inside space-y-2 pl-4 marker:text-coral">
-                        <li>You will only test applications for which you have <strong className="text-coral-hover">explicit, written permission</strong> from the owner.</li>
-                        <li>You are solely responsible for verifying any findings and for any actions taken based on the tool's output.</li>
-                        <li>The creator of this tool assumes no liability for any misuse or damage caused by this application.</li>
+                <main className="p-6 text-ui-text-dim space-y-4 text-sm bg-dashboard-bg/30">
+                    <p>This application is provided for <strong className="text-ui-accent">educational and research purposes only</strong>. It uses generative AI to analyze web applications and assist in identifying potential security vulnerabilities.</p>
+                    <p className="font-semibold text-ui-text-main/90 bg-ui-bg/40 p-3 rounded-lg border border-ui-border">The AI's output may contain inaccuracies, false positives, or false negatives. It is NOT a substitute for professional security auditing or manual code review.</p>
+                    <p className="text-ui-text-main font-bold text-xs uppercase tracking-wider">By using this tool, you acknowledge and agree that:</p>
+                    <ul className="space-y-3 pl-2">
+                        <li className="flex gap-3">
+                            <span className="text-ui-accent mt-1">•</span>
+                            <span>You will only test applications for which you have <strong className="text-ui-accent">explicit, written permission</strong> from the owner.</span>
+                        </li>
+                        <li className="flex gap-3">
+                            <span className="text-ui-accent mt-1">•</span>
+                            <span>You are solely responsible for verifying any findings and for any actions taken based on the tool's output.</span>
+                        </li>
+                        <li className="flex gap-3">
+                            <span className="text-ui-accent mt-1">•</span>
+                            <span>The creator of this tool assumes no liability for any misuse or damage caused by this application.</span>
+                        </li>
                     </ul>
                 </main>
 
-                <footer className="p-4 bg-black/10 dark:bg-black/20 flex flex-col sm:flex-row justify-between items-center gap-4">
-                    <div className="text-xs text-muted flex items-center gap-1.5">
-                        Made with <HeartIcon className="h-4 w-4 text-red-400"/> by Albert C @yz9yt
+                <footer className="p-4 bg-ui-bg flex flex-col sm:flex-row justify-between items-center gap-4 border-t border-ui-border">
+                    <div className="text-[10px] text-ui-text-dim flex items-center gap-1.5 font-mono">
+                        MADE WITH <HeartIcon className="h-4 w-4 text-red-500/80 animate-pulse" /> BY ALBERT C @YZ9YT
                     </div>
-                    <div className="flex gap-4">
+                    <div className="flex gap-3">
                         <button
                             onClick={onReject}
-                            className="px-6 py-2 bg-red-500/20 border border-red-500/30 text-red-400 font-bold rounded-xl transition-all transform hover:scale-105 hover:bg-red-500/30"
+                            className="btn-mini btn-mini-secondary px-6"
                         >
                             Reject
                         </button>
                         <button
                             onClick={onAccept}
-                            className="px-6 py-2 bg-gradient-to-r from-coral to-purple-elevated text-white font-bold rounded-xl transition-transform transform hover:scale-105 shadow-lg shadow-coral/20"
+                            className="btn-mini btn-mini-primary px-8"
                         >
                             Accept & Continue
                         </button>

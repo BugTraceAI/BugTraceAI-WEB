@@ -77,7 +77,7 @@ export const JsRecon: React.FC<JsReconProps> = ({ onAnalysisStart, onAnalysisCom
           value={code}
           onChange={(e) => setCode(e.target.value)}
           placeholder="const apiKey = 'sk_live_...';\n\nfetch('/api/v1/users', {\n  // ...\n});"
-          className="w-full h-64 p-4 font-mono text-sm bg-purple-medium/60 border-0 rounded-lg text-white focus:ring-2 focus:ring-coral/50 focus:border-coral focus:outline-none transition-all duration-300 resize-y"
+          className="input-premium w-full h-64 font-mono text-sm resize-y"
           disabled={isLoading}
         />
       </div>
@@ -86,15 +86,15 @@ export const JsRecon: React.FC<JsReconProps> = ({ onAnalysisStart, onAnalysisCom
         <button
           onClick={handleAnalyze}
           disabled={isLoading || !code.trim()}
-          className="group relative inline-flex items-center justify-center px-8 py-3 bg-coral-active hover:bg-coral text-white font-bold rounded-lg transition-all duration-300 transform hover:scale-105 disabled:scale-100 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-coral/20 hover:shadow-coral/40"
+          className="btn-mini btn-mini-primary !py-4 px-10 !rounded-2xl !text-sm group"
         >
-          {isLoading ? <Spinner /> : <ScanIcon className="h-5 w-5 mr-2" />}
-          <span className="relative">Analyze JS Code</span>
+          {isLoading ? <Spinner /> : <ScanIcon className="h-5 w-5 mr-3 group-hover:rotate-12 transition-transform" />}
+          Analyze JS Code
         </button>
       </div>
 
       {isLoading && (
-        <div className="mt-6 bg-purple-medium/60 p-4 rounded-lg border-0">
+        <div className="mt-6 bg-ui-input-bg/60 backdrop-blur-sm p-5 rounded-xl border border-ui-border">
            <div className="flex items-center gap-2 text-coral-hover mb-3">
              <TerminalIcon className="h-5 w-5 animate-pulse" />
              <h3 className="font-semibold">Live Recon Log</h3>
