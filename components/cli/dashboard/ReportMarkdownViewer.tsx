@@ -463,6 +463,24 @@ export const ReportMarkdownViewer: React.FC<ReportMarkdownViewerProps> = ({ repo
                   <span>{scanStats.urls_scanned} URLs</span>
                 </>
               )}
+              {scanStats.scan_type && (
+                <>
+                  <span className="text-white/20">&bull;</span>
+                  <span className="text-violet-400 uppercase">{scanStats.scan_type}</span>
+                </>
+              )}
+              {scanStats.max_depth != null && (
+                <>
+                  <span className="text-white/20">&bull;</span>
+                  <span>D:{scanStats.max_depth}</span>
+                </>
+              )}
+              {scanStats.max_urls != null && (
+                <>
+                  <span className="text-white/20">&bull;</span>
+                  <span>Max:{scanStats.max_urls}</span>
+                </>
+              )}
             </div>
           </div>
 

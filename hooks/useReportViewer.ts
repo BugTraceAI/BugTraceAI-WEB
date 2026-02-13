@@ -47,6 +47,9 @@ export interface ScanStats {
     technologies: TechEntry[];
     waf: string[];
   };
+  scan_type?: string;
+  max_depth?: number;
+  max_urls?: number;
 }
 
 interface UseReportViewerReturn {
