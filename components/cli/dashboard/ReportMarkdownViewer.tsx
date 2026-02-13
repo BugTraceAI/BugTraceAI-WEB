@@ -202,9 +202,21 @@ export const ReportMarkdownViewer: React.FC<ReportMarkdownViewerProps> = ({ repo
     handleCategoryClick(cat);
   }
 
-  const handleDownload = (filename: string) => {
+  const handleDownload = async (filename: string) => {
     const fileUrl = `${CLI_API_URL}/api/scans/${report.id}/files/${filename}`;
-    window.open(fileUrl, '_blank');
+    try {
+      const res = await fetch(fileUrl);
+      if (!res.ok) throw new Error(`${res.status}`);
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch {
+      alert(`Could not download ${filename}. Check that the CLI API is reachable.`);
+    }
   };
 
   const handleDownloadAll = async () => {
@@ -602,7 +614,11 @@ export const ReportMarkdownViewer: React.FC<ReportMarkdownViewerProps> = ({ repo
           <div>
             {filteredFindings.length === 0 ? (
               <div className="text-center py-12">
-                <p className="text-muted">No findings to display</p>
+                <p className="text-muted">
+                  {(selectedSeverity !== 'all' || selectedCategory) && findings.length > 0
+                    ? `No findings match this filter (${findings.length} total — click "Clear Filter" to see all)`
+                    : 'No findings to display'}
+                </p>
               </div>
             ) : (
               <>

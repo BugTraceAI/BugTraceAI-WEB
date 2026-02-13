@@ -63,9 +63,9 @@ export function useCliConnection(options: UseCliConnectionOptions = {}) {
     };
   }, [autoConnect, cliUrl, checkConnection]);
 
-  // Periodic health check
+  // Periodic health check — polls whenever URL is configured (not just when connected)
   useEffect(() => {
-    if (!cliConnected || !cliUrl) {
+    if (!cliUrl) {
       if (intervalRef.current) {
         clearInterval(intervalRef.current);
         intervalRef.current = null;
@@ -81,7 +81,7 @@ export function useCliConnection(options: UseCliConnectionOptions = {}) {
         intervalRef.current = null;
       }
     };
-  }, [cliConnected, cliUrl, pollInterval, checkConnection]);
+  }, [cliUrl, pollInterval, checkConnection]);
 
   const connect = useCallback(async () => {
     await checkConnection();
