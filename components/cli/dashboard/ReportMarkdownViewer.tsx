@@ -11,6 +11,7 @@ import JSZip from 'jszip';
 import { MarkdownRenderer } from '../../MarkdownRenderer.tsx';
 import { ArrowPathIcon, ArrowDownTrayIcon, DocumentTextIcon } from '../../Icons.tsx';
 import { useReportViewer, Finding, ScanStats } from '../../../hooks/useReportViewer.ts';
+import type { FindingItem } from '../../../lib/cliApi.ts';
 
 interface CLIReport {
   id: string;
@@ -37,6 +38,7 @@ const SEVERITY_COLORS: Record<string, { bg: string; text: string; dot: string; b
   high: { bg: 'bg-orange-500/15', text: 'text-orange-400', dot: 'bg-orange-500', bar: 'bg-orange-500', fill: '#f97316' },
   medium: { bg: 'bg-yellow-500/15', text: 'text-yellow-400', dot: 'bg-yellow-500', bar: 'bg-yellow-500', fill: '#eab308' },
   low: { bg: 'bg-blue-500/15', text: 'text-blue-400', dot: 'bg-blue-500', bar: 'bg-blue-500', fill: '#3b82f6' },
+  info: { bg: 'bg-slate-500/15', text: 'text-slate-400', dot: 'bg-slate-500', bar: 'bg-slate-500', fill: '#64748b' },
 };
 
 const downloadFiles = [
@@ -136,6 +138,7 @@ export const ReportMarkdownViewer: React.FC<ReportMarkdownViewerProps> = ({ repo
   const {
     markdown,
     findings,
+    detections,
     scanStats,
     loading,
     error,
@@ -153,8 +156,10 @@ export const ReportMarkdownViewer: React.FC<ReportMarkdownViewerProps> = ({ repo
   const [zipping, setZipping] = useState(false);
   const [sendingToChat, setSendingToChat] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
-  const [activeTab, setActiveTab] = useState<'findings' | 'report'>('findings');
+  const [detectionsPage, setDetectionsPage] = useState(1);
+  const [activeTab, setActiveTab] = useState<'findings' | 'detections' | 'report'>('findings');
   const [expandedIdx, setExpandedIdx] = useState<number | null>(null);
+  const [expandedDetIdx, setExpandedDetIdx] = useState<number | null>(null);
   const [showMetrics, setShowMetrics] = useState(false);
   const CLI_API_URL = import.meta.env.VITE_CLI_API_URL || 'http://localhost:8000';
   const WEB_API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
@@ -187,6 +192,13 @@ export const ReportMarkdownViewer: React.FC<ReportMarkdownViewerProps> = ({ repo
   const paginatedFindings = filteredFindings.slice(
     (currentPage - 1) * ITEMS_PER_PAGE,
     currentPage * ITEMS_PER_PAGE,
+  );
+
+  // Detections pagination
+  const detTotalPages = Math.max(1, Math.ceil(detections.length / ITEMS_PER_PAGE));
+  const paginatedDetections = detections.slice(
+    (detectionsPage - 1) * ITEMS_PER_PAGE,
+    detectionsPage * ITEMS_PER_PAGE,
   );
 
   // Reset page when filter changes
@@ -594,6 +606,17 @@ export const ReportMarkdownViewer: React.FC<ReportMarkdownViewerProps> = ({ repo
           >
             Findings ({filteredFindings.length})
           </button>
+          {detections.length > 0 && (
+            <button
+              onClick={() => setActiveTab('detections')}
+              className={`px-5 py-3 text-xs font-semibold uppercase tracking-wider transition-colors ${activeTab === 'detections'
+                ? 'text-coral border-b-2 border-coral'
+                : 'text-muted hover:text-purple-gray'
+                }`}
+            >
+              Detections ({detections.length})
+            </button>
+          )}
           {markdown && (
             <button
               onClick={() => setActiveTab('report')}
@@ -811,6 +834,139 @@ export const ReportMarkdownViewer: React.FC<ReportMarkdownViewerProps> = ({ repo
                     <button
                       onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
                       disabled={currentPage === totalPages}
+                      className="px-3 py-1 rounded-lg text-xs text-purple-gray hover:text-white bg-purple-light/40 hover:bg-purple-elevated/50 transition-all disabled:opacity-30 disabled:cursor-not-allowed"
+                    >
+                      Next
+                    </button>
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
+        ) : activeTab === 'detections' ? (
+          /* ── DETECTIONS LIST (all DB findings) ── */
+          <div>
+            {detections.length === 0 ? (
+              <div className="text-center py-12">
+                <p className="text-muted">No detections recorded for this scan</p>
+              </div>
+            ) : (
+              <>
+                {/* Table header */}
+                <div className="grid grid-cols-[1fr_90px_100px_80px_160px] text-[9px] text-muted uppercase tracking-widest px-4 py-2 border-b border-glass-border/10">
+                  <span className="font-bold">Type</span>
+                  <span className="font-bold">Severity</span>
+                  <span className="font-bold">Status</span>
+                  <span className="font-bold">Confidence</span>
+                  <span className="font-bold">Parameter</span>
+                </div>
+
+                {/* Rows */}
+                <div className="divide-y divide-glass-border/10">
+                  {paginatedDetections.map((det, i) => {
+                    const globalIdx = (detectionsPage - 1) * ITEMS_PER_PAGE + i;
+                    const isExpanded = expandedDetIdx === globalIdx;
+                    const sev = det.severity.toLowerCase();
+                    const colors = SEVERITY_COLORS[sev] || SEVERITY_COLORS.info;
+                    const statusLabel = det.validated ? 'Confirmed' : 'Unconfirmed';
+                    const statusColor = det.validated
+                      ? 'text-emerald-400 bg-emerald-500/15'
+                      : 'text-amber-400 bg-amber-500/15';
+
+                    return (
+                      <div key={det.finding_id}>
+                        <button
+                          type="button"
+                          onClick={() => setExpandedDetIdx(isExpanded ? null : globalIdx)}
+                          className={`w-full grid grid-cols-[1fr_90px_100px_80px_160px] items-center px-4 py-2 text-left transition-colors hover:bg-purple-light/20 ${isExpanded ? 'bg-purple-light/15' : ''}`}
+                        >
+                          <div className="flex items-center gap-2 min-w-0">
+                            <svg className={`h-3 w-3 flex-shrink-0 text-muted transition-transform ${isExpanded ? 'rotate-90' : ''}`} fill="currentColor" viewBox="0 0 20 20">
+                              <path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd" />
+                            </svg>
+                            <p className="text-xs font-bold text-white tracking-tight truncate">{det.type}</p>
+                          </div>
+                          <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase w-fit ${colors.bg} ${colors.text}`}>
+                            <span className={`w-1.5 h-1.5 rounded-full ${colors.dot}`} />
+                            {det.severity}
+                          </span>
+                          <span className={`px-2 py-0.5 rounded-full text-[10px] font-medium w-fit ${statusColor}`}>
+                            {statusLabel}
+                          </span>
+                          <span className="text-sm text-white font-mono">
+                            {det.confidence != null && det.confidence > 0 ? `${Math.round(det.confidence * 100)}%` : '-'}
+                          </span>
+                          <span className="text-xs text-purple-gray truncate" title={det.parameter || ''}>
+                            {det.parameter || '-'}
+                          </span>
+                        </button>
+
+                        {/* Expanded detail panel */}
+                        {isExpanded && (
+                          <div className="px-5 pb-5 pt-3 bg-purple-light/10 border-t border-glass-border/10">
+                            <div className="grid grid-cols-3 gap-4">
+                              <div className="col-span-2 space-y-3">
+                                {det.details && (
+                                  <div>
+                                    <p className="text-[10px] text-muted uppercase tracking-wider font-semibold mb-1">Details</p>
+                                    <p className="text-sm text-purple-gray leading-relaxed">{det.details}</p>
+                                  </div>
+                                )}
+                                {det.payload && (
+                                  <div>
+                                    <p className="text-[10px] text-muted uppercase tracking-wider font-semibold mb-1">Payload</p>
+                                    <p className="text-xs text-coral font-mono break-all bg-black/20 rounded px-2 py-1">{det.payload}</p>
+                                  </div>
+                                )}
+                              </div>
+                              <div className="space-y-3">
+                                <div className="rounded-xl p-3 bg-purple-medium/30 border border-white/5 space-y-2">
+                                  <p className="text-[10px] text-muted uppercase tracking-wider font-semibold">Technical Details</p>
+                                  {det.parameter && (
+                                    <div>
+                                      <span className="text-[10px] text-muted">Parameter</span>
+                                      <p className="text-xs text-white font-mono break-all">{det.parameter}</p>
+                                    </div>
+                                  )}
+                                  {det.url && (
+                                    <div>
+                                      <span className="text-[10px] text-muted">URL</span>
+                                      <p className="text-xs text-coral/80 font-mono break-all">{det.url}</p>
+                                    </div>
+                                  )}
+                                  <div>
+                                    <span className="text-[10px] text-muted">Finding ID</span>
+                                    <p className="text-xs text-purple-gray font-mono">#{det.finding_id}</p>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* Pagination */}
+                <div className="flex items-center justify-between px-5 py-3 border-t border-glass-border/20">
+                  <span className="text-xs text-muted">
+                    Showing {((detectionsPage - 1) * ITEMS_PER_PAGE) + 1}-{Math.min(detectionsPage * ITEMS_PER_PAGE, detections.length)} of {detections.length} detections
+                  </span>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => setDetectionsPage(p => Math.max(1, p - 1))}
+                      disabled={detectionsPage === 1}
+                      className="px-3 py-1 rounded-lg text-xs text-purple-gray hover:text-white bg-purple-light/40 hover:bg-purple-elevated/50 transition-all disabled:opacity-30 disabled:cursor-not-allowed"
+                    >
+                      Previous
+                    </button>
+                    <span className="text-xs text-purple-gray">
+                      {detectionsPage} / {detTotalPages}
+                    </span>
+                    <button
+                      onClick={() => setDetectionsPage(p => Math.min(detTotalPages, p + 1))}
+                      disabled={detectionsPage === detTotalPages}
                       className="px-3 py-1 rounded-lg text-xs text-purple-gray hover:text-white bg-purple-light/40 hover:bg-purple-elevated/50 transition-all disabled:opacity-30 disabled:cursor-not-allowed"
                     >
                       Next

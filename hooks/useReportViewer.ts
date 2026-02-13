@@ -1,7 +1,7 @@
 // hooks/useReportViewer.ts
 // Custom hook for loading and filtering report markdown and findings
 import { useState, useEffect } from 'react';
-import { CLI_API_URL } from '../lib/cliApi';
+import { CLI_API_URL, FindingItem } from '../lib/cliApi';
 
 export interface Finding {
   id?: string;
@@ -52,6 +52,7 @@ export interface ScanStats {
 interface UseReportViewerReturn {
   markdown: string;
   findings: Finding[];
+  detections: FindingItem[];
   scanStats: ScanStats | null;
   loading: boolean;
   error: string | null;
@@ -68,6 +69,7 @@ interface UseReportViewerReturn {
 export const useReportViewer = (reportId: string): UseReportViewerReturn => {
   const [markdown, setMarkdown] = useState<string>('');
   const [findings, setFindings] = useState<Finding[]>([]);
+  const [detections, setDetections] = useState<FindingItem[]>([]);
   const [scanStats, setScanStats] = useState<ScanStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -78,11 +80,12 @@ export const useReportViewer = (reportId: string): UseReportViewerReturn => {
     setLoading(true);
     setError(null);
     try {
-      // Fetch markdown, findings, and engagement data
-      const [mdResponse, findingsResponse, engagementResponse] = await Promise.all([
+      // Fetch markdown, findings, engagement data, and all detections from DB
+      const [mdResponse, findingsResponse, engagementResponse, detectionsResponse] = await Promise.all([
         fetch(`${CLI_API_URL}/api/scans/${reportId}/files/final_report.md`).catch(() => null),
         fetch(`${CLI_API_URL}/api/scans/${reportId}/files/validated_findings.json`).catch(() => null),
         fetch(`${CLI_API_URL}/api/scans/${reportId}/files/engagement_data.json`).catch(() => null),
+        fetch(`${CLI_API_URL}/api/scans/${reportId}/findings?per_page=200`).catch(() => null),
       ]);
 
       let hasMarkdown = false;
@@ -100,6 +103,14 @@ export const useReportViewer = (reportId: string): UseReportViewerReturn => {
           const items = data.findings || [];
           setFindings(items);
           hasFindings = items.length > 0;
+        } catch { /* malformed JSON */ }
+      }
+
+      // Parse all detections from DB endpoint
+      if (detectionsResponse?.ok) {
+        try {
+          const data = await detectionsResponse.json();
+          setDetections(data.findings || []);
         } catch { /* malformed JSON */ }
       }
 
@@ -149,6 +160,7 @@ export const useReportViewer = (reportId: string): UseReportViewerReturn => {
   return {
     markdown,
     findings,
+    detections,
     scanStats,
     loading,
     error,
