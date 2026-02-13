@@ -104,6 +104,12 @@ const CONFIG_SECTIONS: SectionDef[] = [
     ],
   },
   {
+    id: 'skeptical_thresholds',
+    title: 'Skeptical Thresholds',
+    icon: <ShieldIcon />,
+    fields: [], // Rendered by ThresholdsSection (dict type, not flat fields)
+  },
+  {
     id: 'authority',
     title: 'Authority & Skeptical',
     icon: <LockIcon />,
@@ -393,8 +399,8 @@ const CONFIG_SECTIONS: SectionDef[] = [
   },
 ];
 
-// All keys that are explicitly mapped in sections
-const MAPPED_KEYS = new Set(CONFIG_SECTIONS.flatMap(s => s.fields.map(f => f.key)));
+// All keys that are explicitly mapped in sections (includes dict-type keys handled by custom components)
+const MAPPED_KEYS = new Set([...CONFIG_SECTIONS.flatMap(s => s.fields.map(f => f.key)), 'SKEPTICAL_THRESHOLDS']);
 
 // --- Inline icons ---
 
@@ -646,6 +652,91 @@ function ConfigSection({
   );
 }
 
+// --- Skeptical Thresholds Section (dict type) ---
+
+const THRESHOLD_META: Record<string, { label: string; description: string; severity: 'critical' | 'high' | 'medium' }> = {
+  RCE: { label: 'RCE', description: 'Remote Code Execution', severity: 'critical' },
+  SQL: { label: 'SQLi', description: 'SQL Injection', severity: 'critical' },
+  XXE: { label: 'XXE', description: 'XML External Entity', severity: 'high' },
+  SSRF: { label: 'SSRF', description: 'Server-Side Request Forgery', severity: 'high' },
+  LFI: { label: 'LFI', description: 'Local File Inclusion', severity: 'high' },
+  XSS: { label: 'XSS', description: 'Cross-Site Scripting', severity: 'medium' },
+  CSTI: { label: 'CSTI', description: 'Client-Side Template Injection', severity: 'medium' },
+  SSTI: { label: 'SSTI', description: 'Server-Side Template Injection', severity: 'high' },
+  TEMPLATE: { label: 'Template', description: 'Template Injection (catch-all)', severity: 'medium' },
+  JWT: { label: 'JWT', description: 'JSON Web Token attacks', severity: 'medium' },
+  FILE_UPLOAD: { label: 'File Upload', description: 'Unrestricted file upload', severity: 'medium' },
+  IDOR: { label: 'IDOR', description: 'Insecure Direct Object Reference', severity: 'medium' },
+  DEFAULT: { label: 'Default', description: 'Fallback for unknown types', severity: 'medium' },
+};
+
+const SEVERITY_COLORS = {
+  critical: 'text-red-400',
+  high: 'text-orange-400',
+  medium: 'text-yellow-400',
+};
+
+function ThresholdsSection({ config, defaultOpen }: { config: Record<string, any>; defaultOpen?: boolean }) {
+  const [isOpen, setIsOpen] = useState(defaultOpen ?? false);
+  const thresholds: Record<string, number> | undefined = config.SKEPTICAL_THRESHOLDS;
+
+  if (!thresholds || typeof thresholds !== 'object') return null;
+
+  const entries = Object.entries(thresholds);
+
+  return (
+    <div className="card-premium overflow-hidden">
+      <button
+        onClick={() => setIsOpen(!isOpen)}
+        className="w-full flex items-center gap-3 px-5 py-4 text-left hover:bg-white/[0.03] transition-all duration-300"
+      >
+        <div className="p-2 rounded-xl bg-coral/5 border border-coral/10 text-coral">
+          <ShieldIcon />
+        </div>
+        <span className="title-standard flex-1">Skeptical Thresholds</span>
+        <div className="flex items-center gap-3">
+          <span className="label-mini opacity-40">{entries.length} thresholds</span>
+          <div className={`text-ui-text-dim transition-transform duration-300 ${isOpen ? 'rotate-180' : ''}`}>
+            <ChevronIcon open={false} />
+          </div>
+        </div>
+      </button>
+
+      {isOpen && (
+        <div className="px-2 pb-3">
+          <p className="text-[11px] text-ui-text-muted px-3 pb-3 leading-relaxed opacity-60">
+            Minimum confidence score (0-10) for findings to pass to specialist agents. Lower = more permissive, Higher = stricter.
+          </p>
+          <div className="space-y-0.5">
+            {entries.map(([key, value]) => {
+              const meta = THRESHOLD_META[key];
+              const severityColor = meta ? SEVERITY_COLORS[meta.severity] : 'text-ui-text-dim';
+              return (
+                <div key={key} className="group flex items-center justify-between py-2 px-3 rounded-xl hover:bg-white/[0.03] border border-transparent">
+                  <div className="flex-1 min-w-0 mr-4">
+                    <div className="flex items-center gap-2">
+                      <span className={`text-[13px] font-bold tracking-tight ${severityColor}`}>
+                        {meta?.label ?? key}
+                      </span>
+                      <span className="badge-mini !bg-white/5">read-only</span>
+                    </div>
+                    <p className="text-[11px] text-ui-text-muted mt-0.5 leading-relaxed opacity-60 group-hover:opacity-100 transition-opacity">
+                      {meta?.description ?? key}
+                    </p>
+                  </div>
+                  <span className="text-xs text-ui-text-dim font-mono bg-black/20 px-3 py-1.5 rounded-lg border border-white/5">
+                    {value}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // --- Main Component ---
 
 export function ConfigurationTab() {
@@ -730,16 +821,20 @@ export function ConfigurationTab() {
 
       {/* Sections */}
       <div className="flex-1 overflow-y-auto p-4 space-y-3">
-        {CONFIG_SECTIONS.map((section, i) => (
-          <ConfigSection
-            key={section.id}
-            section={section}
-            config={config}
-            editedFields={editedFields}
-            onEdit={handleEdit}
-            defaultOpen={i < 5}
-          />
-        ))}
+        {CONFIG_SECTIONS.map((section, i) =>
+          section.id === 'skeptical_thresholds' ? (
+            <ThresholdsSection key={section.id} config={config} defaultOpen={i < 5} />
+          ) : (
+            <ConfigSection
+              key={section.id}
+              section={section}
+              config={config}
+              editedFields={editedFields}
+              onEdit={handleEdit}
+              defaultOpen={i < 5}
+            />
+          )
+        )}
 
         {otherSection && (
           <ConfigSection
