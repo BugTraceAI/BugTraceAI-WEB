@@ -44,8 +44,6 @@ const downloadFiles = [
   { filename: 'validated_findings.json', label: 'Validated', icon: 'JSON' },
   { filename: 'raw_findings.json', label: 'Raw', icon: 'JSON' },
   { filename: 'engagement_data.json', label: 'Engagement', icon: 'JSON' },
-  { filename: 'validated_findings.md', label: 'Validated', icon: 'MD' },
-  { filename: 'raw_findings.md', label: 'Raw MD', icon: 'MD' },
 ];
 
 const formatDate = (dateString: string | null): string => {
