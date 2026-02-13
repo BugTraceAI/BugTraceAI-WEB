@@ -155,6 +155,7 @@ export const ReportMarkdownViewer: React.FC<ReportMarkdownViewerProps> = ({ repo
   const navigate = useNavigate();
   const [zipping, setZipping] = useState(false);
   const [sendingToChat, setSendingToChat] = useState(false);
+  const [sendingFindingId, setSendingFindingId] = useState<string | number | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [detectionsPage, setDetectionsPage] = useState(1);
   const [activeTab, setActiveTab] = useState<'findings' | 'detections' | 'report'>('findings');
@@ -193,6 +194,30 @@ export const ReportMarkdownViewer: React.FC<ReportMarkdownViewerProps> = ({ repo
     (currentPage - 1) * ITEMS_PER_PAGE,
     currentPage * ITEMS_PER_PAGE,
   );
+
+  // Build enhanced markdown with detections table appended
+  const fullMarkdown = useMemo(() => {
+    if (!markdown || detections.length === 0) return markdown;
+    const rows = detections.map(d => {
+      const conf = d.confidence != null && d.confidence > 0 ? `${Math.round(d.confidence * 100)}%` : '-';
+      const status = d.validated ? 'Confirmed' : 'Unconfirmed';
+      return `| ${d.type} | ${d.severity} | ${status} | ${conf} | ${d.parameter || '-'} | ${d.url || '-'} |`;
+    });
+    const table = [
+      '',
+      '---',
+      '',
+      '## All Detections',
+      '',
+      `> ${detections.length} vulnerabilities detected during the discovery phase. Only confirmed (validated) findings appear in the report above.`,
+      '',
+      '| Type | Severity | Status | Confidence | Parameter | URL |',
+      '|------|----------|--------|------------|-----------|-----|',
+      ...rows,
+      '',
+    ].join('\n');
+    return markdown + table;
+  }, [markdown, detections]);
 
   // Detections pagination
   const detTotalPages = Math.max(1, Math.ceil(detections.length / ITEMS_PER_PAGE));
@@ -307,6 +332,88 @@ export const ReportMarkdownViewer: React.FC<ReportMarkdownViewerProps> = ({ repo
       console.error('Failed to send report to chat:', err);
     } finally {
       setSendingToChat(false);
+    }
+  };
+
+  // Send a single validated finding to chat
+  const handleSendFindingToChat = async (f: Finding, e: React.MouseEvent) => {
+    e.stopPropagation();
+    const fid = f.id || f.title;
+    setSendingFindingId(fid);
+    try {
+      let msg = `I found a **${f.severity}** vulnerability on **${report.target_url}** and need your analysis.\n\n`;
+      msg += `## ${f.title}\n\n`;
+      if (f.type && f.type !== f.title) msg += `- **Type:** ${f.type}\n`;
+      msg += `- **Severity:** ${f.severity}\n`;
+      if (f.cvss_score != null) msg += `- **CVSS:** ${f.cvss_score}${f.cvss_vector ? ` (${f.cvss_vector})` : ''}\n`;
+      if (f.url) msg += `- **URL:** ${f.url}\n`;
+      if (f.parameter) msg += `- **Parameter:** ${f.parameter}\n`;
+      if (f.payload) msg += `- **Payload:** \`${f.payload}\`\n`;
+      msg += `\n${f.description}\n`;
+      if (f.impact) msg += `\n### Impact\n${f.impact}\n`;
+      if (f.exploitation_details) msg += `\n### Exploitation Details\n${f.exploitation_details}\n`;
+      if (f.remediation) msg += `\n### Suggested Remediation\n${f.remediation}\n`;
+      if (f.evidence) msg += `\n### Evidence\n${f.evidence}\n`;
+      if (f.llm_reproduction_steps?.length) {
+        msg += `\n### Reproduction Steps\n`;
+        f.llm_reproduction_steps.forEach((s, i) => { msg += `${i + 1}. ${s}\n`; });
+      }
+
+      const sessionRes = await fetch(`${WEB_API_URL}/chats`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ session_type: 'websec', title: `${f.title} — ${report.target_url}` }),
+      });
+      if (!sessionRes.ok) throw new Error('Failed to create chat session');
+      const { data: session } = await sessionRes.json();
+
+      await fetch(`${WEB_API_URL}/chats/${session.id}/messages/bulk`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ messages: [{ role: 'user', content: msg }] }),
+      });
+      navigate(`/chat/${session.id}`);
+    } catch (err) {
+      console.error('Failed to send finding to chat:', err);
+    } finally {
+      setSendingFindingId(null);
+    }
+  };
+
+  // Send a single detection to chat
+  const handleSendDetectionToChat = async (d: FindingItem, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setSendingFindingId(d.finding_id);
+    try {
+      let msg = `I have a **${d.severity}** detection on **${report.target_url}** that needs analysis.\n\n`;
+      msg += `## ${d.type}\n\n`;
+      msg += `- **Severity:** ${d.severity}\n`;
+      msg += `- **Status:** ${d.validated ? 'Confirmed' : 'Unconfirmed'}\n`;
+      if (d.confidence != null && d.confidence > 0) msg += `- **Confidence:** ${Math.round(d.confidence * 100)}%\n`;
+      if (d.url) msg += `- **URL:** ${d.url}\n`;
+      if (d.parameter) msg += `- **Parameter:** ${d.parameter}\n`;
+      if (d.payload) msg += `- **Payload:** \`${d.payload}\`\n`;
+      if (d.details) msg += `\n### Details\n${d.details}\n`;
+      msg += `\nPlease analyze this detection: is it likely a true positive? What additional testing would confirm it? What's the potential impact and remediation?`;
+
+      const sessionRes = await fetch(`${WEB_API_URL}/chats`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ session_type: 'websec', title: `${d.type} — ${report.target_url}` }),
+      });
+      if (!sessionRes.ok) throw new Error('Failed to create chat session');
+      const { data: session } = await sessionRes.json();
+
+      await fetch(`${WEB_API_URL}/chats/${session.id}/messages/bulk`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ messages: [{ role: 'user', content: msg }] }),
+      });
+      navigate(`/chat/${session.id}`);
+    } catch (err) {
+      console.error('Failed to send detection to chat:', err);
+    } finally {
+      setSendingFindingId(null);
     }
   };
 
@@ -644,12 +751,13 @@ export const ReportMarkdownViewer: React.FC<ReportMarkdownViewerProps> = ({ repo
             ) : (
               <>
                 {/* Table header */}
-                <div className="grid grid-cols-[1fr_90px_80px_60px_160px] text-[9px] text-muted uppercase tracking-widest px-4 py-2 border-b border-glass-border/10">
+                <div className="grid grid-cols-[1fr_90px_80px_60px_160px_36px] text-[9px] text-muted uppercase tracking-widest px-4 py-2 border-b border-glass-border/10">
                   <span className="font-bold">Finding Name</span>
                   <span className="font-bold">Severity</span>
                   <span className="font-bold">Status</span>
                   <span className="font-bold">CVSS</span>
                   <span className="font-bold">URL</span>
+                  <span />
                 </div>
 
                 {/* Rows */}
@@ -670,7 +778,7 @@ export const ReportMarkdownViewer: React.FC<ReportMarkdownViewerProps> = ({ repo
                         <button
                           type="button"
                           onClick={() => setExpandedIdx(isExpanded ? null : globalIdx)}
-                          className={`w-full grid grid-cols-[1fr_90px_80px_60px_160px] items-center px-4 py-2 text-left transition-colors hover:bg-purple-light/20 ${isExpanded ? 'bg-purple-light/15' : ''}`}
+                          className={`w-full grid grid-cols-[1fr_90px_80px_60px_160px_36px] items-center px-4 py-2 text-left transition-colors hover:bg-purple-light/20 ${isExpanded ? 'bg-purple-light/15' : ''}`}
                         >
                           <div className="flex items-center gap-2 min-w-0">
                             <svg className={`h-3 w-3 flex-shrink-0 text-muted transition-transform ${isExpanded ? 'rotate-90' : ''}`} fill="currentColor" viewBox="0 0 20 20">
@@ -695,6 +803,21 @@ export const ReportMarkdownViewer: React.FC<ReportMarkdownViewerProps> = ({ repo
                           </span>
                           <span className="text-xs text-coral/70 truncate" title={finding.url || ''}>
                             {finding.url || '-'}
+                          </span>
+                          <span
+                            role="button"
+                            tabIndex={0}
+                            title="Send to Chat"
+                            onClick={(e) => handleSendFindingToChat(finding, e)}
+                            className="flex items-center justify-center w-7 h-7 rounded-lg text-muted hover:text-coral hover:bg-coral/10 transition-colors cursor-pointer"
+                          >
+                            {sendingFindingId === (finding.id || finding.title) ? (
+                              <ArrowPathIcon className="h-3.5 w-3.5 animate-spin" />
+                            ) : (
+                              <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M8.625 12a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0H8.25m4.125 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0H12m4.125 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0h-.375M21 12c0 4.556-4.03 8.25-9 8.25a9.764 9.764 0 0 1-2.555-.337A5.972 5.972 0 0 1 5.41 20.97a5.969 5.969 0 0 1-.474-.065 4.48 4.48 0 0 0 .978-2.025c.09-.457-.133-.901-.467-1.226C3.93 16.178 3 14.189 3 12c0-4.556 4.03-8.25 9-8.25s9 3.694 9 8.25Z" />
+                              </svg>
+                            )}
                           </span>
                         </button>
 
@@ -853,12 +976,13 @@ export const ReportMarkdownViewer: React.FC<ReportMarkdownViewerProps> = ({ repo
             ) : (
               <>
                 {/* Table header */}
-                <div className="grid grid-cols-[1fr_90px_100px_80px_160px] text-[9px] text-muted uppercase tracking-widest px-4 py-2 border-b border-glass-border/10">
+                <div className="grid grid-cols-[1fr_90px_100px_80px_160px_36px] text-[9px] text-muted uppercase tracking-widest px-4 py-2 border-b border-glass-border/10">
                   <span className="font-bold">Type</span>
                   <span className="font-bold">Severity</span>
                   <span className="font-bold">Status</span>
                   <span className="font-bold">Confidence</span>
                   <span className="font-bold">Parameter</span>
+                  <span />
                 </div>
 
                 {/* Rows */}
@@ -878,7 +1002,7 @@ export const ReportMarkdownViewer: React.FC<ReportMarkdownViewerProps> = ({ repo
                         <button
                           type="button"
                           onClick={() => setExpandedDetIdx(isExpanded ? null : globalIdx)}
-                          className={`w-full grid grid-cols-[1fr_90px_100px_80px_160px] items-center px-4 py-2 text-left transition-colors hover:bg-purple-light/20 ${isExpanded ? 'bg-purple-light/15' : ''}`}
+                          className={`w-full grid grid-cols-[1fr_90px_100px_80px_160px_36px] items-center px-4 py-2 text-left transition-colors hover:bg-purple-light/20 ${isExpanded ? 'bg-purple-light/15' : ''}`}
                         >
                           <div className="flex items-center gap-2 min-w-0">
                             <svg className={`h-3 w-3 flex-shrink-0 text-muted transition-transform ${isExpanded ? 'rotate-90' : ''}`} fill="currentColor" viewBox="0 0 20 20">
@@ -898,6 +1022,21 @@ export const ReportMarkdownViewer: React.FC<ReportMarkdownViewerProps> = ({ repo
                           </span>
                           <span className="text-xs text-purple-gray truncate" title={det.parameter || ''}>
                             {det.parameter || '-'}
+                          </span>
+                          <span
+                            role="button"
+                            tabIndex={0}
+                            title="Send to Chat"
+                            onClick={(e) => handleSendDetectionToChat(det, e)}
+                            className="flex items-center justify-center w-7 h-7 rounded-lg text-muted hover:text-coral hover:bg-coral/10 transition-colors cursor-pointer"
+                          >
+                            {sendingFindingId === det.finding_id ? (
+                              <ArrowPathIcon className="h-3.5 w-3.5 animate-spin" />
+                            ) : (
+                              <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M8.625 12a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0H8.25m4.125 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0H12m4.125 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0h-.375M21 12c0 4.556-4.03 8.25-9 8.25a9.764 9.764 0 0 1-2.555-.337A5.972 5.972 0 0 1 5.41 20.97a5.969 5.969 0 0 1-.474-.065 4.48 4.48 0 0 0 .978-2.025c.09-.457-.133-.901-.467-1.226C3.93 16.178 3 14.189 3 12c0-4.556 4.03-8.25 9-8.25s9 3.694 9 8.25Z" />
+                              </svg>
+                            )}
                           </span>
                         </button>
 
@@ -979,7 +1118,7 @@ export const ReportMarkdownViewer: React.FC<ReportMarkdownViewerProps> = ({ repo
         ) : (
           /* ── FULL MARKDOWN REPORT ── */
           <div className="p-6 text-purple-gray overflow-x-auto">
-            <MarkdownRenderer content={markdown} />
+            <MarkdownRenderer content={fullMarkdown} />
           </div>
         )}
       </div>

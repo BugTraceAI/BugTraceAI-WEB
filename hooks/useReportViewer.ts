@@ -85,7 +85,7 @@ export const useReportViewer = (reportId: string): UseReportViewerReturn => {
         fetch(`${CLI_API_URL}/api/scans/${reportId}/files/final_report.md`).catch(() => null),
         fetch(`${CLI_API_URL}/api/scans/${reportId}/files/validated_findings.json`).catch(() => null),
         fetch(`${CLI_API_URL}/api/scans/${reportId}/files/engagement_data.json`).catch(() => null),
-        fetch(`${CLI_API_URL}/api/scans/${reportId}/findings?per_page=200`).catch(() => null),
+        fetch(`${CLI_API_URL}/api/scans/${reportId}/findings?per_page=100`).catch(() => null),
       ]);
 
       let hasMarkdown = false;
