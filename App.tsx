@@ -35,6 +35,7 @@ import { ApiKeyWarningModal } from './components/ApiKeyWarningModal.tsx';
 import { SecurityHeadersAnalyzer } from './components/SecurityHeadersAnalyzer.tsx';
 import { NoLightModeModal } from './components/NoLightModeModal.tsx';
 import { ErrorToast } from './components/ErrorToast.tsx';
+import { UpdateBanner } from './components/UpdateBanner.tsx';
 import { useWebSecAgent } from './hooks/useWebSecAgent.tsx';
 import { useChatContext } from './contexts/ChatContext.tsx';
 import { useRouteSync } from './hooks/useRouteSync.ts';
@@ -464,6 +465,7 @@ const App: React.FC = () => {
   return (
     <div className="h-screen flex flex-col overflow-hidden">
       <ErrorToast />
+      <UpdateBanner />
       <Header
         onMenuClick={() => setIsMenuOpen(!isMenuOpen)}
         onSettingsClick={handleShowSettings}

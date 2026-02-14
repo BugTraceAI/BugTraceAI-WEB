@@ -164,14 +164,27 @@ app.get(
   })
 );
 
-// API version endpoint
-app.get('/api/version', (_req: Request, res: Response) => {
+// API version endpoint (with update check)
+import { checkForUpdate } from './utils/versionCheck.js';
+import { readFileSync } from 'fs';
+import { fileURLToPath } from 'url';
+import { dirname, join } from 'path';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+const pkg = JSON.parse(readFileSync(join(__dirname, '..', 'package.json'), 'utf-8'));
+
+app.get('/api/version', asyncHandler(async (_req: Request, res: Response) => {
+  const update = await checkForUpdate(pkg.version);
   sendSuccess(res, {
-    version: '2.0.0',
+    version: pkg.version,
     apiVersion: 'v1',
     name: 'BugTraceAI-WEB API',
+    updateAvailable: update?.updateAvailable ?? false,
+    latestVersion: update?.latestVersion ?? null,
+    releaseUrl: update?.releaseUrl ?? null,
   });
-});
+}));
 
 // ============================================================================
 // API Routes
