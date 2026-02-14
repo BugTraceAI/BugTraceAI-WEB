@@ -71,10 +71,16 @@ export const useWebSecAgent = (onShowApiKeyWarning: () => void) => {
         setMessages([{ role: 'user', content: contextPrompt }]);
     }, []);
 
+    const resetMessages = useCallback(() => {
+        setMessages([]);
+        isResponding.current = false;
+    }, []);
+
     return {
         messages,
         isLoading,
         sendMessage,
+        resetMessages,
         startAnalysisWithAgent,
         startReportAnalysisWithAgent,
     };

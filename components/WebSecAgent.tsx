@@ -19,12 +19,14 @@ import { useSettings } from '../contexts/SettingsProvider.tsx';
 interface WebSecAgentProps {
   messages: LegacyChatMessage[];
   onSendMessage: (message: string) => void;
+  onResetMessages: () => void;
   isLoading: boolean;
 }
 
 export const WebSecAgent: React.FC<WebSecAgentProps> = ({
   messages: legacyMessages,
   onSendMessage,
+  onResetMessages,
   isLoading
 }) => {
   const [userInput, setUserInput] = useState('');
@@ -32,6 +34,7 @@ export const WebSecAgent: React.FC<WebSecAgentProps> = ({
   const initializingRef = useRef(false);
   const initializedRef = useRef(false);
   const autoRespondTriggeredRef = useRef<string | null>(null);
+  const prevSessionIdRef = useRef<string | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const navigate = useNavigate();
   const { sessionId } = useParams<{ sessionId?: string }>();
@@ -87,6 +90,7 @@ export const WebSecAgent: React.FC<WebSecAgentProps> = ({
   }, [sessionId]);
 
   // Sync URL when current session changes (e.g., when user switches sessions in sidebar)
+  // Also clear legacy messages when switching to a different session
   useEffect(() => {
     if (currentSession && sessionId !== currentSession.id && initializedRef.current && !initializingRef.current) {
       navigate(`/chat/${currentSession.id}`, { replace: false });
@@ -95,6 +99,11 @@ export const WebSecAgent: React.FC<WebSecAgentProps> = ({
     if (currentSession) {
       autoRespondTriggeredRef.current = null;
     }
+    // Clear legacy messages when switching to a new/different session
+    if (currentSession?.id && prevSessionIdRef.current && currentSession.id !== prevSessionIdRef.current) {
+      onResetMessages();
+    }
+    prevSessionIdRef.current = currentSession?.id || null;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentSession?.id, sessionId]);
 

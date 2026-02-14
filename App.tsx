@@ -94,6 +94,7 @@ const App: React.FC = () => {
     messages: agentMessages,
     isLoading: isAgentLoading,
     sendMessage: sendAgentMessage,
+    resetMessages: resetAgentMessages,
     startAnalysisWithAgent,
     startReportAnalysisWithAgent
   } = useWebSecAgent(handleShowApiKeyWarning);
@@ -433,6 +434,7 @@ const App: React.FC = () => {
           <WebSecAgent
             messages={agentMessages}
             onSendMessage={sendAgentMessage}
+            onResetMessages={resetAgentMessages}
             isLoading={isAgentLoading}
           />
         );
