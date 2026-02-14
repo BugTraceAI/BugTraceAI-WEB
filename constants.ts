@@ -2,7 +2,7 @@
 // version 0.1 Beta
 import { Severity } from './types.ts';
 
-export const APP_VERSION = '0.2.0 Beta';
+export const APP_VERSION = __APP_VERSION__;
 
 // This now serves as a fallback list in case the API fetch fails.
 export const OPEN_ROUTER_MODELS = [

@@ -5,6 +5,7 @@ import React from 'react';
 import { View } from '../types.ts';
 import { BugTraceAILogo, BrainIcon, HistoryIcon, XMarkIcon, LinkIcon, CodeBracketIcon, ChatIcon, ArrowUpTrayIcon, KeyIcon, PencilDocumentIcon, JwtTokenIcon, MagnifyingGlassIcon } from './Icons.tsx';
 import { useSettings } from '../contexts/SettingsProvider.tsx';
+import { APP_VERSION } from '../constants.ts';
 
 interface MainMenuProps {
   isOpen: boolean;
@@ -139,7 +140,7 @@ export const MainMenu: React.FC<MainMenuProps> = ({ isOpen, onClose, onNavigate,
           <div className="px-4 py-3 rounded-2xl bg-ui-bg/30 border border-dashed border-ui-border flex items-center justify-between">
             <div className="flex flex-col">
               <span className="label-mini !text-[8px] text-ui-text-dim/50">Version</span>
-              <span className="text-[10px] font-mono text-ui-text-main">0.2.0-BETA</span>
+              <span className="text-[10px] font-mono text-ui-text-main">{APP_VERSION}</span>
             </div>
             <div className="p-1.5 rounded-lg bg-ui-bg border border-ui-border">
               <BugTraceAILogo className="h-3 w-3 text-ui-text-dim/40" />
