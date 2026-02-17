@@ -73,7 +73,7 @@ export async function checkForUpdate(
 
     if (!response.ok) return null;
 
-    const data = await response.json();
+    const data = await response.json() as { tag_name?: string; html_url?: string };
     const tag = (data.tag_name || '').replace(/^v/, '');
     const releaseUrl = data.html_url || '';
 
