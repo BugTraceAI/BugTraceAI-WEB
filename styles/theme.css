@@ -399,15 +399,6 @@ body {
   background: #FF7F50;
 }
 
-/* Hide scrollbar but keep scroll functionality */
-.scrollbar-none {
-  -ms-overflow-style: none;
-  scrollbar-width: none;
-}
-.scrollbar-none::-webkit-scrollbar {
-  display: none;
-}
-
 /* ============================================
  * FORM AUTOFILL STYLES
  * ============================================ */
