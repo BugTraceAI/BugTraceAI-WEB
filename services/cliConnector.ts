@@ -102,7 +102,7 @@ export async function testCliConnection(url: string): Promise<CliConnectionResul
 /**
  * Default CLI API URL
  */
-export const DEFAULT_CLI_URL = 'http://localhost:8000';
+export const DEFAULT_CLI_URL = import.meta.env.VITE_CLI_API_URL || 'http://localhost:8000';
 
 // ============================================================
 // Backend (WEB) Health Check

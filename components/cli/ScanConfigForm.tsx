@@ -17,13 +17,6 @@ export interface ScanConfig {
   param: string;            // empty string = not set
 }
 
-const SCAN_TYPES = [
-  { value: 'full', label: 'Full Scan' },
-  { value: 'hunter', label: 'Hunter' },
-  { value: 'manager', label: 'Manager' },
-];
-
-
 interface ScanConfigFormProps {
   config: ScanConfig;
   onChange: (config: ScanConfig) => void;
@@ -95,25 +88,6 @@ export const ScanConfigForm: React.FC<ScanConfigFormProps> = ({
               className={`input-premium font-mono text-sm h-8 px-3 w-full ${urlError ? 'border-error animate-shake' : ''}`}
             />
           )}
-        </div>
-
-        {/* Scan Type */}
-        <div className="w-32 flex-shrink-0">
-          <label htmlFor="scan-type" className="label-mini block mb-1 ml-1 whitespace-nowrap">
-            Scan Type
-          </label>
-          <select
-            id="scan-type"
-            value={config.scan_type}
-            onChange={(e) => onChange({ ...config, scan_type: e.target.value })}
-            disabled={disabled}
-            data-testid="scan-config-scan-type"
-            className="input-premium text-xs h-8 px-2 w-full appearance-none cursor-pointer"
-          >
-            {SCAN_TYPES.map(t => (
-              <option key={t.value} value={t.value} className="bg-purple-deep">{t.label}</option>
-            ))}
-          </select>
         </div>
 
         {/* Max Depth (1-10) */}

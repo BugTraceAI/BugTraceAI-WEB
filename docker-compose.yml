@@ -50,10 +50,12 @@ services:
       dockerfile: Dockerfile
       args:
         VITE_API_URL: /api
-        VITE_CLI_API_URL: ${VITE_CLI_API_URL:-http://localhost:8000}
+        VITE_CLI_API_URL: ${VITE_CLI_API_URL:-/cli-api}
     container_name: bugtraceai-web-frontend
     ports:
       - "${FRONTEND_PORT:-6869}:80"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     depends_on:
       backend:
         condition: service_healthy

@@ -5,7 +5,7 @@ WORKDIR /app
 
 # Build-time arguments for Vite environment variables
 ARG VITE_API_URL=/api
-ARG VITE_CLI_API_URL=http://localhost:8000
+ARG VITE_CLI_API_URL=/cli-api
 
 ENV VITE_API_URL=$VITE_API_URL
 ENV VITE_CLI_API_URL=$VITE_CLI_API_URL

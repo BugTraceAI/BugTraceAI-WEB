@@ -73,9 +73,16 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
             const savedModel = localStorage.getItem('openRouterModel');
             if (savedModel) setOpenRouterModel(savedModel);
 
-            // Load CLI URL
-            const savedCliUrl = localStorage.getItem('cliApiUrl');
-            if (savedCliUrl) setCliUrl(savedCliUrl);
+            // Load CLI URL — env var wins when set (Docker proxy mode)
+            const envCliUrl = import.meta.env.VITE_CLI_API_URL;
+            if (envCliUrl) {
+                setCliUrl(envCliUrl);
+                // Clear stale localStorage to prevent future conflicts
+                localStorage.removeItem('cliApiUrl');
+            } else {
+                const savedCliUrl = localStorage.getItem('cliApiUrl');
+                if (savedCliUrl) setCliUrl(savedCliUrl);
+            }
 
         } catch (e) { console.error("Could not load settings:", e); }
     }, []);
@@ -108,8 +115,11 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     }, [openRouterModel]);
 
     useEffect(() => {
-        try { localStorage.setItem('cliApiUrl', cliUrl); }
-        catch (e) { console.error("Could not save CLI URL:", e); }
+        // Don't persist CLI URL in Docker mode (env var is the source of truth)
+        if (!import.meta.env.VITE_CLI_API_URL) {
+            try { localStorage.setItem('cliApiUrl', cliUrl); }
+            catch (e) { console.error("Could not save CLI URL:", e); }
+        }
     }, [cliUrl]);
 
     const value = useMemo(() => ({

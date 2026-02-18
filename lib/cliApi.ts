@@ -13,8 +13,12 @@
 export const CLI_API_URL = import.meta.env.VITE_CLI_API_URL || 'http://localhost:8000';
 const CLI_API_BASE = `${CLI_API_URL}/api`;
 
-// WebSocket base URL (derive from CLI_API_URL: http -> ws, https -> wss)
-export const CLI_WS_URL = CLI_API_URL.replace(/^http/, 'ws');
+// WebSocket base URL
+// Absolute URL (local dev): http://localhost:8000 → ws://localhost:8000
+// Relative path (Docker):   /cli-api → ws://currenthost/cli-api
+export const CLI_WS_URL = CLI_API_URL.startsWith('http')
+  ? CLI_API_URL.replace(/^http/, 'ws')
+  : `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}${CLI_API_URL}`;
 
 
 // ============================================================================
