@@ -33,6 +33,74 @@ interface ReportMarkdownViewerProps {
 
 const ITEMS_PER_PAGE = 10;
 
+const SEV_RANK: Record<string, number> = { critical: 4, high: 3, medium: 2, low: 1, info: 0 };
+
+type SortCol = 'name' | 'severity' | 'status' | 'cvss' | 'url';
+type DetSortCol = 'type' | 'severity' | 'status' | 'confidence' | 'parameter';
+type SortDir = 'asc' | 'desc';
+
+const sortFindings = (list: Finding[], col: SortCol, dir: SortDir): Finding[] => {
+  const sorted = [...list].sort((a, b) => {
+    let cmp = 0;
+    switch (col) {
+      case 'name':
+        cmp = (a.title || a.type || '').localeCompare(b.title || b.type || '');
+        break;
+      case 'severity':
+        cmp = (SEV_RANK[a.severity.toLowerCase()] ?? 0) - (SEV_RANK[b.severity.toLowerCase()] ?? 0);
+        break;
+      case 'status': {
+        const rank = (f: Finding) => f.status === 'VALIDATED_CONFIRMED' ? 2 : f.validated ? 1 : 0;
+        cmp = rank(a) - rank(b);
+        break;
+      }
+      case 'cvss':
+        cmp = (a.cvss_score ?? -1) - (b.cvss_score ?? -1);
+        break;
+      case 'url':
+        cmp = (a.url || '').localeCompare(b.url || '');
+        break;
+    }
+    // Tiebreaker: sort by name when primary values are equal
+    if (cmp === 0 && col !== 'name') {
+      cmp = (a.title || a.type || '').localeCompare(b.title || b.type || '');
+    }
+    return dir === 'asc' ? cmp : -cmp;
+  });
+  return sorted;
+};
+
+const sortDetections = (list: FindingItem[], col: DetSortCol, dir: SortDir): FindingItem[] => {
+  const sorted = [...list].sort((a, b) => {
+    let cmp = 0;
+    switch (col) {
+      case 'type':
+        cmp = (a.type || '').localeCompare(b.type || '');
+        break;
+      case 'severity':
+        cmp = (SEV_RANK[a.severity.toLowerCase()] ?? 0) - (SEV_RANK[b.severity.toLowerCase()] ?? 0);
+        break;
+      case 'status': {
+        const rank = (f: FindingItem) => f.validated ? 1 : 0;
+        cmp = rank(a) - rank(b);
+        break;
+      }
+      case 'confidence':
+        cmp = (a.confidence ?? -1) - (b.confidence ?? -1);
+        break;
+      case 'parameter':
+        cmp = (a.parameter || '').localeCompare(b.parameter || '');
+        break;
+    }
+    // Tiebreaker: sort by type when primary values are equal
+    if (cmp === 0 && col !== 'type') {
+      cmp = (a.type || '').localeCompare(b.type || '');
+    }
+    return dir === 'asc' ? cmp : -cmp;
+  });
+  return sorted;
+};
+
 const SEVERITY_COLORS: Record<string, { bg: string; text: string; dot: string; bar: string; fill: string }> = {
   critical: { bg: 'bg-red-500/15', text: 'text-red-400', dot: 'bg-red-500', bar: 'bg-red-500', fill: '#ef4444' },
   high: { bg: 'bg-orange-500/15', text: 'text-orange-400', dot: 'bg-orange-500', bar: 'bg-orange-500', fill: '#f97316' },
@@ -161,6 +229,8 @@ export const ReportMarkdownViewer: React.FC<ReportMarkdownViewerProps> = ({ repo
   const [activeTab, setActiveTab] = useState<'findings' | 'detections' | 'report'>('findings');
   const [expandedIdx, setExpandedIdx] = useState<number | null>(null);
   const [expandedDetIdx, setExpandedDetIdx] = useState<number | null>(null);
+  const [sort, setSort] = useState<{ col: SortCol | null; dir: SortDir }>({ col: null, dir: 'desc' });
+  const [detSort, setDetSort] = useState<{ col: DetSortCol | null; dir: SortDir }>({ col: null, dir: 'desc' });
   const [showMetrics, setShowMetrics] = useState(false);
   const CLI_API_URL = import.meta.env.VITE_CLI_API_URL || 'http://localhost:8000';
   const WEB_API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
@@ -188,9 +258,26 @@ export const ReportMarkdownViewer: React.FC<ReportMarkdownViewerProps> = ({ repo
   // Grouped findings for legend
   const findingsByType = useMemo(() => groupByType(findings), [findings]);
 
+  // Sorting
+  const sortedFindings = useMemo(() => {
+    if (!sort.col) return filteredFindings;
+    return sortFindings(filteredFindings, sort.col, sort.dir);
+  }, [filteredFindings, sort]);
+
+  const handleSort = (col: SortCol) => {
+    setSort(prev => {
+      if (prev.col === col) {
+        return { col, dir: prev.dir === 'asc' ? 'desc' as SortDir : 'asc' as SortDir };
+      }
+      return { col, dir: (col === 'name' || col === 'url') ? 'asc' as SortDir : 'desc' as SortDir };
+    });
+    setCurrentPage(1);
+    setExpandedIdx(null);
+  };
+
   // Pagination
-  const totalPages = Math.max(1, Math.ceil(filteredFindings.length / ITEMS_PER_PAGE));
-  const paginatedFindings = filteredFindings.slice(
+  const totalPages = Math.max(1, Math.ceil(sortedFindings.length / ITEMS_PER_PAGE));
+  const paginatedFindings = sortedFindings.slice(
     (currentPage - 1) * ITEMS_PER_PAGE,
     currentPage * ITEMS_PER_PAGE,
   );
@@ -219,9 +306,26 @@ export const ReportMarkdownViewer: React.FC<ReportMarkdownViewerProps> = ({ repo
     return markdown + table;
   }, [markdown, detections]);
 
+  // Detections sorting
+  const sortedDetections = useMemo(() => {
+    if (!detSort.col) return detections;
+    return sortDetections(detections, detSort.col, detSort.dir);
+  }, [detections, detSort]);
+
+  const handleDetSort = (col: DetSortCol) => {
+    setDetSort(prev => {
+      if (prev.col === col) {
+        return { col, dir: prev.dir === 'asc' ? 'desc' as SortDir : 'asc' as SortDir };
+      }
+      return { col, dir: (col === 'type' || col === 'parameter') ? 'asc' as SortDir : 'desc' as SortDir };
+    });
+    setDetectionsPage(1);
+    setExpandedDetIdx(null);
+  };
+
   // Detections pagination
-  const detTotalPages = Math.max(1, Math.ceil(detections.length / ITEMS_PER_PAGE));
-  const paginatedDetections = detections.slice(
+  const detTotalPages = Math.max(1, Math.ceil(sortedDetections.length / ITEMS_PER_PAGE));
+  const paginatedDetections = sortedDetections.slice(
     (detectionsPage - 1) * ITEMS_PER_PAGE,
     detectionsPage * ITEMS_PER_PAGE,
   );
@@ -451,31 +555,31 @@ export const ReportMarkdownViewer: React.FC<ReportMarkdownViewerProps> = ({ repo
               <span>SCAN #{report.id.substring(0, 8)}</span>
               <span className="text-white/20">&bull;</span>
               <span>{formatDate(report.scan_date)}</span>
-              {scanStats.duration && (
+              {scanStats?.duration && (
                 <>
                   <span className="text-white/20">&bull;</span>
                   <span className="text-emerald-400">{scanStats.duration}</span>
                 </>
               )}
-              {scanStats.urls_scanned != null && (
+              {scanStats?.urls_scanned != null && (
                 <>
                   <span className="text-white/20">&bull;</span>
                   <span>{scanStats.urls_scanned} URLs</span>
                 </>
               )}
-              {scanStats.scan_type && (
+              {scanStats?.scan_type && (
                 <>
                   <span className="text-white/20">&bull;</span>
                   <span className="text-violet-400 uppercase">{scanStats.scan_type}</span>
                 </>
               )}
-              {scanStats.max_depth != null && (
+              {scanStats?.max_depth != null && (
                 <>
                   <span className="text-white/20">&bull;</span>
                   <span>D:{scanStats.max_depth}</span>
                 </>
               )}
-              {scanStats.max_urls != null && (
+              {scanStats?.max_urls != null && (
                 <>
                   <span className="text-white/20">&bull;</span>
                   <span>Max:{scanStats.max_urls}</span>
@@ -485,7 +589,7 @@ export const ReportMarkdownViewer: React.FC<ReportMarkdownViewerProps> = ({ repo
           </div>
 
           {/* Tech Stack Mini-Badges */}
-          {scanStats.tech_stack?.technologies && (
+          {scanStats?.tech_stack?.technologies && (
             <div className="flex items-center gap-1.5 overflow-hidden">
               {scanStats.tech_stack.technologies.slice(0, 4).map((tech) => (
                 <span key={tech.name} className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-white/5 text-muted border border-white/5">
@@ -768,13 +872,23 @@ export const ReportMarkdownViewer: React.FC<ReportMarkdownViewerProps> = ({ repo
               </div>
             ) : (
               <>
-                {/* Table header */}
+                {/* Table header — sortable */}
                 <div className="grid grid-cols-[1fr_90px_80px_60px_160px_36px] text-[9px] text-muted uppercase tracking-widest px-4 py-2 border-b border-glass-border/10">
-                  <span className="font-bold">Finding Name</span>
-                  <span className="font-bold">Severity</span>
-                  <span className="font-bold">Status</span>
-                  <span className="font-bold">CVSS</span>
-                  <span className="font-bold">URL</span>
+                  {([['name', 'Finding Name'], ['severity', 'Severity'], ['status', 'Status'], ['cvss', 'CVSS'], ['url', 'URL']] as [SortCol, string][]).map(([col, label]) => (
+                    <button
+                      key={col}
+                      type="button"
+                      onClick={() => handleSort(col)}
+                      className={`font-bold text-left flex items-center gap-1 hover:text-white transition-colors cursor-pointer ${sort.col === col ? 'text-coral' : ''}`}
+                    >
+                      {label}
+                      {sort.col === col && (
+                        <svg className={`w-2.5 h-2.5 transition-transform ${sort.dir === 'asc' ? 'rotate-180' : ''}`} fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
+                        </svg>
+                      )}
+                    </button>
+                  ))}
                   <span />
                 </div>
 
@@ -803,8 +917,8 @@ export const ReportMarkdownViewer: React.FC<ReportMarkdownViewerProps> = ({ repo
                               <path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd" />
                             </svg>
                             <div className="min-w-0">
-                              <p className="text-xs font-bold text-white tracking-tight truncate group-hover:text-coral transition-colors">{finding.title}</p>
-                              {finding.type && finding.type !== finding.title && (
+                              <p className="text-xs font-bold text-white tracking-tight truncate group-hover:text-coral transition-colors">{finding.title || finding.type}</p>
+                              {finding.type && finding.title && finding.type !== finding.title && (
                                 <p className="text-[9px] text-muted/70 truncate">{finding.type}</p>
                               )}
                             </div>
@@ -959,7 +1073,7 @@ export const ReportMarkdownViewer: React.FC<ReportMarkdownViewerProps> = ({ repo
                 {/* Pagination */}
                 <div className="flex items-center justify-between px-5 py-3 border-t border-glass-border/20">
                   <span className="text-xs text-muted">
-                    Showing {((currentPage - 1) * ITEMS_PER_PAGE) + 1}-{Math.min(currentPage * ITEMS_PER_PAGE, filteredFindings.length)} of {filteredFindings.length} findings
+                    Showing {((currentPage - 1) * ITEMS_PER_PAGE) + 1}-{Math.min(currentPage * ITEMS_PER_PAGE, sortedFindings.length)} of {sortedFindings.length} findings
                   </span>
                   <div className="flex items-center gap-2">
                     <button
@@ -993,13 +1107,23 @@ export const ReportMarkdownViewer: React.FC<ReportMarkdownViewerProps> = ({ repo
               </div>
             ) : (
               <>
-                {/* Table header */}
+                {/* Table header — sortable */}
                 <div className="grid grid-cols-[1fr_90px_100px_80px_160px_36px] text-[9px] text-muted uppercase tracking-widest px-4 py-2 border-b border-glass-border/10">
-                  <span className="font-bold">Type</span>
-                  <span className="font-bold">Severity</span>
-                  <span className="font-bold">Status</span>
-                  <span className="font-bold">Confidence</span>
-                  <span className="font-bold">Parameter</span>
+                  {([['type', 'Type'], ['severity', 'Severity'], ['status', 'Status'], ['confidence', 'Confidence'], ['parameter', 'Parameter']] as [DetSortCol, string][]).map(([col, label]) => (
+                    <button
+                      key={col}
+                      type="button"
+                      onClick={() => handleDetSort(col)}
+                      className={`font-bold text-left flex items-center gap-1 hover:text-white transition-colors cursor-pointer ${detSort.col === col ? 'text-coral' : ''}`}
+                    >
+                      {label}
+                      {detSort.col === col && (
+                        <svg className={`w-2.5 h-2.5 transition-transform ${detSort.dir === 'asc' ? 'rotate-180' : ''}`} fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
+                        </svg>
+                      )}
+                    </button>
+                  ))}
                   <span />
                 </div>
 

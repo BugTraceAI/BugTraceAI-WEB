@@ -58,15 +58,13 @@ export const ScanDashboard: React.FC<ScanDashboardProps> = ({
       {/* NEW SUPER BAR: Unified Pipeline + Metrics + Agents-with-findings */}
       {hasDashboardData && (
         <div className="flex flex-col gap-2">
-          <div className="flex items-center justify-between p-2 rounded-xl bg-white/[0.03] border border-white/[0.05] shadow-sm">
-            {/* Pipeline Part */}
-            <div className="flex-1 max-w-[50%]">
-              <PipelineBar pipeline={pipeline} />
-            </div>
+          <div className="p-2 rounded-xl bg-white/[0.03] border border-white/[0.05] shadow-sm space-y-2">
+            {/* Row 1: Pipeline */}
+            <PipelineBar pipeline={pipeline} />
 
-            {/* Metrics + Specialist Part */}
-            <div className="flex items-center gap-4 px-3">
-              <div className="flex items-center gap-3 pr-4 border-r border-white/[0.05]">
+            {/* Row 2: Metrics + Agent pills + Findings button */}
+            <div className="flex items-center gap-3">
+              <div className="flex items-center gap-3 pr-3 border-r border-white/[0.05] flex-shrink-0">
                 <div className="flex items-center gap-1">
                   <span className="text-[10px] uppercase tracking-wider text-muted">URLs</span>
                   <span className="text-xs font-mono text-white/80">{metrics.urlsDiscovered}</span>
@@ -77,8 +75,8 @@ export const ScanDashboard: React.FC<ScanDashboardProps> = ({
                 </div>
               </div>
 
-              {/* Only show agents with vulnerabilities */}
-              <div className="flex items-center gap-2">
+              {/* Agent pills — wrap naturally, bar grows taller */}
+              <div className="flex flex-wrap items-center gap-1.5 flex-1 min-w-0">
                 {agents.filter(a => a.vulns > 0).map(agent => (
                   <div key={agent.agent} className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-red-500/10 border border-red-500/20">
                     <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
@@ -92,7 +90,7 @@ export const ScanDashboard: React.FC<ScanDashboardProps> = ({
               {filteredFindings.length > 0 && (
                 <button
                   onClick={() => setFindingsOpen(!findingsOpen)}
-                  className={`flex items-center gap-2 px-3 py-1 rounded-lg transition-all duration-200 ${findingsOpen ? 'bg-coral text-white' : 'bg-red-500/20 text-red-400 border border-red-500/30'
+                  className={`flex items-center gap-2 px-3 py-1 rounded-lg transition-all duration-200 flex-shrink-0 ${findingsOpen ? 'bg-coral text-white' : 'bg-red-500/20 text-red-400 border border-red-500/30'
                     }`}
                 >
                   <span className="text-[10px] font-bold uppercase tracking-wider">Findings ({filteredFindings.length})</span>
