@@ -138,7 +138,7 @@ export const resetSettings = asyncHandler(async (_req: Request, res: Response) =
     { key: 'enable_cli_integration', value: { value: true } },
     {
       key: 'cli_reports_directory',
-      value: { value: '/home/albert/Tools/BugTraceAI/BugTraceAI-CLI/reports' },
+      value: { value: './reports' },
     },
   ];
 

@@ -41,7 +41,7 @@ async function main() {
     },
     {
       key: 'cli_reports_directory',
-      value: { value: '/home/albert/Tools/BugTraceAI/BugTraceAI-CLI/reports' },
+      value: { value: './reports' },
     },
   ];
 
