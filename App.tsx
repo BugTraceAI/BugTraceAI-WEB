@@ -2,7 +2,7 @@
 // App.tsx
 // version 0.1 Beta
 import React, { useState, useEffect } from 'react';
-import { Routes, Route, useLocation } from 'react-router-dom';
+import { Routes, Route, useLocation, useNavigate } from 'react-router-dom';
 import { MobileDashboard } from './components/MobileDashboard.tsx';
 import { MainMenu } from './components/MainMenu.tsx';
 import { AnalysisHistory } from './components/analysis/AnalysisHistory.tsx';
@@ -77,6 +77,17 @@ const App: React.FC = () => {
   });
 
   const location = useLocation();
+  const nav = useNavigate();
+
+  // Auto-redirect mobile devices to /mobile (unless user chose "Desktop")
+  useEffect(() => {
+    if (location.pathname === '/mobile') return;
+    try { if (sessionStorage.getItem('preferDesktop') === 'true') return; } catch {}
+    const isMobile = /Android|webOS|iPhone|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    if (isMobile) {
+      nav('/mobile', { replace: true });
+    }
+  }, []);
 
   const [viewingReportId, setViewingReportId] = useState<string | null>(null);
   const [comparingReports, setComparingReports] = useState<{ a: string, b: string } | null>(null);
