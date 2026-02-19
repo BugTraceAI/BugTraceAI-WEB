@@ -16,7 +16,7 @@ export const DisclaimerModal: React.FC<DisclaimerModalProps> = ({ onAccept, onRe
             role="dialog"
         >
             <div
-                className="card-premium w-full max-w-2xl max-h-[90vh] shadow-2xl flex flex-col overflow-hidden"
+                className="card-premium w-full max-w-2xl max-h-[85dvh] max-h-[85vh] shadow-2xl flex flex-col overflow-hidden"
             >
                 <header className="flex-shrink-0 flex items-center gap-3 p-4 border-b border-ui-border bg-ui-bg/50">
                     <div className="p-2 rounded-xl bg-ui-accent/10 border border-ui-accent/20">
@@ -48,7 +48,7 @@ export const DisclaimerModal: React.FC<DisclaimerModalProps> = ({ onAccept, onRe
                     </ul>
                 </main>
 
-                <footer className="p-4 bg-ui-bg flex flex-col sm:flex-row justify-between items-center gap-4 border-t border-ui-border">
+                <footer className="flex-shrink-0 p-4 bg-ui-bg flex flex-col sm:flex-row justify-between items-center gap-4 border-t border-ui-border">
                     <div className="text-[10px] text-ui-text-dim flex items-center gap-1.5 font-mono">
                         MADE WITH <HeartIcon className="h-4 w-4 text-red-500/80 animate-pulse" /> BY ALBERT C @YZ9YT
                     </div>

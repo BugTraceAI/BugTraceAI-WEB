@@ -1,9 +1,10 @@
 // components/MobileDashboard.tsx
 // Pocket monitor — ultra-minimal mobile scan status
-import React, { useEffect, useMemo } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useScanSocket } from '../hooks/useScanSocket';
 import { usePastReports } from '../hooks/usePastReports';
 import { useCliConnection } from '../hooks/useCliConnection';
+import { startScan } from '../lib/cliApi.ts';
 import { BugTraceAILogo } from './Icons.tsx';
 
 const PHASE_LABELS: Record<string, string> = {
@@ -24,15 +25,42 @@ const SEV_STYLE: Record<string, string> = {
 };
 
 export const MobileDashboard: React.FC = () => {
-  const { progress, pipeline, findings, subscribe, unsubscribe } = useScanSocket();
+  const { progress, pipeline, findings, agents, metrics, logs, subscribe, unsubscribe } = useScanSocket();
   const { activeScans, reports, handleStopScan, handlePauseScan, handleResumeScan } = usePastReports();
   const { isConnected: cliConnected, version: cliVersion } = useCliConnection({ autoConnect: true });
 
-  // Auto-subscribe to active scan
+  const [targetUrl, setTargetUrl] = useState('');
+  const [isStarting, setIsStarting] = useState(false);
+  const [scanError, setScanError] = useState('');
+
+  const handleStartScan = async () => {
+    setScanError('');
+    try { new URL(targetUrl); } catch { setScanError('Invalid URL'); return; }
+    setIsStarting(true);
+    try {
+      const res = await startScan({ target_url: targetUrl });
+      subscribe(res.scan_id);
+      setTargetUrl('');
+    } catch (e: any) {
+      setScanError(e.message || 'Failed to start scan');
+    } finally {
+      setIsStarting(false);
+    }
+  };
+
+  // Auto-subscribe to active scan (guarded — only when scan ID actually changes)
+  const subscribedIdRef = useRef<number | null>(null);
   useEffect(() => {
     const running = activeScans.find(s => ['running', 'initializing', 'pending'].includes(s.status));
-    if (running) subscribe(running.id);
-    else unsubscribe();
+    if (running) {
+      if (subscribedIdRef.current !== running.id) {
+        subscribedIdRef.current = running.id;
+        subscribe(running.id);
+      }
+    } else if (subscribedIdRef.current !== null) {
+      subscribedIdRef.current = null;
+      unsubscribe();
+    }
   }, [activeScans, subscribe, unsubscribe]);
 
   const activeScan = activeScans.find(s => ['running', 'initializing', 'pending', 'paused'].includes(s.status));
@@ -43,7 +71,20 @@ export const MobileDashboard: React.FC = () => {
     return c;
   }, [findings]);
 
+  const [showFindings, setShowFindings] = useState(false);
+
   const phaseLabel = PHASE_LABELS[pipeline.currentPhase] || pipeline.currentPhase || '';
+
+  const PHASES = ['reconnaissance', 'discovery', 'strategy', 'exploitation', 'validation', 'reporting'] as const;
+  const currentIdx = PHASES.indexOf(pipeline.currentPhase as any);
+
+  const activeAgents = useMemo(() =>
+    agents.filter(a => a.status === 'active' || a.vulns > 0),
+  [agents]);
+
+  const recentLogs = useMemo(() =>
+    logs.filter(l => l.level !== 'DEBUG').slice(-5).reverse(),
+  [logs]);
 
   return (
     <div className="flex flex-col h-full">
@@ -78,16 +119,19 @@ export const MobileDashboard: React.FC = () => {
             <>
               {/* Scan card */}
               <div className="bg-white/[0.03] border border-white/[0.06] rounded-2xl overflow-hidden">
-                {/* Progress bar (top edge, no label clutter) */}
+                {/* Progress bar (top edge) */}
                 <div className="h-1 bg-white/[0.04]">
                   <div className="h-full bg-ui-accent transition-all duration-700 ease-out" style={{ width: `${progress}%` }} />
                 </div>
 
                 <div className="p-4 space-y-3">
-                  {/* Target */}
-                  <div className="text-[11px] text-ui-text-dim truncate">{activeScan.target_url}</div>
+                  {/* Target + progress */}
+                  <div className="flex items-center justify-between">
+                    <div className="text-[11px] text-ui-text-dim truncate flex-1 mr-2">{activeScan.target_url}</div>
+                    <span className="text-[11px] text-off-white font-bold shrink-0">{progress}%</span>
+                  </div>
 
-                  {/* Status row: badge + phase + progress% */}
+                  {/* Status badge + phase */}
                   <div className="flex items-center gap-2">
                     <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full ${
                       activeScan.status === 'paused'
@@ -97,24 +141,111 @@ export const MobileDashboard: React.FC = () => {
                       {activeScan.status}
                     </span>
                     {phaseLabel && <span className="text-[11px] text-ui-text-dim">{phaseLabel}</span>}
-                    <span className="text-[11px] text-off-white font-bold ml-auto">{progress}%</span>
                   </div>
 
-                  {/* Findings inline (only if any) */}
-                  {findings.length > 0 && (
-                    <div className="flex items-center gap-1.5 flex-wrap">
-                      <span className="text-[11px] text-ui-text-dim">{findings.length} findings:</span>
-                      {Object.entries(sevCounts)
-                        .filter(([, n]) => n > 0)
-                        .map(([sev, n]) => (
-                          <span key={sev} className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${SEV_STYLE[sev] || 'text-gray-300 bg-gray-900/30'}`}>
-                            {n} {sev}
+                  {/* Pipeline phases */}
+                  <div className="flex items-center gap-1">
+                    {PHASES.map((p, i) => {
+                      const done = i < currentIdx;
+                      const active = i === currentIdx;
+                      return (
+                        <div key={p} className="flex-1 flex flex-col items-center gap-1">
+                          <div className={`h-1.5 w-full rounded-full transition-all ${
+                            done ? 'bg-green-500' : active ? 'bg-ui-accent animate-pulse' : 'bg-white/[0.06]'
+                          }`} />
+                          <span className={`text-[8px] leading-none ${
+                            done ? 'text-green-400' : active ? 'text-ui-accent' : 'text-ui-text-dim/50'
+                          }`}>
+                            {PHASE_LABELS[p]}
                           </span>
-                        ))}
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  {/* Metrics row */}
+                  {(metrics.urlsDiscovered > 0 || metrics.urlsAnalyzed > 0) && (
+                    <div className="flex items-center gap-3 text-[10px]">
+                      <span className="text-ui-text-dim">URLs: <span className="text-off-white font-bold">{metrics.urlsDiscovered}</span></span>
+                      <span className="text-ui-text-dim">Analyzed: <span className="text-off-white font-bold">{metrics.urlsAnalyzed}</span></span>
+                    </div>
+                  )}
+
+                  {/* Active agents */}
+                  {activeAgents.length > 0 && (
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      {activeAgents.map(a => (
+                        <span key={a.agent} className={`text-[9px] font-bold px-2 py-0.5 rounded-full ${
+                          a.status === 'active'
+                            ? 'bg-ui-accent/15 text-ui-accent border border-ui-accent/20'
+                            : 'bg-white/[0.04] text-ui-text-dim border border-white/[0.06]'
+                        }`}>
+                          {a.agent.replace('Agent', '')}
+                          {a.vulns > 0 && <span className="text-red-300 ml-1">{a.vulns}</span>}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Findings summary — tap to expand */}
+                  {findings.length > 0 && (
+                    <div>
+                      <button
+                        onClick={() => setShowFindings(!showFindings)}
+                        className="flex items-center gap-1.5 flex-wrap w-full text-left"
+                      >
+                        <span className="text-[11px] text-ui-text-dim">{findings.length} findings:</span>
+                        {Object.entries(sevCounts)
+                          .filter(([, n]) => n > 0)
+                          .map(([sev, n]) => (
+                            <span key={sev} className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${SEV_STYLE[sev] || 'text-gray-300 bg-gray-900/30'}`}>
+                              {n} {sev}
+                            </span>
+                          ))}
+                        <span className="text-[10px] text-ui-text-dim ml-auto">{showFindings ? '\u25B2' : '\u25BC'}</span>
+                      </button>
+
+                      {showFindings && (
+                        <div className="mt-2 max-h-48 overflow-y-auto space-y-1.5">
+                          {findings.slice().reverse().map((f, i) => (
+                            <div key={i} className="flex items-start gap-2 text-[10px] py-1 border-t border-white/[0.04] first:border-0">
+                              <span className={`shrink-0 font-bold px-1 py-0.5 rounded ${SEV_STYLE[f.severity.toLowerCase()] || 'text-gray-300 bg-gray-900/30'}`}>
+                                {f.severity.slice(0, 4).toUpperCase()}
+                              </span>
+                              <div className="min-w-0 flex-1">
+                                <div className="text-off-white font-bold truncate">{f.type}{f.parameter ? ` \u00B7 ${f.parameter}` : ''}</div>
+                                <div className="text-ui-text-dim truncate">{f.url}</div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
               </div>
+
+              {/* Live activity feed */}
+              {recentLogs.length > 0 && (
+                <div className="bg-white/[0.03] border border-white/[0.06] rounded-2xl p-3 space-y-1.5">
+                  <div className="flex items-center gap-1.5">
+                    <span className="h-1.5 w-1.5 rounded-full bg-green-400 animate-pulse" />
+                    <span className="text-[10px] text-ui-text-dim font-bold uppercase tracking-wider">Live</span>
+                  </div>
+                  {recentLogs.map((l, i) => (
+                    <div key={i} className="text-[10px] leading-relaxed truncate">
+                      <span className={
+                        l.level === 'CRITICAL' ? 'text-red-300' :
+                        l.level === 'ERROR' ? 'text-red-400' :
+                        l.level === 'WARNING' ? 'text-yellow-300' :
+                        'text-ui-text-dim'
+                      }>
+                        {l.message}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
 
               {/* Controls — outside the card, breathing room */}
               <div className="flex gap-2.5">
@@ -143,11 +274,27 @@ export const MobileDashboard: React.FC = () => {
               </div>
             </>
           ) : (
-            /* Idle */
-            <div className="bg-white/[0.03] border border-white/[0.06] rounded-2xl py-12 text-center space-y-2">
-              <div className="text-3xl opacity-50">&#128225;</div>
-              <div className="text-off-white font-bold text-sm">No active scan</div>
-              <div className="text-[11px] text-ui-text-dim">Start a scan from desktop</div>
+            /* Idle — scan launcher */
+            <div className="bg-white/[0.03] border border-white/[0.06] rounded-2xl p-4 space-y-3">
+              <div className="text-off-white font-bold text-sm">New Scan</div>
+              <input
+                type="url"
+                value={targetUrl}
+                onChange={e => { setTargetUrl(e.target.value); setScanError(''); }}
+                placeholder="https://example.com"
+                className="w-full h-11 px-3 rounded-xl bg-white/[0.05] border border-white/[0.08] text-off-white text-sm placeholder:text-ui-text-dim focus:outline-none focus:border-ui-accent"
+              />
+              {scanError && <div className="text-[11px] text-red-400">{scanError}</div>}
+              <button
+                onClick={handleStartScan}
+                disabled={!targetUrl.trim() || isStarting || !cliConnected}
+                className="w-full h-11 rounded-xl bg-ui-accent text-white text-sm font-bold disabled:opacity-30 active:scale-95 transition-transform"
+              >
+                {isStarting ? 'Starting...' : 'Start Scan'}
+              </button>
+              {!cliConnected && (
+                <div className="text-[11px] text-red-400 text-center">CLI not connected</div>
+              )}
             </div>
           )}
 
