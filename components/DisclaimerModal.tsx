@@ -16,7 +16,7 @@ export const DisclaimerModal: React.FC<DisclaimerModalProps> = ({ onAccept, onRe
             role="dialog"
         >
             <div
-                className="card-premium w-full max-w-2xl shadow-2xl flex flex-col overflow-hidden"
+                className="card-premium w-full max-w-2xl max-h-[90vh] shadow-2xl flex flex-col overflow-hidden"
             >
                 <header className="flex-shrink-0 flex items-center gap-3 p-4 border-b border-ui-border bg-ui-bg/50">
                     <div className="p-2 rounded-xl bg-ui-accent/10 border border-ui-accent/20">
@@ -28,7 +28,7 @@ export const DisclaimerModal: React.FC<DisclaimerModalProps> = ({ onAccept, onRe
                     </div>
                 </header>
 
-                <main className="p-6 text-ui-text-dim space-y-4 text-sm bg-dashboard-bg/30">
+                <main className="p-6 text-ui-text-dim space-y-4 text-sm bg-dashboard-bg/30 overflow-y-auto flex-1 min-h-0">
                     <p>This application is provided for <strong className="text-ui-accent">educational and research purposes only</strong>. It uses generative AI to analyze web applications and assist in identifying potential security vulnerabilities.</p>
                     <p className="font-semibold text-ui-text-main/90 bg-ui-bg/40 p-3 rounded-lg border border-ui-border">The AI's output may contain inaccuracies, false positives, or false negatives. It is NOT a substitute for professional security auditing or manual code review.</p>
                     <p className="text-ui-text-main font-bold text-xs uppercase tracking-wider">By using this tool, you acknowledge and agree that:</p>

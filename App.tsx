@@ -2,7 +2,8 @@
 // App.tsx
 // version 0.1 Beta
 import React, { useState, useEffect } from 'react';
-import { Routes, Route } from 'react-router-dom';
+import { Routes, Route, useLocation } from 'react-router-dom';
+import { MobileDashboard } from './components/MobileDashboard.tsx';
 import { MainMenu } from './components/MainMenu.tsx';
 import { AnalysisHistory } from './components/analysis/AnalysisHistory.tsx';
 import { ReportViewer } from './components/analysis/ReportViewer.tsx';
@@ -71,6 +72,11 @@ const App: React.FC = () => {
 
   const [disclaimerAccepted, setDisclaimerAccepted] = useState(false);
   const [disclaimerRejected, setDisclaimerRejected] = useState(false);
+  const [mobileBannerDismissed, setMobileBannerDismissed] = useState(() => {
+    try { return sessionStorage.getItem('mobileBannerDismissed') === 'true'; } catch { return false; }
+  });
+
+  const location = useLocation();
 
   const [viewingReportId, setViewingReportId] = useState<string | null>(null);
   const [comparingReports, setComparingReports] = useState<{ a: string, b: string } | null>(null);
@@ -280,6 +286,15 @@ const App: React.FC = () => {
     return <DisclaimerModal onAccept={handleAcceptDisclaimer} onReject={handleRejectDisclaimer} />;
   }
 
+  // Mobile route — lightweight scan monitor, bypasses full desktop UI
+  if (location.pathname === '/mobile') {
+    return (
+      <div className="h-screen flex flex-col overflow-hidden bg-dashboard-bg">
+        <MobileDashboard />
+      </div>
+    );
+  }
+
   const renderActiveView = () => {
     const urlAnalysisTools = [
       { id: Tool.DAST, name: "DAST" },
@@ -466,6 +481,21 @@ const App: React.FC = () => {
     <div className="h-screen flex flex-col overflow-hidden">
       <ErrorToast />
       <UpdateBanner />
+      {!mobileBannerDismissed && (
+        <div className="sm:hidden flex items-center justify-between px-4 py-2 bg-ui-accent/10 border-b border-ui-accent/20">
+          <a href="/mobile" className="text-xs text-ui-accent font-bold">Switch to mobile view</a>
+          <button
+            onClick={() => {
+              try { sessionStorage.setItem('mobileBannerDismissed', 'true'); } catch {}
+              setMobileBannerDismissed(true);
+            }}
+            className="text-ui-text-dim text-xs px-2 py-1"
+            aria-label="Dismiss mobile banner"
+          >
+            &times;
+          </button>
+        </div>
+      )}
       <Header
         onMenuClick={() => setIsMenuOpen(!isMenuOpen)}
         onSettingsClick={handleShowSettings}

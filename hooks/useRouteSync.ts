@@ -92,6 +92,9 @@ export const useRouteSync = ({ activeView, activeSubTab, onNavigate, onSubTabCha
   useEffect(() => {
     const pathname = location.pathname;
 
+    // Mobile route — handled by App.tsx early return, skip sync
+    if (pathname === '/mobile') return;
+
     // Dynamic routes: chat sessions
     if (pathname.startsWith('/chat/') || pathname === '/chat') {
       if (activeView !== View.WEB_SEC_AGENT) {
@@ -148,6 +151,9 @@ export const useRouteSync = ({ activeView, activeSubTab, onNavigate, onSubTabCha
   // State → URL sync
   useEffect(() => {
     const currentPath = location.pathname;
+
+    // Mobile route — don't redirect away
+    if (currentPath === '/mobile') return;
 
     // Don't auto-navigate for dynamic routes
     if (activeView === View.WEB_SEC_AGENT && currentPath.startsWith('/chat')) {
