@@ -59,103 +59,73 @@ export const ScanConfigForm: React.FC<ScanConfigFormProps> = ({
 
   return (
     <div className="space-y-2">
-      {/* Row 1: Target URL (full width on mobile) */}
-      <div>
-        <label htmlFor="target-url" className="label-mini block mb-1 ml-1">
-          Target URL
-        </label>
-        {activeScan ? (
-          <div className="input-premium font-mono text-xs h-8 flex items-center gap-2 border-coral/30 text-coral bg-coral/5 px-3">
-            <div className="h-1.5 w-1.5 rounded-full bg-coral animate-pulse flex-shrink-0" />
-            <span className="font-bold tracking-wider">SCANNING</span>
-            <span className="opacity-40">|</span>
-            <span className="truncate text-white/90" title={activeScan.target_url}>
-              {activeScan.target_url}
-            </span>
-            <span className="ml-auto opacity-30 font-sans text-[9px]">ID: {activeScan.id}</span>
-          </div>
-        ) : (
-          <input
-            id="target-url"
-            type="text"
-            value={config.target_url}
-            onChange={(e) => handleUrlChange(e.target.value)}
-            disabled={disabled}
-            placeholder="https://example.com"
-            data-testid="scan-target-url-input"
-            className={`input-premium font-mono text-sm h-8 px-3 w-full ${urlError ? 'border-error animate-shake' : ''}`}
-          />
-        )}
-      </div>
-
-      {/* Row 2: Depth + Max URLs + Action Button */}
+      {/* Compact inline form - all fields in one row */}
       <div className="flex items-end gap-3">
-        {/* Max Depth (1-10) with +/- buttons */}
-        <div className="flex-1 sm:flex-none sm:w-32">
+        {/* Target URL - takes most space */}
+        <div className="flex-1 min-w-0">
+          <label htmlFor="target-url" className="label-mini block mb-1 ml-1">
+            Target URL
+          </label>
+          {activeScan ? (
+            <div className="input-premium font-mono text-xs h-8 flex items-center gap-2 border-coral/30 text-coral bg-coral/5 px-3">
+              <div className="h-1.5 w-1.5 rounded-full bg-coral animate-pulse flex-shrink-0" />
+              <span className="font-bold tracking-wider">SCANNING</span>
+              <span className="opacity-40">|</span>
+              <span className="truncate text-white/90" title={activeScan.target_url}>
+                {activeScan.target_url}
+              </span>
+              <span className="ml-auto opacity-30 font-sans text-[9px]">ID: {activeScan.id}</span>
+            </div>
+          ) : (
+            <input
+              id="target-url"
+              type="text"
+              value={config.target_url}
+              onChange={(e) => handleUrlChange(e.target.value)}
+              disabled={disabled}
+              placeholder="https://example.com"
+              data-testid="scan-target-url-input"
+              className={`input-premium font-mono text-sm h-8 px-3 w-full ${urlError ? 'border-error animate-shake' : ''}`}
+            />
+          )}
+        </div>
+
+        {/* Max Depth (1-10) */}
+        <div className="w-20 flex-shrink-0">
           <label htmlFor="max-depth" className="label-mini block mb-1 ml-1">
             Depth
           </label>
-          <div className="flex items-center gap-1">
-            <button
-              type="button"
-              onClick={() => handleNumberChange('max_depth', String(config.max_depth - 1))}
-              disabled={disabled || config.max_depth <= 1}
-              className="input-premium h-8 w-8 flex items-center justify-center text-sm font-bold shrink-0 disabled:opacity-30"
-            >−</button>
-            <input
-              id="max-depth"
-              type="number"
-              inputMode="numeric"
-              min="1"
-              max="10"
-              value={config.max_depth}
-              onChange={(e) => handleNumberChange('max_depth', e.target.value)}
-              onBlur={() => { if (config.max_depth < 1) onChange({ ...config, max_depth: 1 }); }}
-              disabled={disabled}
-              data-testid="scan-config-max-depth"
-              className="input-premium font-mono text-center text-sm h-8 w-full min-w-0 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none [-moz-appearance:textfield]"
-            />
-            <button
-              type="button"
-              onClick={() => handleNumberChange('max_depth', String(config.max_depth + 1))}
-              disabled={disabled || config.max_depth >= 10}
-              className="input-premium h-8 w-8 flex items-center justify-center text-sm font-bold shrink-0 disabled:opacity-30"
-            >+</button>
-          </div>
+          <input
+            id="max-depth"
+            type="number"
+            min="1"
+            max="10"
+            value={config.max_depth}
+            onChange={(e) => handleNumberChange('max_depth', e.target.value)}
+            onBlur={() => { if (config.max_depth < 1) onChange({ ...config, max_depth: 1 }); }}
+            disabled={disabled}
+            data-testid="scan-config-max-depth"
+            className="input-premium font-mono text-center text-sm h-8 w-full [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none [-moz-appearance:textfield]"
+          />
         </div>
 
-        {/* Max URLs (1-5000) with +/- buttons */}
-        <div className="flex-1 sm:flex-none sm:w-40">
+        {/* Max URLs (1-5000) */}
+        <div className="w-24 flex-shrink-0">
           <label htmlFor="max-urls" className="label-mini block mb-1 ml-1">
             Max URLs
           </label>
-          <div className="flex items-center gap-1">
-            <button
-              type="button"
-              onClick={() => handleNumberChange('max_urls', String(Math.max(1, config.max_urls - 10)))}
-              disabled={disabled || config.max_urls <= 1}
-              className="input-premium h-8 w-8 flex items-center justify-center text-sm font-bold shrink-0 disabled:opacity-30"
-            >−</button>
-            <input
-              id="max-urls"
-              type="number"
-              inputMode="numeric"
-              min="1"
-              max="5000"
-              value={config.max_urls}
-              onChange={(e) => handleNumberChange('max_urls', e.target.value)}
-              onBlur={() => { if (config.max_urls < 1) onChange({ ...config, max_urls: 1 }); }}
-              disabled={disabled}
-              data-testid="scan-config-max-urls"
-              className="input-premium font-mono text-center text-sm h-8 w-full min-w-0 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none [-moz-appearance:textfield]"
-            />
-            <button
-              type="button"
-              onClick={() => handleNumberChange('max_urls', String(config.max_urls + 10))}
-              disabled={disabled || config.max_urls >= 5000}
-              className="input-premium h-8 w-8 flex items-center justify-center text-sm font-bold shrink-0 disabled:opacity-30"
-            >+</button>
-          </div>
+          <input
+            id="max-urls"
+            type="number"
+            min="1"
+            max="5000"
+            value={config.max_urls}
+            onChange={(e) => handleNumberChange('max_urls', e.target.value)}
+            onBlur={() => { if (config.max_urls < 1) onChange({ ...config, max_urls: 1 }); }}
+            disabled={disabled}
+            data-testid="scan-config-max-urls"
+            className="input-premium font-mono text-center text-sm h-8 w-full [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none [-moz-appearance:textfield]"
+          />
         </div>
 
         {/* Action Button */}

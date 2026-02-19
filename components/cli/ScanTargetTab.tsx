@@ -19,33 +19,13 @@ const DEFAULT_CONFIG: ScanConfig = {
   target_url: '',
   scan_type: 'full',
   safe_mode: null,
-  max_depth: 3,
-  max_urls: 100,
+  max_depth: 1,
+  max_urls: 1,
   resume: false,
   use_vertical: true,
   focused_agents: [],
   param: '',
 };
-
-const STORAGE_KEY = 'btai-scan-config';
-
-function loadSavedConfig(): ScanConfig {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return DEFAULT_CONFIG;
-    const saved = JSON.parse(raw);
-    return { ...DEFAULT_CONFIG, ...saved };
-  } catch {
-    return DEFAULT_CONFIG;
-  }
-}
-
-function saveScanConfig(config: ScanConfig) {
-  try {
-    const { target_url, ...persistable } = config;
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(persistable));
-  } catch { /* quota exceeded or private mode */ }
-}
 
 interface ActiveScan {
   id: number;
@@ -55,7 +35,7 @@ interface ActiveScan {
 }
 
 export const ScanTargetTab: React.FC<ScanTargetTabProps> = ({ onScanStart }) => {
-  const [config, setConfig] = useState<ScanConfig>(loadSavedConfig);
+  const [config, setConfig] = useState<ScanConfig>(DEFAULT_CONFIG);
   const [scanError, setScanError] = useState<string | null>(null);
   const [runningScan, setRunningScan] = useState<ActiveScan | null>(null);
   const [isStarting, setIsStarting] = useState(false);
@@ -100,7 +80,6 @@ export const ScanTargetTab: React.FC<ScanTargetTabProps> = ({ onScanStart }) => 
 
   const handleConfigChange = (newConfig: ScanConfig) => {
     setConfig(newConfig);
-    saveScanConfig(newConfig);
     if (scanError) setScanError(null);
   };
 
