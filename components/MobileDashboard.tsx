@@ -6,6 +6,7 @@ import { usePastReports } from '../hooks/usePastReports';
 import { useCliConnection } from '../hooks/useCliConnection';
 import { startScan } from '../lib/cliApi.ts';
 import { BugTraceAILogo } from './Icons.tsx';
+import { APP_VERSION } from '../constants.ts';
 
 const PHASE_LABELS: Record<string, string> = {
   reconnaissance: 'Recon',
@@ -30,6 +31,8 @@ export const MobileDashboard: React.FC = () => {
   const { isConnected: cliConnected, version: cliVersion } = useCliConnection({ autoConnect: true });
 
   const [targetUrl, setTargetUrl] = useState('');
+  const [maxDepth, setMaxDepth] = useState(3);
+  const [maxUrls, setMaxUrls] = useState(50);
   const [isStarting, setIsStarting] = useState(false);
   const [scanError, setScanError] = useState('');
 
@@ -38,7 +41,7 @@ export const MobileDashboard: React.FC = () => {
     try { new URL(targetUrl); } catch { setScanError('Invalid URL'); return; }
     setIsStarting(true);
     try {
-      const res = await startScan({ target_url: targetUrl });
+      const res = await startScan({ target_url: targetUrl, max_depth: maxDepth, max_urls: maxUrls });
       subscribe(res.scan_id);
       setTargetUrl('');
     } catch (e: any) {
@@ -106,13 +109,16 @@ export const MobileDashboard: React.FC = () => {
       <div className="flex-1 overflow-y-auto">
         <div className="p-5 space-y-5">
 
-          {/* Connection */}
+          {/* Connection + versions */}
           <div className="flex items-center gap-2">
             <span className={`h-1.5 w-1.5 rounded-full ${cliConnected ? 'bg-green-400' : 'bg-red-400'}`} />
             <span className={`text-[11px] ${cliConnected ? 'text-green-400' : 'text-red-400'}`}>
               {cliConnected ? 'CLI Connected' : 'CLI Disconnected'}
             </span>
-            {cliVersion && <span className="text-[11px] text-ui-text-dim ml-auto">v{cliVersion}</span>}
+            <div className="flex items-center gap-2 ml-auto text-[10px] text-ui-text-dim">
+              <span>WEB {APP_VERSION}</span>
+              {cliVersion && <><span className="opacity-30">|</span><span>CLI {cliVersion}</span></>}
+            </div>
           </div>
 
           {activeScan ? (
@@ -284,6 +290,30 @@ export const MobileDashboard: React.FC = () => {
                 placeholder="https://example.com"
                 className="w-full h-11 px-3 rounded-xl bg-white/[0.05] border border-white/[0.08] text-off-white text-sm placeholder:text-ui-text-dim focus:outline-none focus:border-ui-accent"
               />
+              <div className="flex gap-3">
+                <div className="flex-1">
+                  <label className="text-[10px] text-ui-text-dim block mb-1">Max Depth</label>
+                  <input
+                    type="number"
+                    min={1}
+                    max={10}
+                    value={maxDepth}
+                    onChange={e => setMaxDepth(Math.max(1, Math.min(10, Number(e.target.value) || 1)))}
+                    className="w-full h-9 px-3 rounded-lg bg-white/[0.05] border border-white/[0.08] text-off-white text-sm text-center focus:outline-none focus:border-ui-accent"
+                  />
+                </div>
+                <div className="flex-1">
+                  <label className="text-[10px] text-ui-text-dim block mb-1">Max URLs</label>
+                  <input
+                    type="number"
+                    min={1}
+                    max={500}
+                    value={maxUrls}
+                    onChange={e => setMaxUrls(Math.max(1, Math.min(500, Number(e.target.value) || 1)))}
+                    className="w-full h-9 px-3 rounded-lg bg-white/[0.05] border border-white/[0.08] text-off-white text-sm text-center focus:outline-none focus:border-ui-accent"
+                  />
+                </div>
+              </div>
               {scanError && <div className="text-[11px] text-red-400">{scanError}</div>}
               <button
                 onClick={handleStartScan}
