@@ -7,7 +7,6 @@
 import React, { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
-import JSZip from 'jszip';
 import { MarkdownRenderer } from '../../MarkdownRenderer.tsx';
 import { ArrowPathIcon, ArrowDownTrayIcon, DocumentTextIcon } from '../../Icons.tsx';
 import { useReportViewer, Finding, ScanStats } from '../../../hooks/useReportViewer.ts';
@@ -361,33 +360,21 @@ export const ReportMarkdownViewer: React.FC<ReportMarkdownViewerProps> = ({ repo
   const handleDownloadAll = async () => {
     setZipping(true);
     try {
-      const zip = new JSZip();
-      const results = await Promise.allSettled(
-        downloadFiles.map(async ({ filename }) => {
-          const url = `${CLI_API_URL}/api/scans/${report.id}/files/${filename}`;
-          const res = await fetch(url);
-          if (!res.ok) return null;
-          const text = await res.text();
-          return { filename, text };
-        })
-      );
-      let added = 0;
-      for (const r of results) {
-        if (r.status === 'fulfilled' && r.value) {
-          zip.file(r.value.filename, r.value.text);
-          added++;
-        }
-      }
-      if (added === 0) return;
-      const blob = await zip.generateAsync({ type: 'blob' });
+      const res = await fetch(`${CLI_API_URL}/api/scans/${report.id}/report-zip`);
+      if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
+      const blob = await res.blob();
+      const disposition = res.headers.get('Content-Disposition');
+      const filenameMatch = disposition?.match(/filename="?([^"]+)"?/);
+      const filename = filenameMatch?.[1] || `scan-${report.id}-report.zip`;
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `scan-${report.id}-report.zip`;
+      a.download = filename;
       a.click();
       URL.revokeObjectURL(url);
     } catch (err) {
-      console.error('Failed to generate ZIP:', err);
+      console.error('Failed to download ZIP:', err);
+      alert('Could not download report ZIP. Check that the CLI API is reachable.');
     } finally {
       setZipping(false);
     }
