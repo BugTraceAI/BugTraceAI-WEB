@@ -68,6 +68,7 @@ const CONFIG_SECTIONS: SectionDef[] = [
       { key: 'MAX_URLS', label: 'Max URLs', description: 'Maximum number of unique URLs to scan', type: 'number', editable: true },
       { key: 'MAX_CONCURRENT_URL_AGENTS', label: 'Max Concurrent URL Agents', description: 'Parallel URL agents (5-10 recommended)', type: 'number', editable: true },
       { key: 'GOSPIDER_NO_REDIRECT', label: 'No Redirect', description: 'Disable redirect following in crawler', type: 'boolean', editable: false },
+      { key: 'URL_PATTERN_DEDUP', label: 'URL Pattern Dedup', description: 'Collapse URLs with same path pattern (e.g. /products/1 and /products/2)', type: 'boolean', editable: false },
       { key: 'URL_PRIORITIZATION_ENABLED', label: 'URL Prioritization', description: 'Score and prioritize URLs by potential vuln surface', type: 'boolean', editable: false },
       { key: 'URL_PRIORITIZATION_LOG_SCORES', label: 'Log Priority Scores', description: 'Log priority scores for each URL', type: 'boolean', editable: false },
       { key: 'URL_PRIORITIZATION_CUSTOM_PATHS', label: 'Custom Priority Paths', description: 'Custom high-priority paths (comma-separated)', type: 'string', editable: false },
@@ -136,6 +137,9 @@ const CONFIG_SECTIONS: SectionDef[] = [
       { key: 'CONDUCTOR_ENABLE_FP_DETECTION', label: 'FP Detection', description: 'Enable false-positive detection in conductor', type: 'boolean', editable: false },
       { key: 'DAST_ANALYSIS_TIMEOUT', label: 'DAST Analysis Timeout', description: 'Timeout (s) for DAST analysis phase', type: 'number', editable: false },
       { key: 'DAST_MAX_RETRIES', label: 'DAST Max Retries', description: 'Max retry rounds for URLs missing analysis JSON', type: 'number', editable: false },
+      { key: 'DAST_CONSECUTIVE_TIMEOUT_LIMIT', label: 'Consecutive Timeout Limit', description: 'Auto-pause after N consecutive timeouts (target may be down)', type: 'number', editable: false },
+      { key: 'DAST_TIMEOUT_PERCENT_LIMIT', label: 'Timeout Percent Limit', description: 'Auto-pause if this % of URLs timeout', type: 'number', editable: false },
+      { key: 'DAST_AUTO_RESUME_DELAY', label: 'Auto Resume Delay', description: 'Seconds to wait before auto-resuming after pause (0 = manual)', type: 'number', editable: false },
     ],
   },
   {
