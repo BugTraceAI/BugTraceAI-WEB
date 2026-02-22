@@ -8,6 +8,7 @@ import App from './App.tsx';
 import { ChatProvider } from './contexts/ChatContext.tsx';
 import { AnalysisProvider } from './contexts/AnalysisContext.tsx';
 import { SettingsProvider } from './contexts/SettingsProvider.tsx';
+import { ErrorBoundary } from './components/ErrorBoundary.tsx';
 
 const rootElement = document.getElementById('root');
 if (!rootElement) {
@@ -17,14 +18,16 @@ if (!rootElement) {
 const root = ReactDOM.createRoot(rootElement);
 root.render(
   <React.StrictMode>
-    <BrowserRouter>
-      <SettingsProvider>
-        <ChatProvider>
-          <AnalysisProvider>
-            <App />
-          </AnalysisProvider>
-        </ChatProvider>
-      </SettingsProvider>
-    </BrowserRouter>
+    <ErrorBoundary>
+      <BrowserRouter>
+        <SettingsProvider>
+          <ChatProvider>
+            <AnalysisProvider>
+              <App />
+            </AnalysisProvider>
+          </ChatProvider>
+        </SettingsProvider>
+      </BrowserRouter>
+    </ErrorBoundary>
   </React.StrictMode>
 );

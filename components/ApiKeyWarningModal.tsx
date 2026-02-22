@@ -34,7 +34,7 @@ export const ApiKeyWarningModal: React.FC<ApiKeyWarningModalProps> = ({ isOpen, 
 
                 <main className="p-8 text-center bg-dashboard-bg/30">
                     <p className="text-base text-ui-text-main font-semibold">An API key is required to use this feature.</p>
-                    <p className="mt-2 text-xs text-ui-text-dim">Please configure your OpenRouter API key in the settings menu to proceed with AI-powered analysis.</p>
+                    <p className="mt-2 text-xs text-ui-text-dim">Please configure your LLM provider API key in the settings menu to proceed with AI-powered analysis.</p>
                 </main>
 
                 <footer className="p-4 bg-ui-bg/80 flex justify-end items-center gap-3 border-t border-ui-border">

@@ -43,6 +43,50 @@ import {
 
 const OPENROUTER_API_URL = "https://openrouter.ai/api/v1/chat/completions";
 
+// ── Provider-aware API URL resolution ──
+// Reads base_url from CLI /api/provider endpoint, cached for 5 minutes.
+// Uses in-flight promise dedup to prevent race conditions on concurrent calls.
+let _providerCache: { url: string; providerId: string; ts: number } | null = null;
+let _providerFetchPromise: Promise<string> | null = null;
+const PROVIDER_CACHE_TTL = 5 * 60 * 1000; // 5 min
+
+const _getCliUrl = (): string => {
+    try {
+        return localStorage.getItem('cliApiUrl') || import.meta.env.VITE_CLI_API_URL || 'http://localhost:8000';
+    } catch { return import.meta.env.VITE_CLI_API_URL || 'http://localhost:8000'; }
+};
+
+const getProviderApiUrl = async (): Promise<string> => {
+    if (_providerCache && Date.now() - _providerCache.ts < PROVIDER_CACHE_TTL) {
+        return _providerCache.url;
+    }
+    // Dedup: if a fetch is already in-flight, reuse its promise
+    if (_providerFetchPromise) return _providerFetchPromise;
+    _providerFetchPromise = (async () => {
+        try {
+            const resp = await fetch(`${_getCliUrl()}/api/provider`, { signal: AbortSignal.timeout(3000) });
+            if (resp.ok) {
+                const data = await resp.json();
+                _providerCache = { url: data.base_url, providerId: data.provider, ts: Date.now() };
+                return data.base_url;
+            }
+        } catch { /* CLI unreachable, fall back */ }
+        return OPENROUTER_API_URL;
+    })().finally(() => { _providerFetchPromise = null; });
+    return _providerFetchPromise;
+};
+
+// Export for Settings UI to read/invalidate
+export const getProviderInfo = async () => {
+    try {
+        const resp = await fetch(`${_getCliUrl()}/api/provider`, { signal: AbortSignal.timeout(3000) });
+        if (resp.ok) return await resp.json();
+    } catch { /* CLI unreachable */ }
+    return null;
+};
+
+export const invalidateProviderCache = () => { _providerCache = null; };
+
 const callApi = async (prompt: string, options: ApiOptions, isJson: boolean = true) => {
     await enforceRateLimit();
     const { apiKey, model } = options;
@@ -50,13 +94,14 @@ const callApi = async (prompt: string, options: ApiOptions, isJson: boolean = tr
         throw new Error("API Key is not configured.");
     }
     const signal = getNewAbortSignal();
+    const apiUrl = await getProviderApiUrl();
 
     try {
         setRequestStatus('active');
         updateRateLimitTimestamp();
         incrementApiCallCount();
 
-        const response = await fetch(OPENROUTER_API_URL, {
+        const response = await fetch(apiUrl, {
             method: 'POST',
             headers: {
                 'Authorization': `Bearer ${apiKey}`,
@@ -67,7 +112,7 @@ const callApi = async (prompt: string, options: ApiOptions, isJson: boolean = tr
                 messages: [{ role: 'user', content: prompt }],
                 ...(isJson && { response_format: { type: "json_object" } }),
             }),
-            signal: signal, // Pass the signal to fetch
+            signal: signal,
         });
 
         if (!response.ok) {
@@ -77,21 +122,21 @@ const callApi = async (prompt: string, options: ApiOptions, isJson: boolean = tr
 
         const data = await response.json();
         const content = data.choices[0].message.content;
-        
+
         if (!content) {
             throw new Error("Received an empty response from the AI. The model may have been filtered or refused the request.");
         }
-        
-        resetContinuousFailureCount(); // Success, so reset the counter.
+
+        resetContinuousFailureCount();
         return content;
 
     } catch (error: any) {
-        incrementContinuousFailureCount(); // Failure, so increment the counter.
+        incrementContinuousFailureCount();
         if (error.name === 'AbortError') {
             console.log("API request was cancelled.");
             throw new Error("Request cancelled.");
         }
-        console.error("Error calling OpenRouter:", error);
+        console.error("Error calling LLM API:", error);
         throw new Error(error.message || "An unknown error occurred while contacting the AI service.");
     } finally {
         setRequestStatus('idle');
@@ -341,13 +386,14 @@ const callOpenRouterChat = async (history: ChatMessage[], options: ApiOptions) =
         throw new Error("API Key is not configured.");
     }
     const signal = getNewAbortSignal();
+    const apiUrl = await getProviderApiUrl();
 
     try {
         setRequestStatus('active');
         updateRateLimitTimestamp();
         incrementApiCallCount();
 
-        const response = await fetch(OPENROUTER_API_URL, {
+        const response = await fetch(apiUrl, {
             method: 'POST',
             headers: {
                 'Authorization': `Bearer ${apiKey}`,
@@ -375,7 +421,7 @@ const callOpenRouterChat = async (history: ChatMessage[], options: ApiOptions) =
             console.log("Chat API request was cancelled.");
             throw new Error("Request cancelled.");
         }
-        console.error("Error calling OpenRouter Chat:", error);
+        console.error("Error calling LLM Chat:", error);
         throw new Error(error.message || "An unknown error occurred while contacting the AI service.");
     } finally {
         setRequestStatus('idle');
@@ -417,13 +463,14 @@ export const continueGeneralChat = async (systemPrompt: string, history: ChatMes
     return callOpenRouterChat(fullHistory, options);
 };
 
-export const testApi = async (apiKey: string, model: string): Promise<{ success: boolean; error?: string }> => {
-    if (!apiKey.startsWith('sk-or-')) {
-        return { success: false, error: 'Invalid OpenRouter API key format. It should start with "sk-or-".' };
+export const testApi = async (apiKey: string, model: string, explicitUrl?: string): Promise<{ success: boolean; error?: string }> => {
+    if (!apiKey || apiKey.length < 10) {
+        return { success: false, error: 'API key is too short or empty.' };
     }
-    
+
     try {
-        const response = await fetch(OPENROUTER_API_URL, {
+        const apiUrl = explicitUrl || await getProviderApiUrl();
+        const response = await fetch(apiUrl, {
             method: 'POST',
             headers: {
                 'Authorization': `Bearer ${apiKey}`,
@@ -431,18 +478,18 @@ export const testApi = async (apiKey: string, model: string): Promise<{ success:
             },
             body: JSON.stringify({
                 model: model,
-                messages: [{ role: 'user', content: 'Test prompt' }],
-                max_tokens: 5,
+                messages: [{ role: 'user', content: 'hi' }],
+                max_tokens: 1,
             }),
         });
-        
+
         const data = await response.json();
 
         if (!response.ok) {
             const errorMessage = data?.error?.message || `HTTP error! status: ${response.status}`;
             return { success: false, error: errorMessage };
         }
-        
+
         return { success: true };
 
     } catch (error: any) {

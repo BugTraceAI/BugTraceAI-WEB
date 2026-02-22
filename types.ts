@@ -156,6 +156,7 @@ export interface FileUploadAnalysisResult {
 
 export interface ApiKeys {
     openrouter: string;
+    [key: string]: string;  // Support any provider key (e.g. 'zai')
 }
 
 export type ApiOptions = {

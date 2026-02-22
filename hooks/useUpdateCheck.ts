@@ -16,7 +16,7 @@ export function useUpdateCheck(): UpdateState | null {
 
   useEffect(() => {
     // Already dismissed this session
-    if (sessionStorage.getItem(DISMISS_KEY)) return;
+    try { if (sessionStorage.getItem(DISMISS_KEY)) return; } catch { /* private mode */ }
 
     const check = async () => {
       try {
@@ -33,7 +33,7 @@ export function useUpdateCheck(): UpdateState | null {
             releaseUrl: data.releaseUrl || '',
             dismissed: false,
             dismiss: () => {
-              sessionStorage.setItem(DISMISS_KEY, 'true');
+              try { sessionStorage.setItem(DISMISS_KEY, 'true'); } catch { /* private mode */ }
               setUpdate(prev => prev ? { ...prev, dismissed: true } : null);
             },
           });

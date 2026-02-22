@@ -13,6 +13,9 @@ interface SettingsContextType {
     setOpenRouterModel: (model: string) => void;
     saveApiKeys: boolean;
     setSaveApiKeys: (save: boolean) => void;
+    // Provider
+    providerId: string;
+    setProviderId: (id: string) => void;
     // CLI Connection
     cliUrl: string;
     setCliUrl: (url: string) => void;
@@ -35,6 +38,9 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     const [apiKeys, setApiKeys] = useState<ApiKeys>({ openrouter: '' });
     const [openRouterModel, setOpenRouterModel] = useState<string>(OPEN_ROUTER_MODELS[0]);
     const [saveApiKeys, setSaveApiKeys] = useState<boolean>(false);
+
+    // Provider selection (synced from CLI API)
+    const [providerId, setProviderId] = useState<string>('openrouter');
 
     // CLI Connection state
     const [cliUrl, setCliUrl] = useState<string>(DEFAULT_CLI_URL);
@@ -72,6 +78,9 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
             const savedModel = localStorage.getItem('openRouterModel');
             if (savedModel) setOpenRouterModel(savedModel);
+
+            const savedProvider = localStorage.getItem('providerId');
+            if (savedProvider) setProviderId(savedProvider);
 
             // Load CLI URL — env var wins when set (Docker proxy mode)
             const envCliUrl = import.meta.env.VITE_CLI_API_URL;
@@ -115,6 +124,11 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     }, [openRouterModel]);
 
     useEffect(() => {
+        try { localStorage.setItem('providerId', providerId); }
+        catch (e) { console.error("Could not save provider:", e); }
+    }, [providerId]);
+
+    useEffect(() => {
         // Don't persist CLI URL in Docker mode (env var is the source of truth)
         if (!import.meta.env.VITE_CLI_API_URL) {
             try { localStorage.setItem('cliApiUrl', cliUrl); }
@@ -127,10 +141,11 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         apiKeys, setApiKeys,
         openRouterModel, setOpenRouterModel,
         saveApiKeys, setSaveApiKeys,
+        providerId, setProviderId,
         cliUrl, setCliUrl,
         cliConnected, cliStatus, cliVersion, cliDockerAvailable,
         setCli,
-    }), [themeId, setThemeId, apiKeys, openRouterModel, saveApiKeys, cliUrl, cliConnected, cliStatus, cliVersion, cliDockerAvailable, setCli]);
+    }), [themeId, setThemeId, apiKeys, openRouterModel, saveApiKeys, providerId, cliUrl, cliConnected, cliStatus, cliVersion, cliDockerAvailable, setCli]);
 
     return <SettingsContext.Provider value={value}>{children}</SettingsContext.Provider>;
 };

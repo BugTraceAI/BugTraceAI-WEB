@@ -174,11 +174,16 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // --------------------------------------------------------------------------
   // SEND MESSAGE
   // --------------------------------------------------------------------------
+  // Use ref to avoid stale closure on currentSession in async callbacks
+  const currentSessionRef = React.useRef(currentSession);
+  currentSessionRef.current = currentSession;
+
   const sendMessage = useCallback(async (
     content: string,
     role: 'user' | 'assistant'
   ): Promise<ChatMessage> => {
-    if (!currentSession) {
+    const session = currentSessionRef.current;
+    if (!session) {
       const errorMsg = 'No active chat session';
       setError(errorMsg);
       throw new Error(errorMsg);
@@ -188,7 +193,7 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setError(null);
 
       const response = await axios.post(
-        `${API_BASE_URL}/chats/${currentSession.id}/messages`,
+        `${API_BASE_URL}/chats/${session.id}/messages`,
         { role, content }
       );
 
@@ -201,7 +206,7 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setError(message);
       throw new Error(message);
     }
-  }, [currentSession]);
+  }, []);
 
   // --------------------------------------------------------------------------
   // ARCHIVE SESSION

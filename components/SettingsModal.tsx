@@ -1,5 +1,5 @@
 // components/SettingsModal.tsx
-// version 0.0.51 - Updated with new theme colors (purple/coral palette)
+// version 0.0.52 - Multi-provider support (OpenRouter + Z.ai)
 /* eslint-disable max-lines -- Settings modal component (380 lines).
  * API configuration form with key validation, model selection, and caching.
  * Includes OpenRouter model fetching, cache management, key testing, and CLI connector.
@@ -9,7 +9,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { XMarkIcon, CogIcon, CheckCircleIcon, ArrowPathIcon } from './Icons.tsx';
 import { Spinner } from './Spinner.tsx';
 import { useSettings } from '../contexts/SettingsProvider.tsx';
-import { testApi } from '../services/Service.ts';
+import { testApi, getProviderInfo, invalidateProviderCache } from '../services/Service.ts';
 import {
     testCliConnection,
     testBackendConnection,
@@ -33,6 +33,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, i
         apiKeys: globalApiKeys, setApiKeys: setGlobalApiKeys,
         openRouterModel: globalOpenRouterModel, setOpenRouterModel: setGlobalOpenRouterModel,
         saveApiKeys: globalSaveApiKeys, setSaveApiKeys: setGlobalSaveApiKeys,
+        providerId: globalProviderId, setProviderId: setGlobalProviderId,
         cliUrl, setCliUrl, cliConnected, cliVersion, setCli,
     } = useSettings();
 
@@ -55,6 +56,11 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, i
     const [testResult, setTestResult] = useState<{ success: boolean, message: string } | null>(null);
     const [isKeyValidated, setIsKeyValidated] = useState(false);
     const openRouterInputRef = useRef<HTMLInputElement>(null);
+
+    // Provider state
+    const [localProviderId, setLocalProviderId] = useState(globalProviderId);
+    const [availableProviders, setAvailableProviders] = useState<Array<{ id: string; name: string; api_key_configured: boolean }>>([]);
+    const [providerPreset, setProviderPreset] = useState<any>(null);
 
     // State for dynamic OpenRouter models
     const [openRouterModels, setOpenRouterModels] = useState<string[]>(OPEN_ROUTER_MODELS);
@@ -98,6 +104,32 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, i
             setClearResult(null);
         }
     }, [isOpen, globalApiKeys, globalOpenRouterModel, globalSaveApiKeys]);
+
+    // Load provider info from CLI API when modal opens
+    useEffect(() => {
+        if (!isOpen) return;
+        setLocalProviderId(globalProviderId);
+        let cancelled = false;
+        (async () => {
+            try {
+                const providerInfo = await getProviderInfo();
+                if (cancelled) return;
+                if (providerInfo) {
+                    setProviderPreset(providerInfo);
+                    setLocalProviderId(providerInfo.provider);
+                    // When a non-OpenRouter provider is active, sync model to preset default
+                    if (providerInfo.provider !== 'openrouter' && providerInfo.models?.DEFAULT_MODEL) {
+                        setLocalOpenRouterModel(providerInfo.models.DEFAULT_MODEL);
+                    }
+                }
+                // Fetch available providers list
+                const resp = await fetch(`${cliUrl}/api/providers`, { signal: AbortSignal.timeout(3000) });
+                if (cancelled) return;
+                if (resp.ok) setAvailableProviders(await resp.json());
+            } catch { /* CLI unreachable, use defaults */ }
+        })();
+        return () => { cancelled = true; };
+    }, [isOpen, cliUrl, globalProviderId]);
 
     // Focus input when modal opens
     useEffect(() => {
@@ -159,21 +191,37 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, i
     }, [localOpenRouterModel]);
 
     useEffect(() => {
-        if (isOpen) {
+        if (isOpen && localProviderId === 'openrouter') {
             fetchOpenRouterModels();
         }
-    }, [isOpen, fetchOpenRouterModels]);
+    }, [isOpen, localProviderId, fetchOpenRouterModels]);
 
-    const handleSaveSettings = () => {
+    const handleSaveSettings = async () => {
+        const activeKey = localProviderId === 'openrouter'
+            ? localApiKeys.openrouter
+            : (localApiKeys[localProviderId] || '');
         // Only require validation if a key is actually present. Allows saving an empty key.
-        if (localApiKeys.openrouter.trim() && !isKeyValidated) {
+        if (activeKey.trim() && !isKeyValidated) {
             setTestResult({ success: false, message: 'Please validate the new API key successfully before saving.' });
             return;
         }
         setGlobalApiKeys(localApiKeys);
         setGlobalOpenRouterModel(localOpenRouterModel);
         setGlobalSaveApiKeys(localSaveApiKeys);
-        // CLI URL is now persisted by context (no manual localStorage save needed)
+        setGlobalProviderId(localProviderId);
+        // Persist provider change to CLI API if connected
+        if (cliConnected && cliUrl) {
+            try {
+                const body: Record<string, string> = { provider: localProviderId };
+                if (activeKey.trim()) body.api_key = activeKey;
+                await fetch(`${cliUrl}/api/provider`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(body),
+                });
+                invalidateProviderCache();
+            } catch { /* CLI unreachable, save locally only */ }
+        }
         onClose();
     };
 
@@ -295,8 +343,18 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, i
     };
 
     const handleTestApi = async () => {
-        const keyToTest = localApiKeys.openrouter;
+        const keyToTest = localProviderId === 'openrouter'
+            ? localApiKeys.openrouter
+            : (localApiKeys[localProviderId] || '');
         const modelToTest = localOpenRouterModel;
+
+        // Resolve the correct API URL for the selected provider
+        let urlToTest: string | undefined;
+        if (localProviderId === 'openrouter') {
+            urlToTest = 'https://openrouter.ai/api/v1/chat/completions';
+        } else if (providerPreset?.base_url) {
+            urlToTest = providerPreset.base_url;
+        }
 
         if (!keyToTest) {
             setTestResult({ success: false, message: 'API Key must be provided.' });
@@ -306,7 +364,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, i
         setIsTesting(true);
         setTestResult(null);
         try {
-            const result = await testApi(keyToTest, modelToTest);
+            const result = await testApi(keyToTest, modelToTest, urlToTest);
             setTestResult({ success: result.success, message: result.success ? 'API connection successful!' : `Test failed: ${result.error}` });
             if (result.success) {
                 setIsKeyValidated(true);
@@ -321,7 +379,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, i
 
     if (!isOpen) return null;
 
-    const currentKey = localApiKeys.openrouter;
+    const currentKey = localProviderId === 'openrouter'
+        ? localApiKeys.openrouter
+        : (localApiKeys[localProviderId] || '');
 
     return (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={onClose} aria-modal="true" role="dialog">
@@ -377,56 +437,157 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, i
                 <main className="flex-1 p-6 space-y-6 overflow-y-auto">
                     {activeTab === 'api' && (
                         <>
+                            {/* Provider Selector */}
                             <div>
-                                <label htmlFor="openrouterApiKey" className="label-mini block mb-1">
-                                    OpenRouter API Key
-                                </label>
-                                <div className="relative">
-                                    <input
-                                        ref={openRouterInputRef}
-                                        id="openrouterApiKey"
-                                        type="password"
-                                        value={localApiKeys.openrouter}
-                                        onChange={(e) => {
-                                            setLocalApiKeys({ openrouter: e.target.value });
-                                            setIsKeyValidated(false);
-                                            setTestResult(null);
-                                        }}
-                                        placeholder="Enter your OpenRouter key (sk-or-v1...)"
-                                        className="w-full input-premium px-4 py-2"
-                                    />
-                                    {isKeyValidated && localApiKeys.openrouter && (
-                                        <CheckCircleIcon className="absolute top-1/2 right-3 -translate-y-1/2 h-6 w-6 text-green-400" title="This key has been validated." />
-                                    )}
-                                </div>
-                            </div>
-
-                            <div>
-                                <label htmlFor="model-select" className="label-mini block mb-1">
-                                    Select Model
-                                </label>
-                                <div className="flex items-center gap-2">
-                                    <select
-                                        id="model-select"
-                                        value={localOpenRouterModel}
-                                        onChange={(e) => setLocalOpenRouterModel(e.target.value)}
-                                        className="flex-1 input-premium p-2"
-                                        disabled={isFetchingModels}
-                                    >
-                                        {openRouterModels.map(model => (
-                                            <option key={model} value={model}>{model}</option>
-                                        ))}
-                                    </select>
-                                    <button onClick={() => fetchOpenRouterModels(true)} disabled={isFetchingModels} className="flex-shrink-0 p-2 input-premium hover:bg-white/5 transition-colors disabled:opacity-50" title="Refresh model list">
-                                        {isFetchingModels ? <Spinner /> : <ArrowPathIcon className="h-5 w-5" />}
-                                    </button>
-                                </div>
-                                {fetchModelsError && <p className="text-red-400 text-xs mt-2">{fetchModelsError}</p>}
-                                <p className="text-xs text-muted mt-2">
-                                    <strong className="text-coral">Recommendation:</strong> For best results, use <code>google/gemini-3-flash-preview</code>. The prompts in this tool have been highly optimized for it.
+                                <label className="label-mini block mb-1">LLM Provider</label>
+                                <select
+                                    value={localProviderId}
+                                    onChange={(e) => {
+                                        const newProvider = e.target.value;
+                                        setLocalProviderId(newProvider);
+                                        setTestResult(null);
+                                        setIsKeyValidated(false);
+                                        // Set default model for the new provider
+                                        if (newProvider !== 'openrouter' && providerPreset?.provider === newProvider && providerPreset?.models?.DEFAULT_MODEL) {
+                                            // Preset already loaded for this provider — use its default
+                                            setLocalOpenRouterModel(providerPreset.models.DEFAULT_MODEL);
+                                        } else if (newProvider !== 'openrouter') {
+                                            setLocalOpenRouterModel('glm-4.7-flash');
+                                        } else {
+                                            setLocalOpenRouterModel(globalOpenRouterModel || OPEN_ROUTER_MODELS[0]);
+                                        }
+                                    }}
+                                    className="w-full input-premium p-2"
+                                >
+                                    {availableProviders.length > 0
+                                        ? availableProviders.map(p => (
+                                            <option key={p.id} value={p.id}>{p.name}</option>
+                                        ))
+                                        : <>
+                                            <option value="openrouter">OpenRouter</option>
+                                            <option value="zai">Z.ai</option>
+                                        </>
+                                    }
+                                </select>
+                                <p className="text-xs text-muted mt-1">
+                                    {localProviderId === 'openrouter'
+                                        ? 'Multi-model access via OpenRouter. Supports 200+ models.'
+                                        : 'Z.ai direct API. GLM-4.7 family with no content censorship for security testing.'}
                                 </p>
                             </div>
 
+                            {/* OpenRouter-specific settings */}
+                            {localProviderId === 'openrouter' && (
+                                <>
+                                    <div>
+                                        <label htmlFor="openrouterApiKey" className="label-mini block mb-1">
+                                            OpenRouter API Key
+                                        </label>
+                                        <div className="relative">
+                                            <input
+                                                ref={openRouterInputRef}
+                                                id="openrouterApiKey"
+                                                type="password"
+                                                value={localApiKeys.openrouter}
+                                                onChange={(e) => {
+                                                    setLocalApiKeys({ ...localApiKeys, openrouter: e.target.value });
+                                                    setIsKeyValidated(false);
+                                                    setTestResult(null);
+                                                }}
+                                                placeholder="Enter your OpenRouter key (sk-or-v1...)"
+                                                className="w-full input-premium px-4 py-2"
+                                            />
+                                            {isKeyValidated && localApiKeys.openrouter && (
+                                                <CheckCircleIcon className="absolute top-1/2 right-3 -translate-y-1/2 h-6 w-6 text-green-400" title="This key has been validated." />
+                                            )}
+                                        </div>
+                                        {localApiKeys.openrouter && localApiKeys.openrouter.length >= 4 && (
+                                            <p className="text-xs text-ui-text-dim mt-1 font-mono">Key: ····{localApiKeys.openrouter.slice(-4)}</p>
+                                        )}
+                                    </div>
+
+                                    <div>
+                                        <label htmlFor="model-select" className="label-mini block mb-1">
+                                            Select Model
+                                        </label>
+                                        <div className="flex items-center gap-2">
+                                            <select
+                                                id="model-select"
+                                                value={localOpenRouterModel}
+                                                onChange={(e) => setLocalOpenRouterModel(e.target.value)}
+                                                className="flex-1 input-premium p-2"
+                                                disabled={isFetchingModels}
+                                            >
+                                                {openRouterModels.map(model => (
+                                                    <option key={model} value={model}>{model}</option>
+                                                ))}
+                                            </select>
+                                            <button onClick={() => fetchOpenRouterModels(true)} disabled={isFetchingModels} className="flex-shrink-0 p-2 input-premium hover:bg-white/5 transition-colors disabled:opacity-50" title="Refresh model list">
+                                                {isFetchingModels ? <Spinner /> : <ArrowPathIcon className="h-5 w-5" />}
+                                            </button>
+                                        </div>
+                                        {fetchModelsError && <p className="text-red-400 text-xs mt-2">{fetchModelsError}</p>}
+                                        <p className="text-xs text-muted mt-2">
+                                            <strong className="text-coral">Recommendation:</strong> For best results, use <code>google/gemini-3-flash-preview</code>.
+                                        </p>
+                                    </div>
+                                </>
+                            )}
+
+                            {/* Z.ai-specific settings */}
+                            {localProviderId === 'zai' && (
+                                <>
+                                    <div>
+                                        <label htmlFor="zaiApiKey" className="label-mini block mb-1">
+                                            GLM API Key
+                                        </label>
+                                        <div className="relative">
+                                            <input
+                                                id="zaiApiKey"
+                                                type="password"
+                                                value={localApiKeys.zai || ''}
+                                                onChange={(e) => {
+                                                    setLocalApiKeys({ ...localApiKeys, zai: e.target.value });
+                                                    setIsKeyValidated(false);
+                                                    setTestResult(null);
+                                                }}
+                                                placeholder="Enter your Z.ai API key"
+                                                className="w-full input-premium px-4 py-2"
+                                            />
+                                            {isKeyValidated && localApiKeys.zai && (
+                                                <CheckCircleIcon className="absolute top-1/2 right-3 -translate-y-1/2 h-6 w-6 text-green-400" title="This key has been validated." />
+                                            )}
+                                        </div>
+                                        {localApiKeys.zai && localApiKeys.zai.length >= 4 && (
+                                            <p className="text-xs text-ui-text-dim mt-1 font-mono">Key: ····{localApiKeys.zai.slice(-4)}</p>
+                                        )}
+                                    </div>
+
+                                    <div>
+                                        <label htmlFor="zai-model-select" className="label-mini block mb-1">
+                                            Select Model
+                                        </label>
+                                        <select
+                                            id="zai-model-select"
+                                            value={localOpenRouterModel}
+                                            onChange={(e) => setLocalOpenRouterModel(e.target.value)}
+                                            className="w-full input-premium p-2"
+                                        >
+                                            {(providerPreset?.provider === 'zai' && providerPreset?.models
+                                                ? [...new Set(Object.values(providerPreset.models) as string[])]
+                                                : ['glm-4.7', 'glm-4.7-flash', 'glm-4.6v']
+                                            ).map((model: string) => (
+                                                <option key={model} value={model}>{model}</option>
+                                            ))}
+                                        </select>
+                                        <p className="text-xs text-muted mt-2">
+                                            <strong className="text-coral">Recommendation:</strong> <code>glm-4.7</code> for accuracy, <code>glm-4.7-flash</code> for speed.
+                                        </p>
+                                    </div>
+                                </>
+                            )}
+
+                            {/* Test button + Save checkbox (shared across providers) */}
                             <div>
                                 <button
                                     onClick={handleTestApi}

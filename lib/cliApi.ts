@@ -115,6 +115,9 @@ export interface HealthCheckResponse {
 // API Client Functions
 // ============================================================================
 
+/** Default timeout for CLI API requests (30s). */
+const CLI_FETCH_TIMEOUT = 30_000;
+
 /**
  * Helper function to handle fetch responses.
  * Throws an error with response detail on non-2xx status.
@@ -145,10 +148,9 @@ async function handleResponse<T>(response: Response): Promise<T> {
 export async function startScan(config: CreateScanRequest): Promise<ScanStatusResponse> {
   const response = await fetch(`${CLI_API_BASE}/scans`, {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(config),
+    signal: AbortSignal.timeout(CLI_FETCH_TIMEOUT),
   });
   return handleResponse<ScanStatusResponse>(response);
 }
@@ -161,7 +163,7 @@ export async function startScan(config: CreateScanRequest): Promise<ScanStatusRe
  * @returns Scan status response
  */
 export async function getScanStatus(scanId: number): Promise<ScanStatusResponse> {
-  const response = await fetch(`${CLI_API_BASE}/scans/${scanId}/status`);
+  const response = await fetch(`${CLI_API_BASE}/scans/${scanId}/status`, { signal: AbortSignal.timeout(CLI_FETCH_TIMEOUT) });
   return handleResponse<ScanStatusResponse>(response);
 }
 
@@ -183,7 +185,7 @@ export async function listScans(params?: {
   if (params?.status_filter) queryParams.set('status_filter', params.status_filter);
 
   const url = `${CLI_API_BASE}/scans${queryParams.toString() ? `?${queryParams}` : ''}`;
-  const response = await fetch(url);
+  const response = await fetch(url, { signal: AbortSignal.timeout(CLI_FETCH_TIMEOUT) });
   return handleResponse<ScanListResponse>(response);
 }
 
@@ -197,6 +199,7 @@ export async function listScans(params?: {
 export async function stopScan(scanId: number): Promise<StopScanResponse> {
   const response = await fetch(`${CLI_API_BASE}/scans/${scanId}/stop`, {
     method: 'POST',
+    signal: AbortSignal.timeout(CLI_FETCH_TIMEOUT),
   });
   return handleResponse<StopScanResponse>(response);
 }
@@ -211,6 +214,7 @@ export async function stopScan(scanId: number): Promise<StopScanResponse> {
 export async function pauseScan(scanId: number): Promise<StopScanResponse> {
   const response = await fetch(`${CLI_API_BASE}/scans/${scanId}/pause`, {
     method: 'POST',
+    signal: AbortSignal.timeout(CLI_FETCH_TIMEOUT),
   });
   return handleResponse<StopScanResponse>(response);
 }
@@ -225,6 +229,7 @@ export async function pauseScan(scanId: number): Promise<StopScanResponse> {
 export async function resumeScan(scanId: number): Promise<StopScanResponse> {
   const response = await fetch(`${CLI_API_BASE}/scans/${scanId}/resume`, {
     method: 'POST',
+    signal: AbortSignal.timeout(CLI_FETCH_TIMEOUT),
   });
   return handleResponse<StopScanResponse>(response);
 }
@@ -250,7 +255,7 @@ export async function getScanFindings(scanId: number, params?: {
   if (params?.per_page) queryParams.set('per_page', params.per_page.toString());
 
   const url = `${CLI_API_BASE}/scans/${scanId}/findings${queryParams.toString() ? `?${queryParams}` : ''}`;
-  const response = await fetch(url);
+  const response = await fetch(url, { signal: AbortSignal.timeout(CLI_FETCH_TIMEOUT) });
   return handleResponse<FindingsResponse>(response);
 }
 
@@ -263,7 +268,7 @@ export async function getScanFindings(scanId: number, params?: {
  * @returns Response object for blob download
  */
 export async function getReport(scanId: number, format: 'html' | 'markdown' | 'json'): Promise<Response> {
-  const response = await fetch(`${CLI_API_BASE}/scans/${scanId}/report/${format}`);
+  const response = await fetch(`${CLI_API_BASE}/scans/${scanId}/report/${format}`, { signal: AbortSignal.timeout(60_000) });
   if (!response.ok) {
     let message = `HTTP ${response.status}: ${response.statusText}`;
     try {
@@ -285,7 +290,7 @@ export async function getReport(scanId: number, format: 'html' | 'markdown' | 'j
  * @returns Configuration response
  */
 export async function getConfig(): Promise<ConfigResponse> {
-  const response = await fetch(`${CLI_API_BASE}/config`);
+  const response = await fetch(`${CLI_API_BASE}/config`, { signal: AbortSignal.timeout(CLI_FETCH_TIMEOUT) });
   return handleResponse<ConfigResponse>(response);
 }
 
@@ -299,10 +304,9 @@ export async function getConfig(): Promise<ConfigResponse> {
 export async function updateConfig(updates: ConfigUpdateRequest): Promise<{ updated: Record<string, { from: any; to: any }>; message: string }> {
   const response = await fetch(`${CLI_API_BASE}/config`, {
     method: 'PATCH',
-    headers: {
-      'Content-Type': 'application/json',
-    },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(updates),
+    signal: AbortSignal.timeout(CLI_FETCH_TIMEOUT),
   });
   return handleResponse<{ updated: Record<string, { from: any; to: any }>; message: string }>(response);
 }
@@ -317,6 +321,7 @@ export async function updateConfig(updates: ConfigUpdateRequest): Promise<{ upda
 export async function deleteScan(scanId: number): Promise<{ scan_id: number; message: string; files_cleaned: boolean }> {
   const response = await fetch(`${CLI_API_BASE}/scans/${scanId}`, {
     method: 'DELETE',
+    signal: AbortSignal.timeout(CLI_FETCH_TIMEOUT),
   });
   return handleResponse<{ scan_id: number; message: string; files_cleaned: boolean }>(response);
 }
@@ -328,7 +333,7 @@ export async function deleteScan(scanId: number): Promise<{ scan_id: number; mes
  * @returns Health status
  */
 export async function healthCheck(): Promise<HealthCheckResponse> {
-  const response = await fetch(`${CLI_API_URL}/health`);
+  const response = await fetch(`${CLI_API_URL}/health`, { signal: AbortSignal.timeout(10_000) });
   return handleResponse<HealthCheckResponse>(response);
 }
 
