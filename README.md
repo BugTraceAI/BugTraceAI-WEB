@@ -11,7 +11,7 @@
 <p align="center">
   <a href="https://bugtraceai.com"><img src="https://img.shields.io/badge/Website-bugtraceai.com-blue?logo=google-chrome&logoColor=white" alt="Website"/></a>
   <a href="https://deepwiki.com/BugTraceAI/BugTraceAI-WEB"><img src="https://img.shields.io/badge/Wiki-Documentation-000?logo=wikipedia&logoColor=white" alt="Wiki"/></a>
-  <img src="https://img.shields.io/badge/License-MIT-green.svg" alt="License"/>
+  <img src="https://img.shields.io/badge/License-AGPL--3.0-blue.svg" alt="License"/>
   <img src="https://img.shields.io/badge/Version-0.3.3_Beta-orange" alt="Version"/>
 </p>
 
@@ -315,7 +315,7 @@ BugTraceAI-WEB/
 
 ## License
 
-MIT License. See [LICENSE](LICENSE) for details.
+AGPL-3.0 License. See [LICENSE](LICENSE) for details.
 
 ---
 
