@@ -1,27 +1,30 @@
 // components/cli/CLIFramework.tsx
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { TerminalIcon, DocumentTextIcon, CogIcon } from '../Icons.tsx';
+import { TerminalIcon, DocumentTextIcon, CogIcon, SignalIcon } from '../Icons.tsx';
 import { ScanTargetTab } from './ScanTargetTab.tsx';
 import { PastReportsTab } from './PastReportsTab.tsx';
 import { ConfigurationTab } from './ConfigurationTab.tsx';
+import { ProviderTab } from './ProviderTab.tsx';
 
 interface CLIFrameworkProps {
   onClose: () => void;
 }
 
-type TabType = 'scan' | 'reports' | 'config';
+type TabType = 'scan' | 'reports' | 'config' | 'provider';
 
 const tabToPath: Record<TabType, string> = {
   scan: '/bugtraceai/scan',
   reports: '/bugtraceai/reports',
   config: '/bugtraceai/config',
+  provider: '/bugtraceai/provider',
 };
 
 const pathToTab: Record<string, TabType> = {
   '/bugtraceai/scan': 'scan',
   '/bugtraceai/reports': 'reports',
   '/bugtraceai/config': 'config',
+  '/bugtraceai/provider': 'provider',
   '/bugtraceai': 'scan', // Default
 };
 
@@ -48,6 +51,7 @@ export const CLIFramework: React.FC<CLIFrameworkProps> = ({ onClose }) => {
     { id: 'scan' as TabType, name: 'Scan Target', icon: <TerminalIcon className="h-4 w-4 transition-transform duration-300 group-hover:scale-110" /> },
     { id: 'reports' as TabType, name: 'Reports', icon: <DocumentTextIcon className="h-4 w-4 transition-transform duration-300 group-hover:-rotate-6 group-hover:scale-110" /> },
     { id: 'config' as TabType, name: 'Configuration', icon: <CogIcon className="h-4 w-4 transition-transform duration-500 group-hover:rotate-90" /> },
+    { id: 'provider' as TabType, name: 'Provider', icon: <SignalIcon className="h-4 w-4 transition-transform duration-300 group-hover:scale-110" /> },
   ];
 
   const handleRescan = (targetUrl: string) => {
@@ -71,6 +75,8 @@ export const CLIFramework: React.FC<CLIFrameworkProps> = ({ onClose }) => {
         return <PastReportsTab onRescan={handleRescan} onViewScan={handleViewScan} />;
       case 'config':
         return <ConfigurationTab />;
+      case 'provider':
+        return <ProviderTab />;
     }
   };
 
@@ -90,7 +96,7 @@ export const CLIFramework: React.FC<CLIFrameworkProps> = ({ onClose }) => {
               }
             `}
             aria-current={activeTab === tab.id ? 'page' : undefined}
-            data-testid={`cli-tab-${tab.id === 'scan' ? 'scan-target' : tab.id === 'reports' ? 'past-reports' : 'configuration'}`}
+            data-testid={`cli-tab-${tab.id}`}
           >
             {tab.icon}
             {tab.name}

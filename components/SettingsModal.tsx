@@ -1,5 +1,5 @@
 // components/SettingsModal.tsx
-// version 0.0.52 - Multi-provider support (OpenRouter + Z.ai)
+// version 0.0.55 - OpenRouter recommended flag; updated provider descriptions
 /* eslint-disable max-lines -- Settings modal component (380 lines).
  * API configuration form with key validation, model selection, and caching.
  * Includes OpenRouter model fetching, cache management, key testing, and CLI connector.
@@ -9,18 +9,34 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { XMarkIcon, CogIcon, CheckCircleIcon, ArrowPathIcon } from './Icons.tsx';
 import { Spinner } from './Spinner.tsx';
 import { useSettings } from '../contexts/SettingsProvider.tsx';
-import { testApi, getProviderInfo, invalidateProviderCache } from '../services/Service.ts';
+import { testApi } from '../services/Service.ts';
 import {
     testCliConnection,
     testBackendConnection,
-    getSystemStatus,
-    DEFAULT_CLI_URL,
     type CliConnectionResult,
     type BackendHealthResult,
-    type SystemStatus,
 } from '../services/cliConnector.ts';
 import { OPEN_ROUTER_MODELS } from '../constants.ts';
 import type { ApiKeys } from '../types.ts';
+
+// Static provider configs for WEB (no CLI dependency)
+const WEB_PROVIDER_CONFIGS: Record<string, { name: string; recommended?: boolean; models: string[]; defaultModel: string; description: string; baseUrl: string }> = {
+    openrouter: {
+        name: 'OpenRouter',
+        recommended: true,
+        models: [],
+        defaultModel: '',
+        description: 'Recommended — access 200+ models from multiple providers. Best model for each task.',
+        baseUrl: 'https://openrouter.ai/api/v1/chat/completions',
+    },
+    zai: {
+        name: 'Z.ai',
+        models: ['glm-5', 'glm-4.7-flash', 'glm-4.6v'],
+        defaultModel: 'glm-5',
+        description: 'Z.ai direct API. Single-provider option using GLM model family.',
+        baseUrl: 'https://api.z.ai/api/paas/v4/chat/completions',
+    },
+};
 
 interface SettingsModalProps {
     isOpen: boolean;
@@ -59,8 +75,6 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, i
 
     // Provider state
     const [localProviderId, setLocalProviderId] = useState(globalProviderId);
-    const [availableProviders, setAvailableProviders] = useState<Array<{ id: string; name: string; api_key_configured: boolean }>>([]);
-    const [providerPreset, setProviderPreset] = useState<any>(null);
 
     // State for dynamic OpenRouter models
     const [openRouterModels, setOpenRouterModels] = useState<string[]>(OPEN_ROUTER_MODELS);
@@ -94,7 +108,11 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, i
             setLocalOpenRouterModel(globalOpenRouterModel);
             setLocalSaveApiKeys(globalSaveApiKeys);
             setTestResult(null);
-            setIsKeyValidated(false);
+            // If the active provider already has a key saved, mark as validated
+            const existingKey = globalProviderId === 'openrouter'
+                ? globalApiKeys.openrouter
+                : (globalApiKeys[globalProviderId] || '');
+            setIsKeyValidated(!!existingKey.trim());
             // Reset system status
             setBackendStatus(null);
             setCliStatus(null);
@@ -105,31 +123,10 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, i
         }
     }, [isOpen, globalApiKeys, globalOpenRouterModel, globalSaveApiKeys]);
 
-    // Load provider info from CLI API when modal opens
+    // Sync local provider ID when modal opens
     useEffect(() => {
-        if (!isOpen) return;
-        setLocalProviderId(globalProviderId);
-        let cancelled = false;
-        (async () => {
-            try {
-                const providerInfo = await getProviderInfo();
-                if (cancelled) return;
-                if (providerInfo) {
-                    setProviderPreset(providerInfo);
-                    setLocalProviderId(providerInfo.provider);
-                    // When a non-OpenRouter provider is active, sync model to preset default
-                    if (providerInfo.provider !== 'openrouter' && providerInfo.models?.DEFAULT_MODEL) {
-                        setLocalOpenRouterModel(providerInfo.models.DEFAULT_MODEL);
-                    }
-                }
-                // Fetch available providers list
-                const resp = await fetch(`${cliUrl}/api/providers`, { signal: AbortSignal.timeout(3000) });
-                if (cancelled) return;
-                if (resp.ok) setAvailableProviders(await resp.json());
-            } catch { /* CLI unreachable, use defaults */ }
-        })();
-        return () => { cancelled = true; };
-    }, [isOpen, cliUrl, globalProviderId]);
+        if (isOpen) setLocalProviderId(globalProviderId);
+    }, [isOpen, globalProviderId]);
 
     // Focus input when modal opens
     useEffect(() => {
@@ -196,7 +193,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, i
         }
     }, [isOpen, localProviderId, fetchOpenRouterModels]);
 
-    const handleSaveSettings = async () => {
+    const handleSaveSettings = () => {
         const activeKey = localProviderId === 'openrouter'
             ? localApiKeys.openrouter
             : (localApiKeys[localProviderId] || '');
@@ -209,19 +206,6 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, i
         setGlobalOpenRouterModel(localOpenRouterModel);
         setGlobalSaveApiKeys(localSaveApiKeys);
         setGlobalProviderId(localProviderId);
-        // Persist provider change to CLI API if connected
-        if (cliConnected && cliUrl) {
-            try {
-                const body: Record<string, string> = { provider: localProviderId };
-                if (activeKey.trim()) body.api_key = activeKey;
-                await fetch(`${cliUrl}/api/provider`, {
-                    method: 'PUT',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(body),
-                });
-                invalidateProviderCache();
-            } catch { /* CLI unreachable, save locally only */ }
-        }
         onClose();
     };
 
@@ -348,13 +332,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, i
             : (localApiKeys[localProviderId] || '');
         const modelToTest = localOpenRouterModel;
 
-        // Resolve the correct API URL for the selected provider
-        let urlToTest: string | undefined;
-        if (localProviderId === 'openrouter') {
-            urlToTest = 'https://openrouter.ai/api/v1/chat/completions';
-        } else if (providerPreset?.base_url) {
-            urlToTest = providerPreset.base_url;
-        }
+        // Resolve the correct API URL from static provider config
+        const providerConfig = WEB_PROVIDER_CONFIGS[localProviderId];
+        const urlToTest = providerConfig?.baseUrl;
 
         if (!keyToTest) {
             setTestResult({ success: false, message: 'API Key must be provided.' });
@@ -447,32 +427,21 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, i
                                         setLocalProviderId(newProvider);
                                         setTestResult(null);
                                         setIsKeyValidated(false);
-                                        // Set default model for the new provider
-                                        if (newProvider !== 'openrouter' && providerPreset?.provider === newProvider && providerPreset?.models?.DEFAULT_MODEL) {
-                                            // Preset already loaded for this provider — use its default
-                                            setLocalOpenRouterModel(providerPreset.models.DEFAULT_MODEL);
-                                        } else if (newProvider !== 'openrouter') {
-                                            setLocalOpenRouterModel('glm-4.7-flash');
+                                        const cfg = WEB_PROVIDER_CONFIGS[newProvider];
+                                        if (cfg?.defaultModel) {
+                                            setLocalOpenRouterModel(cfg.defaultModel);
                                         } else {
                                             setLocalOpenRouterModel(globalOpenRouterModel || OPEN_ROUTER_MODELS[0]);
                                         }
                                     }}
                                     className="w-full input-premium p-2"
                                 >
-                                    {availableProviders.length > 0
-                                        ? availableProviders.map(p => (
-                                            <option key={p.id} value={p.id}>{p.name}</option>
-                                        ))
-                                        : <>
-                                            <option value="openrouter">OpenRouter</option>
-                                            <option value="zai">Z.ai</option>
-                                        </>
-                                    }
+                                    {Object.entries(WEB_PROVIDER_CONFIGS).map(([id, cfg]) => (
+                                        <option key={id} value={id}>{cfg.name}{cfg.recommended ? ' (Recommended)' : ''}</option>
+                                    ))}
                                 </select>
                                 <p className="text-xs text-muted mt-1">
-                                    {localProviderId === 'openrouter'
-                                        ? 'Multi-model access via OpenRouter. Supports 200+ models.'
-                                        : 'Z.ai direct API. GLM-4.7 family with no content censorship for security testing.'}
+                                    {WEB_PROVIDER_CONFIGS[localProviderId]?.description || 'Direct API access.'}
                                 </p>
                             </div>
 
@@ -573,15 +542,12 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, i
                                             onChange={(e) => setLocalOpenRouterModel(e.target.value)}
                                             className="w-full input-premium p-2"
                                         >
-                                            {(providerPreset?.provider === 'zai' && providerPreset?.models
-                                                ? [...new Set(Object.values(providerPreset.models) as string[])]
-                                                : ['glm-4.7', 'glm-4.7-flash', 'glm-4.6v']
-                                            ).map((model: string) => (
+                                            {WEB_PROVIDER_CONFIGS.zai.models.map((model) => (
                                                 <option key={model} value={model}>{model}</option>
                                             ))}
                                         </select>
                                         <p className="text-xs text-muted mt-2">
-                                            <strong className="text-coral">Recommendation:</strong> <code>glm-4.7</code> for accuracy, <code>glm-4.7-flash</code> for speed.
+                                            <strong className="text-coral">Recommendation:</strong> <code>glm-5</code> for text, <code>glm-4.6v</code> for vision.
                                         </p>
                                     </div>
                                 </>

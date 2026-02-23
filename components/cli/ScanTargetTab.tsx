@@ -50,7 +50,7 @@ export const ScanTargetTab: React.FC<ScanTargetTabProps> = ({ onScanStart }) => 
         const response = await cliApi.listScans({ status_filter: 'RUNNING' });
         const scans: ActiveScan[] = response.scans.map(s => ({
           id: s.scan_id,
-          status: s.status.toLowerCase(),
+          status: (s.status || '').toLowerCase(),
           target_url: s.target,
           elapsed_seconds: 0,
         }));

@@ -105,7 +105,8 @@ const callApi = async (prompt: string, options: ApiOptions, isJson: boolean = tr
             method: 'POST',
             headers: {
                 'Authorization': `Bearer ${apiKey}`,
-                'Content-Type': 'application/json'
+                'Content-Type': 'application/json',
+                'Accept-Language': 'en-US,en'
             },
             body: JSON.stringify({
                 model: model,
@@ -397,7 +398,8 @@ const callOpenRouterChat = async (history: ChatMessage[], options: ApiOptions) =
             method: 'POST',
             headers: {
                 'Authorization': `Bearer ${apiKey}`,
-                'Content-Type': 'application/json'
+                'Content-Type': 'application/json',
+                'Accept-Language': 'en-US,en'
             },
             body: JSON.stringify({
                 model: model,
@@ -474,12 +476,13 @@ export const testApi = async (apiKey: string, model: string, explicitUrl?: strin
             method: 'POST',
             headers: {
                 'Authorization': `Bearer ${apiKey}`,
-                'Content-Type': 'application/json'
+                'Content-Type': 'application/json',
+                'Accept-Language': 'en-US,en'
             },
             body: JSON.stringify({
                 model: model,
-                messages: [{ role: 'user', content: 'hi' }],
-                max_tokens: 1,
+                messages: [{ role: 'user', content: 'Are you alive? Answer only yes.' }],
+                max_tokens: 5,
             }),
         });
 

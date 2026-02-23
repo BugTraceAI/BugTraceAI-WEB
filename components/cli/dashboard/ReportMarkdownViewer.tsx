@@ -46,7 +46,7 @@ const sortFindings = (list: Finding[], col: SortCol, dir: SortDir): Finding[] =>
         cmp = (a.title || a.type || '').localeCompare(b.title || b.type || '');
         break;
       case 'severity':
-        cmp = (SEV_RANK[a.severity.toLowerCase()] ?? 0) - (SEV_RANK[b.severity.toLowerCase()] ?? 0);
+        cmp = (SEV_RANK[(a.severity || 'info').toLowerCase()] ?? 0) - (SEV_RANK[(b.severity || 'info').toLowerCase()] ?? 0);
         break;
       case 'status': {
         const rank = (f: Finding) => f.status === 'VALIDATED_CONFIRMED' ? 2 : f.validated ? 1 : 0;
@@ -77,7 +77,7 @@ const sortDetections = (list: FindingItem[], col: DetSortCol, dir: SortDir): Fin
         cmp = (a.type || '').localeCompare(b.type || '');
         break;
       case 'severity':
-        cmp = (SEV_RANK[a.severity.toLowerCase()] ?? 0) - (SEV_RANK[b.severity.toLowerCase()] ?? 0);
+        cmp = (SEV_RANK[(a.severity || 'info').toLowerCase()] ?? 0) - (SEV_RANK[(b.severity || 'info').toLowerCase()] ?? 0);
         break;
       case 'status': {
         const rank = (f: FindingItem) => f.validated ? 1 : 0;
@@ -132,7 +132,7 @@ const groupByType = (findings: Finding[]): { name: string; value: number; severi
     if (existing) {
       existing.count++;
     } else {
-      map.set(key, { count: 1, severity: f.severity.toLowerCase() });
+      map.set(key, { count: 1, severity: (f.severity || 'info').toLowerCase() });
     }
   }
   return Array.from(map.entries())
@@ -155,10 +155,10 @@ const buildReportSummary = (
 ): string => {
   const s = report.severity_summary;
   const counts = s || {
-    critical: findings.filter(f => f.severity.toLowerCase() === 'critical').length,
-    high: findings.filter(f => f.severity.toLowerCase() === 'high').length,
-    medium: findings.filter(f => f.severity.toLowerCase() === 'medium').length,
-    low: findings.filter(f => f.severity.toLowerCase() === 'low').length,
+    critical: findings.filter(f => (f.severity || 'info').toLowerCase() === 'critical').length,
+    high: findings.filter(f => (f.severity || 'info').toLowerCase() === 'high').length,
+    medium: findings.filter(f => (f.severity || 'info').toLowerCase() === 'medium').length,
+    low: findings.filter(f => (f.severity || 'info').toLowerCase() === 'low').length,
   };
   const total = counts.critical + counts.high + counts.medium + counts.low;
 
@@ -238,10 +238,10 @@ export const ReportMarkdownViewer: React.FC<ReportMarkdownViewerProps> = ({ repo
   const s = report.severity_summary;
   const totalFindings = s ? s.critical + s.high + s.medium + s.low : findings.length;
   const severityCounts = s || {
-    critical: findings.filter(f => f.severity.toLowerCase() === 'critical').length,
-    high: findings.filter(f => f.severity.toLowerCase() === 'high').length,
-    medium: findings.filter(f => f.severity.toLowerCase() === 'medium').length,
-    low: findings.filter(f => f.severity.toLowerCase() === 'low').length,
+    critical: findings.filter(f => (f.severity || 'info').toLowerCase() === 'critical').length,
+    high: findings.filter(f => (f.severity || 'info').toLowerCase() === 'high').length,
+    medium: findings.filter(f => (f.severity || 'info').toLowerCase() === 'medium').length,
+    low: findings.filter(f => (f.severity || 'info').toLowerCase() === 'low').length,
   };
 
   // Donut chart data
@@ -884,7 +884,7 @@ export const ReportMarkdownViewer: React.FC<ReportMarkdownViewerProps> = ({ repo
                   {paginatedFindings.map((finding, i) => {
                     const globalIdx = (currentPage - 1) * ITEMS_PER_PAGE + i;
                     const isExpanded = expandedIdx === globalIdx;
-                    const sev = finding.severity.toLowerCase();
+                    const sev = (finding.severity || 'info').toLowerCase();
                     const colors = SEVERITY_COLORS[sev] || SEVERITY_COLORS.low;
                     const statusLabel = finding.status === 'VALIDATED_CONFIRMED' ? 'Confirmed' : finding.validated ? 'Validated' : 'Pending';
                     const statusColor = finding.status === 'VALIDATED_CONFIRMED'
@@ -1119,7 +1119,7 @@ export const ReportMarkdownViewer: React.FC<ReportMarkdownViewerProps> = ({ repo
                   {paginatedDetections.map((det, i) => {
                     const globalIdx = (detectionsPage - 1) * ITEMS_PER_PAGE + i;
                     const isExpanded = expandedDetIdx === globalIdx;
-                    const sev = det.severity.toLowerCase();
+                    const sev = (det.severity || 'info').toLowerCase();
                     const colors = SEVERITY_COLORS[sev] || SEVERITY_COLORS.info;
                     const statusLabel = det.validated ? 'Confirmed' : 'Unconfirmed';
                     const statusColor = det.validated

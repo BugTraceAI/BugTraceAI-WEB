@@ -137,7 +137,7 @@ export const ReportContent: React.FC<ReportContentProps> = ({ data }) => {
           {filteredFindings.map((finding, idx) => {
             const id = finding.id || `f-${idx}`;
             const isOpen = openFindings[id];
-            const style = severityStyles[finding.severity.toLowerCase()] || severityStyles.info;
+            const style = severityStyles[(finding.severity || '').toLowerCase()] || severityStyles.info;
 
             return (
               <div

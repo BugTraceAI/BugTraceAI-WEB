@@ -157,7 +157,7 @@ export const useReportViewer = (reportId: string): UseReportViewerReturn => {
   if (selectedCategory) {
     filteredFindings = findings.filter(f => (f.type || f.title) === selectedCategory);
   } else if (selectedSeverity !== 'all') {
-    filteredFindings = findings.filter(f => f.severity.toLowerCase() === selectedSeverity);
+    filteredFindings = findings.filter(f => (f.severity || '').toLowerCase() === selectedSeverity);
   }
 
   return {
