@@ -579,6 +579,7 @@ export const ReportMarkdownViewer: React.FC<ReportMarkdownViewerProps> = ({ repo
         <div className="flex border-b border-glass-border/20">
           <button
             onClick={() => setActiveTab('findings')}
+            title="Validated vulnerabilities confirmed through multi-stage verification (L1-L5 escalation). These are real, exploitable issues."
             className={`px-5 py-3 text-xs font-semibold uppercase tracking-wider transition-colors ${activeTab === 'findings'
               ? 'text-coral border-b-2 border-coral'
               : 'text-muted hover:text-purple-gray'
@@ -589,6 +590,7 @@ export const ReportMarkdownViewer: React.FC<ReportMarkdownViewerProps> = ({ repo
           {detections.length > 0 && (
             <button
               onClick={() => setActiveTab('detections')}
+              title="Raw detections from scanning agents before validation. Includes probes, canaries, and unconfirmed signals that may contain false positives."
               className={`px-5 py-3 text-xs font-semibold uppercase tracking-wider transition-colors ${activeTab === 'detections'
                 ? 'text-coral border-b-2 border-coral'
                 : 'text-muted hover:text-purple-gray'

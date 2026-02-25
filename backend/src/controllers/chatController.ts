@@ -8,7 +8,7 @@
 import { Request, Response } from 'express';
 import { sendSuccess, sendPaginated } from '../utils/responses.js';
 import { asyncHandler } from '../middleware/errorHandler.js';
-import { formatSession, formatSessionSummary, formatSession as formatUpdatedSession } from '../utils/formatters.js';
+import { formatSession, formatSessionSummary } from '../utils/formatters.js';
 import { PAGINATION } from '../config/defaults.js';
 import * as chatService from '../services/chatService.js';
 

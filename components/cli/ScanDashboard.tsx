@@ -90,6 +90,7 @@ export const ScanDashboard: React.FC<ScanDashboardProps> = ({
               {filteredFindings.length > 0 && (
                 <button
                   onClick={() => setFindingsOpen(!findingsOpen)}
+                  title="Live detections from scanning agents. These are raw signals before final validation."
                   className={`flex items-center gap-2 px-3 py-1 rounded-lg transition-all duration-200 flex-shrink-0 ${findingsOpen ? 'bg-coral text-white' : 'bg-red-500/20 text-red-400 border border-red-500/30'
                     }`}
                 >

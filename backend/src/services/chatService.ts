@@ -8,7 +8,7 @@
 import { prisma } from '../utils/prisma.js';
 import { ApiError } from '../middleware/errorHandler.js';
 import { generateSessionTitle, truncateSnippet } from '../utils/formatters.js';
-import { PAGINATION, VALID_SESSION_TYPES } from '../config/defaults.js';
+import { VALID_SESSION_TYPES } from '../config/defaults.js';
 
 // ============================================================================
 // Input Types
