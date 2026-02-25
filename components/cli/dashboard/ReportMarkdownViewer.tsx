@@ -1,30 +1,21 @@
 // components/cli/dashboard/ReportMarkdownViewer.tsx
-// v3.0 - Major redesign matching reference mockup
-/* eslint-disable max-lines -- Report markdown viewer component (~420 lines).
- * Rich report viewer with metric cards, vulnerability chart, findings table,
- * download section, and markdown rendering. Presentation-heavy component.
- */
+// v3.1 - Refactored: pure functions extracted to lib/
 import React, { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
 import { MarkdownRenderer } from '../../MarkdownRenderer.tsx';
 import { ArrowPathIcon, ArrowDownTrayIcon, DocumentTextIcon } from '../../Icons.tsx';
-import { useReportViewer, Finding, ScanStats } from '../../../hooks/useReportViewer.ts';
+import { useReportViewer, Finding } from '../../../hooks/useReportViewer.ts';
 import type { FindingItem } from '../../../lib/cliApi.ts';
-
-interface CLIReport {
-  id: string;
-  target_url: string;
-  scan_date: string;
-  severity_summary: {
-    critical: number;
-    high: number;
-    medium: number;
-    low: number;
-    info?: number;
-  } | null;
-  report_path: string;
-}
+import {
+  sortFindings, sortDetections, groupByType, formatDate, buildFullMarkdown,
+  computeSeverityCounts, computeTotalFindings, paginate, totalPages,
+  type SortCol, type DetSortCol, type SortDir,
+} from '../../../lib/markdownTransformers.ts';
+import {
+  SEVERITY_COLORS, downloadFiles, buildReportSummary, buildFindingMessage, buildDetectionMessage,
+  type CLIReport, type AttackChain,
+} from '../../../lib/reportExportUtils.ts';
 
 interface ReportMarkdownViewerProps {
   report: CLIReport;
@@ -32,175 +23,6 @@ interface ReportMarkdownViewerProps {
 }
 
 const ITEMS_PER_PAGE = 10;
-
-const SEV_RANK: Record<string, number> = { critical: 4, high: 3, medium: 2, low: 1, info: 0 };
-
-type SortCol = 'name' | 'severity' | 'status' | 'cvss' | 'url';
-type DetSortCol = 'type' | 'severity' | 'status' | 'confidence' | 'parameter';
-type SortDir = 'asc' | 'desc';
-
-const sortFindings = (list: Finding[], col: SortCol, dir: SortDir): Finding[] => {
-  const sorted = [...list].sort((a, b) => {
-    let cmp = 0;
-    switch (col) {
-      case 'name':
-        cmp = (a.title || a.type || '').localeCompare(b.title || b.type || '');
-        break;
-      case 'severity':
-        cmp = (SEV_RANK[(a.severity || 'info').toLowerCase()] ?? 0) - (SEV_RANK[(b.severity || 'info').toLowerCase()] ?? 0);
-        break;
-      case 'status': {
-        const rank = (f: Finding) => f.status === 'VALIDATED_CONFIRMED' ? 2 : f.validated ? 1 : 0;
-        cmp = rank(a) - rank(b);
-        break;
-      }
-      case 'cvss':
-        cmp = (a.cvss_score ?? -1) - (b.cvss_score ?? -1);
-        break;
-      case 'url':
-        cmp = (a.url || '').localeCompare(b.url || '');
-        break;
-    }
-    // Tiebreaker: sort by name when primary values are equal
-    if (cmp === 0 && col !== 'name') {
-      cmp = (a.title || a.type || '').localeCompare(b.title || b.type || '');
-    }
-    return dir === 'asc' ? cmp : -cmp;
-  });
-  return sorted;
-};
-
-const sortDetections = (list: FindingItem[], col: DetSortCol, dir: SortDir): FindingItem[] => {
-  const sorted = [...list].sort((a, b) => {
-    let cmp = 0;
-    switch (col) {
-      case 'type':
-        cmp = (a.type || '').localeCompare(b.type || '');
-        break;
-      case 'severity':
-        cmp = (SEV_RANK[(a.severity || 'info').toLowerCase()] ?? 0) - (SEV_RANK[(b.severity || 'info').toLowerCase()] ?? 0);
-        break;
-      case 'status': {
-        const rank = (f: FindingItem) => f.validated ? 1 : 0;
-        cmp = rank(a) - rank(b);
-        break;
-      }
-      case 'confidence':
-        cmp = (a.confidence ?? -1) - (b.confidence ?? -1);
-        break;
-      case 'parameter':
-        cmp = (a.parameter || '').localeCompare(b.parameter || '');
-        break;
-    }
-    // Tiebreaker: sort by type when primary values are equal
-    if (cmp === 0 && col !== 'type') {
-      cmp = (a.type || '').localeCompare(b.type || '');
-    }
-    return dir === 'asc' ? cmp : -cmp;
-  });
-  return sorted;
-};
-
-const SEVERITY_COLORS: Record<string, { bg: string; text: string; dot: string; bar: string; fill: string }> = {
-  critical: { bg: 'bg-red-500/15', text: 'text-red-400', dot: 'bg-red-500', bar: 'bg-red-500', fill: '#ef4444' },
-  high: { bg: 'bg-orange-500/15', text: 'text-orange-400', dot: 'bg-orange-500', bar: 'bg-orange-500', fill: '#f97316' },
-  medium: { bg: 'bg-yellow-500/15', text: 'text-yellow-400', dot: 'bg-yellow-500', bar: 'bg-yellow-500', fill: '#eab308' },
-  low: { bg: 'bg-blue-500/15', text: 'text-blue-400', dot: 'bg-blue-500', bar: 'bg-blue-500', fill: '#3b82f6' },
-  info: { bg: 'bg-slate-500/15', text: 'text-slate-400', dot: 'bg-slate-500', bar: 'bg-slate-500', fill: '#64748b' },
-};
-
-const downloadFiles = [
-  { filename: 'final_report.md', label: 'Report', icon: 'MD' },
-  { filename: 'validated_findings.json', label: 'Validated', icon: 'JSON' },
-  { filename: 'raw_findings.json', label: 'Raw', icon: 'JSON' },
-  { filename: 'engagement_data.json', label: 'Engagement', icon: 'JSON' },
-];
-
-const formatDate = (dateString: string | null): string => {
-  if (!dateString) return 'Unknown';
-  const date = new Date(dateString);
-  return date.toLocaleDateString('en-US', {
-    year: 'numeric', month: 'long', day: 'numeric',
-  }).toUpperCase();
-};
-
-// Group findings by type for the donut chart legend
-const groupByType = (findings: Finding[]): { name: string; value: number; severity: string }[] => {
-  const map = new Map<string, { count: number; severity: string }>();
-  for (const f of findings) {
-    const key = f.type || f.title;
-    const existing = map.get(key);
-    if (existing) {
-      existing.count++;
-    } else {
-      map.set(key, { count: 1, severity: (f.severity || 'info').toLowerCase() });
-    }
-  }
-  return Array.from(map.entries())
-    .map(([name, { count, severity }]) => ({ name, value: count, severity }))
-    .sort((a, b) => b.value - a.value);
-};
-
-interface AttackChain {
-  name: string;
-  vulnerabilities: string;
-  impact: string;
-}
-
-const buildReportSummary = (
-  report: CLIReport,
-  findings: Finding[],
-  scanStats: ScanStats | null,
-  markdown: string,
-  attackChains: AttackChain[],
-): string => {
-  const s = report.severity_summary;
-  const counts = s || {
-    critical: findings.filter(f => (f.severity || 'info').toLowerCase() === 'critical').length,
-    high: findings.filter(f => (f.severity || 'info').toLowerCase() === 'high').length,
-    medium: findings.filter(f => (f.severity || 'info').toLowerCase() === 'medium').length,
-    low: findings.filter(f => (f.severity || 'info').toLowerCase() === 'low').length,
-  };
-  const total = counts.critical + counts.high + counts.medium + counts.low;
-
-  let summary = `This is a cybersecurity scan report for **${report.target_url}**. I'd like your help understanding the findings, their severity, and what actions should be taken.\n\n`;
-  summary += `## Scan Summary\n`;
-  summary += `- **Date:** ${report.scan_date || 'Unknown'}\n`;
-  if (scanStats?.duration) summary += `- **Duration:** ${scanStats.duration}\n`;
-  if (scanStats?.urls_scanned != null) summary += `- **URLs Scanned:** ${scanStats.urls_scanned}\n`;
-  summary += `- **Total Findings:** ${total} (Critical: ${counts.critical}, High: ${counts.high}, Medium: ${counts.medium}, Low: ${counts.low})\n\n`;
-
-  if (findings.length > 0) {
-    summary += `## Findings\n\n`;
-    summary += `| # | Type | Severity | Parameter | CVSS | Status |\n`;
-    summary += `|---|------|----------|-----------|------|--------|\n`;
-    for (const [i, f] of findings.entries()) {
-      const status = f.status === 'VALIDATED_CONFIRMED' ? 'Confirmed' : f.validated ? 'Validated' : 'Pending';
-      const cvss = f.cvss_score != null ? String(f.cvss_score) : '-';
-      summary += `| ${i + 1} | ${f.type || f.title} | ${f.severity} | ${f.parameter || '-'} | ${cvss} | ${status} |\n`;
-    }
-    summary += `\n`;
-  }
-
-  if (attackChains.length > 0) {
-    summary += `## Attack Chains\n\n`;
-    for (const [i, chain] of attackChains.entries()) {
-      summary += `### ${i + 1}. ${chain.name}\n`;
-      summary += `- **Vulnerabilities:** ${chain.vulnerabilities}\n`;
-      summary += `- **Impact:** ${chain.impact}\n\n`;
-    }
-  }
-
-  if (markdown) {
-    const MAX_REPORT_LEN = 6000;
-    const truncated = markdown.length > MAX_REPORT_LEN
-      ? markdown.substring(0, MAX_REPORT_LEN) + '\n\n... (report truncated for chat context)'
-      : markdown;
-    summary += `## Full Report\n\n${truncated}\n`;
-  }
-
-  return summary;
-};
 
 export const ReportMarkdownViewer: React.FC<ReportMarkdownViewerProps> = ({ report, onBack }) => {
   const {
@@ -236,20 +58,8 @@ export const ReportMarkdownViewer: React.FC<ReportMarkdownViewerProps> = ({ repo
   const WEB_API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
 
   // Compute severity counts
-  const s = report.severity_summary;
-  const severityCounts = s || {
-    critical: findings.filter(f => (f.severity || '').toLowerCase() === 'critical').length,
-    high: findings.filter(f => (f.severity || '').toLowerCase() === 'high').length,
-    medium: findings.filter(f => (f.severity || '').toLowerCase() === 'medium').length,
-    low: findings.filter(f => (f.severity || '').toLowerCase() === 'low').length,
-    info: findings.filter(f => {
-      const sev = (f.severity || '').toLowerCase();
-      return sev === 'info' || sev === '';
-    }).length,
-  };
-  const totalFindings = s
-    ? s.critical + s.high + s.medium + s.low + (s.info || 0)
-    : severityCounts.critical + severityCounts.high + severityCounts.medium + severityCounts.low + severityCounts.info;
+  const severityCounts = computeSeverityCounts(report.severity_summary, findings);
+  const totalFindings = computeTotalFindings(severityCounts);
 
   // Donut chart data
   const chartData = useMemo(() => [
@@ -283,35 +93,11 @@ export const ReportMarkdownViewer: React.FC<ReportMarkdownViewerProps> = ({ repo
   };
 
   // Pagination
-  const totalPages = Math.max(1, Math.ceil(sortedFindings.length / ITEMS_PER_PAGE));
-  const paginatedFindings = sortedFindings.slice(
-    (currentPage - 1) * ITEMS_PER_PAGE,
-    currentPage * ITEMS_PER_PAGE,
-  );
+  const findingsTotalPages = totalPages(sortedFindings.length, ITEMS_PER_PAGE);
+  const paginatedFindings = paginate(sortedFindings, currentPage, ITEMS_PER_PAGE);
 
   // Build enhanced markdown with detections table appended
-  const fullMarkdown = useMemo(() => {
-    if (!markdown || detections.length === 0) return markdown;
-    const rows = detections.map(d => {
-      const conf = d.confidence != null && d.confidence > 0 ? `${Math.round(d.confidence * 100)}%` : '-';
-      const status = d.validated ? 'Confirmed' : 'Unconfirmed';
-      return `| ${d.type} | ${d.severity} | ${status} | ${conf} | ${d.parameter || '-'} | ${d.url || '-'} |`;
-    });
-    const table = [
-      '',
-      '---',
-      '',
-      '## All Detections',
-      '',
-      `> ${detections.length} vulnerabilities detected during the discovery phase. Only confirmed (validated) findings appear in the report above.`,
-      '',
-      '| Type | Severity | Status | Confidence | Parameter | URL |',
-      '|------|----------|--------|------------|-----------|-----|',
-      ...rows,
-      '',
-    ].join('\n');
-    return markdown + table;
-  }, [markdown, detections]);
+  const fullMarkdown = useMemo(() => buildFullMarkdown(markdown, detections), [markdown, detections]);
 
   // Detections sorting
   const sortedDetections = useMemo(() => {
@@ -331,11 +117,8 @@ export const ReportMarkdownViewer: React.FC<ReportMarkdownViewerProps> = ({ repo
   };
 
   // Detections pagination
-  const detTotalPages = Math.max(1, Math.ceil(sortedDetections.length / ITEMS_PER_PAGE));
-  const paginatedDetections = sortedDetections.slice(
-    (detectionsPage - 1) * ITEMS_PER_PAGE,
-    detectionsPage * ITEMS_PER_PAGE,
-  );
+  const detTotalPages = totalPages(sortedDetections.length, ITEMS_PER_PAGE);
+  const paginatedDetections = paginate(sortedDetections, detectionsPage, ITEMS_PER_PAGE);
 
   // Reset page when filter changes
   const handleSeverityClick = (sev: 'critical' | 'high' | 'medium' | 'low') => {
@@ -391,7 +174,7 @@ export const ReportMarkdownViewer: React.FC<ReportMarkdownViewerProps> = ({ repo
   const handleSendToChat = async () => {
     setSendingToChat(true);
     try {
-      // 1. Fetch attack chains (non-blocking — empty array on failure)
+      // 1. Fetch attack chains (non-blocking -- empty array on failure)
       let attackChains: AttackChain[] = [];
       try {
         const chainsRes = await fetch(`${CLI_API_URL}/api/scans/${report.id}/files/attack_chains.json`);
@@ -399,7 +182,7 @@ export const ReportMarkdownViewer: React.FC<ReportMarkdownViewerProps> = ({ repo
           const data = await chainsRes.json();
           attackChains = data.chains || [];
         }
-      } catch { /* attack chains not available — continue without them */ }
+      } catch { /* attack chains not available -- continue without them */ }
 
       // 2. Create a new chat session
       const sessionRes = await fetch(`${WEB_API_URL}/chats`, {
@@ -440,25 +223,7 @@ export const ReportMarkdownViewer: React.FC<ReportMarkdownViewerProps> = ({ repo
     const fid = f.id || f.title || f.type;
     setSendingFindingId(fid);
     try {
-      const displayName = f.title || f.type || 'Unknown';
-      let msg = `I found a **${f.severity}** vulnerability on **${report.target_url}** and need your analysis.\n\n`;
-      msg += `## ${displayName}\n\n`;
-      if (f.type && f.type !== displayName) msg += `- **Type:** ${f.type}\n`;
-      msg += `- **Severity:** ${f.severity}\n`;
-      if (f.cvss_score != null) msg += `- **CVSS:** ${f.cvss_score}${f.cvss_vector ? ` (${f.cvss_vector})` : ''}\n`;
-      if (f.url) msg += `- **URL:** ${f.url}\n`;
-      if (f.parameter) msg += `- **Parameter:** ${f.parameter}\n`;
-      if (f.payload) msg += `- **Payload:** \`${f.payload}\`\n`;
-      const desc = f.description || f.details || '';
-      if (desc) msg += `\n${desc}\n`;
-      if (f.impact) msg += `\n### Impact\n${f.impact}\n`;
-      if (f.exploitation_details) msg += `\n### Exploitation Details\n${f.exploitation_details}\n`;
-      if (f.remediation) msg += `\n### Suggested Remediation\n${f.remediation}\n`;
-      if (f.evidence) msg += `\n### Evidence\n${f.evidence}\n`;
-      if (f.llm_reproduction_steps?.length) {
-        msg += `\n### Reproduction Steps\n`;
-        f.llm_reproduction_steps.forEach((s, i) => { msg += `${i + 1}. ${s}\n`; });
-      }
+      const msg = buildFindingMessage(f, report.target_url);
 
       const sessionRes = await fetch(`${WEB_API_URL}/chats`, {
         method: 'POST',
@@ -486,16 +251,7 @@ export const ReportMarkdownViewer: React.FC<ReportMarkdownViewerProps> = ({ repo
     e.stopPropagation();
     setSendingFindingId(d.finding_id);
     try {
-      let msg = `I have a **${d.severity}** detection on **${report.target_url}** that needs analysis.\n\n`;
-      msg += `## ${d.type}\n\n`;
-      msg += `- **Severity:** ${d.severity}\n`;
-      msg += `- **Status:** ${d.validated ? 'Confirmed' : 'Unconfirmed'}\n`;
-      if (d.confidence != null && d.confidence > 0) msg += `- **Confidence:** ${Math.round(d.confidence * 100)}%\n`;
-      if (d.url) msg += `- **URL:** ${d.url}\n`;
-      if (d.parameter) msg += `- **Parameter:** ${d.parameter}\n`;
-      if (d.payload) msg += `- **Payload:** \`${d.payload}\`\n`;
-      if (d.details) msg += `\n### Details\n${d.details}\n`;
-      msg += `\nPlease analyze this detection: is it likely a true positive? What additional testing would confirm it? What's the potential impact and remediation?`;
+      const msg = buildDetectionMessage(d, report.target_url);
 
       const sessionRes = await fetch(`${WEB_API_URL}/chats`, {
         method: 'POST',
@@ -539,7 +295,7 @@ export const ReportMarkdownViewer: React.FC<ReportMarkdownViewerProps> = ({ repo
 
   return (
     <div className="space-y-5 p-6 md:p-8">
-      {/* ═══ HEADER BAR ═══ */}
+      {/* HEADER BAR */}
       <div className="dashboard-card px-4 py-3">
         <div className="flex items-center justify-between gap-4">
           <div className="min-w-0 flex items-center gap-4">
@@ -642,7 +398,7 @@ export const ReportMarkdownViewer: React.FC<ReportMarkdownViewerProps> = ({ repo
 
       {showMetrics && (
         <div className="space-y-4 animate-in fade-in slide-in-from-top-4 duration-300">
-          {/* ═══ METRIC CARDS ═══ */}
+          {/* METRIC CARDS */}
           {totalFindings > 0 && (
             <div className="grid grid-cols-[1.2fr_1fr] gap-4">
               {/* Left Card: Totals + Distribution Donut */}
@@ -740,9 +496,7 @@ export const ReportMarkdownViewer: React.FC<ReportMarkdownViewerProps> = ({ repo
             </div>
           )}
 
-          {/* ═══ DOWNLOAD SECTION ═══ */}
-
-          {/* ═══ DOWNLOAD SECTION ═══ */}
+          {/* DOWNLOAD SECTION */}
           {(markdown || findings.length > 0) && (
             <div className="dashboard-card p-4">
               <div className="flex items-center gap-3 mb-3">
@@ -788,7 +542,7 @@ export const ReportMarkdownViewer: React.FC<ReportMarkdownViewerProps> = ({ repo
       }
 
 
-      {/* ═══ ACTIVE FILTER BANNER ═══ */}
+      {/* ACTIVE FILTER BANNER */}
       {
         (selectedSeverity !== 'all' || selectedCategory) && (
           <div className="flex items-center justify-between bg-purple-medium/50 rounded-xl p-3 border border-white/5">
@@ -819,7 +573,7 @@ export const ReportMarkdownViewer: React.FC<ReportMarkdownViewerProps> = ({ repo
         )
       }
 
-      {/* ═══ CONTENT TABS ═══ */}
+      {/* CONTENT TABS */}
       <div className="dashboard-card overflow-hidden">
         {/* Tab switcher */}
         <div className="flex border-b border-glass-border/20">
@@ -857,7 +611,7 @@ export const ReportMarkdownViewer: React.FC<ReportMarkdownViewerProps> = ({ repo
         </div>
 
         {activeTab === 'findings' ? (
-          /* ── FINDINGS LIST ── */
+          /* FINDINGS LIST */
           <div>
             {filteredFindings.length === 0 ? (
               <div className="text-center py-12">
@@ -869,7 +623,7 @@ export const ReportMarkdownViewer: React.FC<ReportMarkdownViewerProps> = ({ repo
               </div>
             ) : (
               <>
-                {/* Table header — sortable */}
+                {/* Table header -- sortable */}
                 <div className="grid grid-cols-[1fr_90px_80px_60px_160px_36px] text-[9px] text-muted uppercase tracking-widest px-4 py-2 border-b border-glass-border/10">
                   {([['name', 'Finding Name'], ['severity', 'Severity'], ['status', 'Status'], ['cvss', 'CVSS'], ['url', 'URL']] as [SortCol, string][]).map(([col, label]) => (
                     <button
@@ -957,7 +711,6 @@ export const ReportMarkdownViewer: React.FC<ReportMarkdownViewerProps> = ({ repo
                               {/* Left column: main details */}
                               <div className="col-span-2 space-y-4">
                                 {/* Exploitation Details (rendered as markdown) */}
-                                {/* Exploitation Details (rendered as markdown) */}
                                 {finding.exploitation_details && (
                                   <div>
                                     {finding.exploitation_details.trim().startsWith('{"result":') ? (
@@ -1000,7 +753,7 @@ export const ReportMarkdownViewer: React.FC<ReportMarkdownViewerProps> = ({ repo
                                   </div>
                                 )}
 
-                                {/* Fallback description (validated_findings uses exploitation_details, DB detections use details) */}
+                                {/* Fallback description */}
                                 {!finding.exploitation_details && !finding.llm_reproduction_steps?.length && (finding.description || finding.details) && (
                                   <p className="text-sm text-purple-gray">{finding.description || finding.details}</p>
                                 )}
@@ -1081,11 +834,11 @@ export const ReportMarkdownViewer: React.FC<ReportMarkdownViewerProps> = ({ repo
                       Previous
                     </button>
                     <span className="text-xs text-purple-gray">
-                      {currentPage} / {totalPages}
+                      {currentPage} / {findingsTotalPages}
                     </span>
                     <button
-                      onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-                      disabled={currentPage === totalPages}
+                      onClick={() => setCurrentPage(p => Math.min(findingsTotalPages, p + 1))}
+                      disabled={currentPage === findingsTotalPages}
                       className="px-3 py-1 rounded-lg text-xs text-purple-gray hover:text-white bg-purple-light/40 hover:bg-purple-elevated/50 transition-all disabled:opacity-30 disabled:cursor-not-allowed"
                     >
                       Next
@@ -1096,7 +849,7 @@ export const ReportMarkdownViewer: React.FC<ReportMarkdownViewerProps> = ({ repo
             )}
           </div>
         ) : activeTab === 'detections' ? (
-          /* ── DETECTIONS LIST (all DB findings) ── */
+          /* DETECTIONS LIST (all DB findings) */
           <div>
             {detections.length === 0 ? (
               <div className="text-center py-12">
@@ -1104,7 +857,7 @@ export const ReportMarkdownViewer: React.FC<ReportMarkdownViewerProps> = ({ repo
               </div>
             ) : (
               <>
-                {/* Table header — sortable */}
+                {/* Table header -- sortable */}
                 <div className="grid grid-cols-[1fr_90px_100px_80px_160px_36px] text-[9px] text-muted uppercase tracking-widest px-4 py-2 border-b border-glass-border/10">
                   {([['type', 'Type'], ['severity', 'Severity'], ['status', 'Status'], ['confidence', 'Confidence'], ['parameter', 'Parameter']] as [DetSortCol, string][]).map(([col, label]) => (
                     <button
@@ -1255,7 +1008,7 @@ export const ReportMarkdownViewer: React.FC<ReportMarkdownViewerProps> = ({ repo
             )}
           </div>
         ) : (
-          /* ── FULL MARKDOWN REPORT ── */
+          /* FULL MARKDOWN REPORT */
           <div className="p-6 text-purple-gray overflow-x-auto">
             <MarkdownRenderer content={fullMarkdown} />
           </div>

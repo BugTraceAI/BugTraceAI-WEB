@@ -1,21 +1,7 @@
 // services/prompts/dast.ts
 import type { DastScanType } from '../../types';
-
-const reconVariations = [
-    "focus on public exploits and technology fingerprinting to find known vulnerabilities.",
-    "prioritize identifying the exact versions of all software (CMS, frameworks, libraries) and searching CVE databases exhaustively.",
-    "search for publicly exposed administrative panels, forgotten subdomains, and development endpoints.",
-    "investigate the target for past data breaches or security incidents that might hint at recurring weaknesses.",
-    "use advanced search operators to find sensitive files indexed by search engines, like `site:{hostname} filetype:log` or `inurl:config`.",
-];
-
-const activeVariations = [
-    "perform a simulated ACTIVE scan of all inputs, focusing on high-impact, exploitable vulnerabilities like SQLi and RCE.",
-    "relentlessly probe every parameter for injection vulnerabilities. Your primary goal is to prove SQLi with a UNION SELECT, or find a vector for Command Injection or SSTI.",
-    "focus on finding information disclosure and misconfigurations. Look for exposed directories, verbose error messages, sensitive data in responses, and insecure API endpoints.",
-    "analyze the application's business logic. How could features be abused? Look for IDORs, broken access control, parameter tampering, and race conditions.",
-    "assume the application has a weak WAF. Craft clever payloads to find reflected, stored, and DOM-based XSS. Pay special attention to unusual contexts and encoding bypasses.",
-];
+import { extractHostname, vulnReportSchema, JSON_ONLY_REMINDER } from './schemas.ts';
+import { DAST_RECON_VARIATIONS, DAST_ACTIVE_VARIATIONS, selectVariation } from './variations.ts';
 
 /**
  * Creates the prompt for DAST (Recon Scan). Focuses on public information.
@@ -24,8 +10,8 @@ const activeVariations = [
  * @returns The complete prompt string.
  */
 const createReconDastAnalysisPrompt = (url: string, iteration: number): string => {
-    const hostname = new URL(url).hostname;
-    const focus = reconVariations[iteration % reconVariations.length].replace('{hostname}', hostname);
+    const hostname = extractHostname(url);
+    const focus = selectVariation(DAST_RECON_VARIATIONS, iteration).replace('{hostname}', hostname);
 
     return `
     Act as an expert bug bounty hunter performing reconnaissance on ${url}.
@@ -35,22 +21,9 @@ const createReconDastAnalysisPrompt = (url: string, iteration: number): string =
     1.  **Public Exploit Search (Top Priority):** Based on your goal, search for known vulnerabilities and public exploits for the domain \`${hostname}\` and any discovered technologies.
     2.  **Technology Fingerprinting:** Identify the tech stack (e.g., WordPress, PHP, specific jQuery versions) and search for known vulnerabilities for those specific versions.
 
-    **Output Format:**
-    Your entire response MUST be a single, valid JSON object that conforms to the VulnerabilityReport schema.
-    - The root object MUST have 'analyzedTarget' and 'vulnerabilities' keys.
-    - 'analyzedTarget' MUST be the root URL being analyzed.
-    - 'vulnerabilities' MUST be an array of vulnerability objects. If no vulnerabilities are found, it must be an empty array [].
+    ${vulnReportSchema(true)}
 
-    For EACH object inside the 'vulnerabilities' array, you MUST include these exact keys:
-    - "vulnerability": (string) The specific name of the weakness (e.g., "Error-Based SQL Injection"). This field is mandatory.
-    - "severity": (string) The severity, judged by its exploitability and impact.
-    - "description": (string) A step-by-step guide on how to reproduce the vulnerability.
-    - "impact": (string) A specific, worst-case scenario an attacker could achieve.
-    - "vulnerableCode": (string) The final, working Proof-of-Concept payload.
-    - "recommendation": (string) A brief, concise mitigation strategy.
-    - "injectionPoint": (object or null) The injection point details. Mandatory for injection vulnerabilities, otherwise \`null\`.
-
-    Do not add any conversational text or markdown. The raw response must be only the JSON object.
+    ${JSON_ONLY_REMINDER}
 `;
 };
 
@@ -61,8 +34,8 @@ const createReconDastAnalysisPrompt = (url: string, iteration: number): string =
  * @returns The complete prompt string.
  */
 const createActiveDastAnalysisPrompt = (url: string, iteration: number): string => {
-    const hostname = new URL(url).hostname;
-    const focus = activeVariations[iteration % activeVariations.length].replace('{hostname}', hostname);
+    const hostname = extractHostname(url);
+    const focus = selectVariation(DAST_ACTIVE_VARIATIONS, iteration).replace('{hostname}', hostname);
 
     return `
     Act as a top-tier bug bounty hunter. Your task is to ${focus}
@@ -72,22 +45,9 @@ const createActiveDastAnalysisPrompt = (url: string, iteration: number): string 
     2.  **Exploitation-Focused Hypothesis:** Based on your assigned focus, hypothesize and attempt to prove vulnerabilities.
     3.  **Proof-of-Concept Generation:** For every vulnerability you claim to have found, you MUST provide a clear, working proof-of-concept payload in the "vulnerableCode" field. For SQLi, this must be a working UNION SELECT payload if possible.
 
-    **Output Format:**
-    Your entire response MUST be a single, valid JSON object that conforms to the VulnerabilityReport schema.
-    - The root object MUST have 'analyzedTarget' and 'vulnerabilities' keys.
-    - 'analyzedTarget' MUST be the root URL being analyzed.
-    - 'vulnerabilities' MUST be an array of vulnerability objects. If no vulnerabilities are found, it must be an empty array [].
+    ${vulnReportSchema(true)}
 
-    For EACH object inside the 'vulnerabilities' array, you MUST include these exact keys:
-    - "vulnerability": (string) The specific name of the weakness (e.g., "Error-Based SQL Injection"). This field is mandatory.
-    - "severity": (string) The severity, judged by its exploitability and impact.
-    - "description": (string) A step-by-step guide on how to reproduce the vulnerability.
-    - "impact": (string) A specific, worst-case scenario an attacker could achieve.
-    - "vulnerableCode": (string) The final, working Proof-of-Concept payload.
-    - "recommendation": (string) A brief, concise mitigation strategy.
-    - "injectionPoint": (object or null) The injection point details. Mandatory for injection vulnerabilities, otherwise \`null\`.
-    
-    Do not add any conversational text or markdown. The raw response must be only the JSON object.
+    ${JSON_ONLY_REMINDER}
 `;
 };
 
@@ -98,8 +58,8 @@ const createActiveDastAnalysisPrompt = (url: string, iteration: number): string 
  * @returns The complete prompt string.
  */
 const createGreyBoxDastAnalysisPrompt = (url: string, iteration: number): string => {
-    const hostname = new URL(url).hostname;
-    const focus = activeVariations[iteration % activeVariations.length].replace('{hostname}', hostname);
+    const hostname = extractHostname(url);
+    const focus = selectVariation(DAST_ACTIVE_VARIATIONS, iteration).replace('{hostname}', hostname);
 
     return `
     Act as an expert grey box penetration tester with a red team mindset. Your task is to find exploitable vulnerabilities in ${url} by correlating dynamic behavior with client-side code weaknesses.
@@ -119,22 +79,9 @@ const createGreyBoxDastAnalysisPrompt = (url: string, iteration: number): string
     5.  **Generate Report:** Provide your final report as a single, strict JSON object.
         - In the "description" for a correlated finding, you MUST explain how the dynamic and static evidence combine to prove the exploit. This field must serve as a reproduction guide.
 
-    **Output Format:**
-    Your entire response MUST be a single, valid JSON object that conforms to the VulnerabilityReport schema.
-    - The root object MUST have 'analyzedTarget' and 'vulnerabilities' keys.
-    - 'analyzedTarget' MUST be the root URL being analyzed.
-    - 'vulnerabilities' MUST be an array of vulnerability objects. If no vulnerabilities are found, it must be an empty array [].
+    ${vulnReportSchema(true)}
 
-    For EACH object inside the 'vulnerabilities' array, you MUST include these exact keys:
-    - "vulnerability": (string) The specific name of the weakness (e.g., "Error-Based SQL Injection"). This field is mandatory.
-    - "severity": (string) The severity, judged by its exploitability and impact.
-    - "description": (string) A step-by-step guide on how to reproduce the vulnerability.
-    - "impact": (string) A specific, worst-case scenario an attacker could achieve.
-    - "vulnerableCode": (string) The final, working Proof-of-Concept payload.
-    - "recommendation": (string) A brief, concise mitigation strategy.
-    - "injectionPoint": (object or null) The injection point details. Mandatory for injection vulnerabilities, otherwise \`null\`.
-
-    Do not add any conversational text or markdown. The raw response must be only the JSON object.
+    ${JSON_ONLY_REMINDER}
 `;
 };
 

@@ -1,299 +1,119 @@
+/**
+ * chatController.ts
+ *
+ * Thin HTTP adapter. Parses request, calls chatService, formats response.
+ * Zero business logic — all Prisma queries and rules live in chatService.
+ */
+
 import { Request, Response } from 'express';
-import { prisma } from '../utils/prisma.js';
 import { sendSuccess, sendPaginated } from '../utils/responses.js';
-import { ApiError, asyncHandler } from '../middleware/errorHandler.js';
+import { asyncHandler } from '../middleware/errorHandler.js';
+import { formatSession, formatSessionSummary, formatSession as formatUpdatedSession } from '../utils/formatters.js';
+import { PAGINATION } from '../config/defaults.js';
+import * as chatService from '../services/chatService.js';
 
 /**
  * POST /api/chats
- * Create a new chat session
  */
 export const createChatSession = asyncHandler(async (req: Request, res: Response) => {
   const { session_type, title, context } = req.body;
 
-  // Generate title if not provided
-  const sessionTitle = title || `${session_type.toUpperCase()} Chat - ${new Date().toLocaleDateString()}`;
+  const session = await chatService.createSession({ session_type, title, context });
 
-  // Create session
-  const session = await prisma.chatSession.create({
-    data: {
-      sessionType: session_type,
-      title: sessionTitle,
-      context: context || null,
-    },
-  });
-
-  sendSuccess(
-    res,
-    {
-      id: session.id,
-      session_type: session.sessionType,
-      title: session.title,
-      context: session.context,
-      created_at: session.createdAt.toISOString(),
-      updated_at: session.updatedAt.toISOString(),
-      is_archived: session.isArchived,
-    },
-    201
-  );
+  sendSuccess(res, formatSession(session), 201);
 });
 
 /**
  * GET /api/chats
- * List all chat sessions with pagination
  */
 export const listChatSessions = asyncHandler(async (req: Request, res: Response) => {
   const includeArchived = req.query.include_archived === 'true';
-  const limit = Math.min(parseInt((req.query.limit as string) || '50'), 100);
+  const limit = Math.min(parseInt((req.query.limit as string) || String(PAGINATION.defaultLimit)), PAGINATION.maxLimit);
   const offset = parseInt((req.query.offset as string) || '0');
   const sessionType = Array.isArray(req.query.session_type)
-    ? req.query.session_type[0]
-    : req.query.session_type;
+    ? (req.query.session_type[0] as string)
+    : (req.query.session_type as string | undefined);
 
-  // Build where clause
-  const where: any = {};
-  if (!includeArchived) {
-    where.isArchived = false;
-  }
-  if (sessionType && typeof sessionType === 'string' && ['websec', 'xss', 'sql'].includes(sessionType)) {
-    where.sessionType = sessionType;
-  }
+  const { sessions, total } = await chatService.listSessions({
+    includeArchived,
+    limit,
+    offset,
+    sessionType,
+  });
 
-  // Fetch sessions with message count
-  const [sessions, total] = await Promise.all([
-    prisma.chatSession.findMany({
-      where,
-      orderBy: { updatedAt: 'desc' },
-      take: limit,
-      skip: offset,
-      include: {
-        _count: {
-          select: { messages: true },
-        },
-      },
-    }),
-    prisma.chatSession.count({ where }),
-  ]);
-
-  // Format response
-  const formattedSessions = sessions.map((session) => ({
-    id: session.id,
-    session_type: session.sessionType,
-    title: session.title,
-    created_at: session.createdAt.toISOString(),
-    updated_at: session.updatedAt.toISOString(),
-    is_archived: session.isArchived,
-    message_count: session._count.messages,
-  }));
-
-  sendPaginated(res, formattedSessions, total, limit, offset);
+  sendPaginated(res, sessions.map(formatSessionSummary), total, limit, offset);
 });
 
 /**
  * GET /api/chats/:sessionId
- * Get a specific chat session
  */
 export const getChatSession = asyncHandler(async (req: Request, res: Response) => {
-  const sessionId = req.params.sessionId as string;
-
-  const session = await prisma.chatSession.findUnique({
-    where: { id: sessionId },
-    include: {
-      _count: {
-        select: { messages: true },
-      },
-    },
-  });
+  const session = await chatService.findSession(String(req.params.sessionId));
 
   if (!session) {
+    const { ApiError } = await import('../middleware/errorHandler.js');
     throw new ApiError(404, 'Chat session not found');
   }
 
-  sendSuccess(res, {
-    id: session.id,
-    session_type: session.sessionType,
-    title: session.title,
-    context: session.context,
-    created_at: session.createdAt.toISOString(),
-    updated_at: session.updatedAt.toISOString(),
-    is_archived: session.isArchived,
-    message_count: session._count.messages,
-  });
+  sendSuccess(res, formatSession(session));
 });
 
 /**
  * PATCH /api/chats/:sessionId
- * Update a chat session (title, archive status, context)
  */
 export const updateChatSession = asyncHandler(async (req: Request, res: Response) => {
-  const sessionId = req.params.sessionId as string;
   const { title, is_archived, context } = req.body;
 
-  // Check if session exists
-  const existingSession = await prisma.chatSession.findUnique({
-    where: { id: sessionId },
-  });
-
-  if (!existingSession) {
-    throw new ApiError(404, 'Chat session not found');
-  }
-
-  // Build update data
-  const updateData: any = {};
-  if (title !== undefined) updateData.title = title;
-  if (is_archived !== undefined) updateData.isArchived = is_archived;
-  if (context !== undefined) updateData.context = context;
-
-  // Update session
-  const updatedSession = await prisma.chatSession.update({
-    where: { id: sessionId },
-    data: updateData,
+  const updated = await chatService.updateSession(String(req.params.sessionId), {
+    title,
+    is_archived,
+    context,
   });
 
   sendSuccess(res, {
-    id: updatedSession.id,
-    session_type: updatedSession.sessionType,
-    title: updatedSession.title,
-    context: updatedSession.context,
-    is_archived: updatedSession.isArchived,
-    updated_at: updatedSession.updatedAt.toISOString(),
+    id: updated.id,
+    session_type: updated.sessionType,
+    title: updated.title,
+    context: updated.context,
+    is_archived: updated.isArchived,
+    updated_at: updated.updatedAt.toISOString(),
   });
 });
 
 /**
  * DELETE /api/chats/:sessionId
- * Delete a chat session and all its messages
  */
 export const deleteChatSession = asyncHandler(async (req: Request, res: Response) => {
-  const sessionId = req.params.sessionId as string;
-
-  // Check if session exists
-  const session = await prisma.chatSession.findUnique({
-    where: { id: sessionId },
-    include: {
-      _count: {
-        select: { messages: true },
-      },
-    },
-  });
-
-  if (!session) {
-    throw new ApiError(404, 'Chat session not found');
-  }
-
-  const messageCount = session._count.messages;
-
-  // Delete session (messages cascade delete automatically)
-  await prisma.chatSession.delete({
-    where: { id: sessionId },
-  });
+  const result = await chatService.deleteSession(String(req.params.sessionId));
 
   sendSuccess(res, {
     success: true,
-    deleted_session_id: sessionId,
-    deleted_messages: messageCount,
+    deleted_session_id: result.sessionId,
+    deleted_messages: result.deletedMessages,
   });
 });
 
 /**
  * GET /api/chats/search
- * Search chat messages by content
  */
 export const searchChats = asyncHandler(async (req: Request, res: Response) => {
   const queryParam = req.query.q;
-  const query = Array.isArray(queryParam) ? queryParam[0] : queryParam;
-  const limit = Math.min(parseInt((req.query.limit as string) || '20'), 100);
+  const query = (Array.isArray(queryParam) ? queryParam[0] : queryParam) as string;
+  const limit = Math.min(
+    parseInt((req.query.limit as string) || String(PAGINATION.searchDefaultLimit)),
+    PAGINATION.searchMaxLimit
+  );
 
-  if (!query || typeof query !== 'string' || query.trim().length === 0) {
-    throw new ApiError(400, 'Query parameter "q" is required and cannot be empty');
-  }
+  const result = await chatService.searchChats(query, limit);
 
-  // Search messages
-  const messages = await prisma.chatMessage.findMany({
-    where: {
-      content: {
-        contains: query.trim(),
-        mode: 'insensitive',
-      },
-      session: {
-        isArchived: false,
-      },
-    },
-    include: {
-      session: {
-        select: {
-          id: true,
-          title: true,
-          sessionType: true,
-        },
-      },
-    },
-    orderBy: { createdAt: 'desc' },
-    take: limit,
-  });
-
-  // Group by session
-  const sessionMap = new Map<string, any>();
-
-  messages.forEach((msg) => {
-    if (!sessionMap.has(msg.session.id)) {
-      sessionMap.set(msg.session.id, {
-        session_id: msg.session.id,
-        session_title: msg.session.title,
-        session_type: msg.session.sessionType,
-        matches: [],
-        match_count: 0,
-      });
-    }
-
-    const sessionData = sessionMap.get(msg.session.id);
-    sessionData.matches.push({
-      message_id: msg.id,
-      role: msg.role,
-      snippet: msg.content.substring(0, 200) + (msg.content.length > 200 ? '...' : ''),
-      created_at: msg.createdAt.toISOString(),
-    });
-    sessionData.match_count++;
-  });
-
-  const results = Array.from(sessionMap.values());
-
-  sendSuccess(res, {
-    query,
-    total_matches: messages.length,
-    sessions_matched: results.length,
-    results,
-  });
+  sendSuccess(res, result);
 });
 
 /**
  * GET /api/chats/stats
- * Get chat statistics
  */
 export const getChatStats = asyncHandler(async (_req: Request, res: Response) => {
-  const [totalSessions, activeSessions, archivedSessions, totalMessages, sessionsByType] =
-    await Promise.all([
-      prisma.chatSession.count(),
-      prisma.chatSession.count({ where: { isArchived: false } }),
-      prisma.chatSession.count({ where: { isArchived: true } }),
-      prisma.chatMessage.count(),
-      prisma.chatSession.groupBy({
-        by: ['sessionType'],
-        _count: true,
-      }),
-    ]);
+  const stats = await chatService.getStats();
 
-  const typeBreakdown: Record<string, number> = {};
-  sessionsByType.forEach((item) => {
-    typeBreakdown[item.sessionType] = item._count;
-  });
-
-  sendSuccess(res, {
-    total_sessions: totalSessions,
-    active_sessions: activeSessions,
-    archived_sessions: archivedSessions,
-    total_messages: totalMessages,
-    average_messages_per_session:
-      totalSessions > 0 ? Math.round(totalMessages / totalSessions) : 0,
-    sessions_by_type: typeBreakdown,
-  });
+  sendSuccess(res, stats);
 });

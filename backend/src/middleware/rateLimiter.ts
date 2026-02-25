@@ -1,74 +1,43 @@
 import rateLimit from 'express-rate-limit';
+import { RATE_LIMITS } from '../config/defaults.js';
 
 /**
- * General API rate limiter (500 requests per 15 minutes)
+ * Build a rate limiter from a RATE_LIMITS config entry.
+ * Wraps the message string into the standard error envelope.
  */
-export const apiLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 500,
-  message: {
-    success: false,
-    error: {
-      message: 'Too many requests from this IP, please try again later',
-      statusCode: 429,
-      timestamp: new Date().toISOString(),
+function buildLimiter(config: { windowMs: number; max: number; message: string }) {
+  return rateLimit({
+    windowMs: config.windowMs,
+    max: config.max,
+    message: {
+      success: false,
+      error: {
+        message: config.message,
+        statusCode: 429,
+        timestamp: new Date().toISOString(),
+      },
     },
-  },
-  standardHeaders: true,
-  legacyHeaders: false,
-});
+    standardHeaders: true,
+    legacyHeaders: false,
+  });
+}
 
 /**
- * Stricter rate limiter for resource creation (50 requests per 15 minutes)
+ * General API rate limiter
  */
-export const createLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 50,
-  message: {
-    success: false,
-    error: {
-      message: 'Too many creation requests from this IP, please try again later',
-      statusCode: 429,
-      timestamp: new Date().toISOString(),
-    },
-  },
-  standardHeaders: true,
-  legacyHeaders: false,
-});
+export const apiLimiter = buildLimiter(RATE_LIMITS.api);
 
 /**
- * Chat message rate limiter (120 requests per 15 minutes)
- * More generous than createLimiter since each chat exchange needs 2+ POSTs (user + assistant msg)
+ * Stricter rate limiter for resource creation
  */
-export const messageLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 120,
-  message: {
-    success: false,
-    error: {
-      message: 'Too many messages from this IP, please try again later',
-      statusCode: 429,
-      timestamp: new Date().toISOString(),
-    },
-  },
-  standardHeaders: true,
-  legacyHeaders: false,
-});
+export const createLimiter = buildLimiter(RATE_LIMITS.create);
 
 /**
- * Strictest rate limiter for authentication/sensitive endpoints (5 requests per 15 minutes)
+ * Chat message rate limiter — more generous since each chat exchange needs 2+ POSTs
  */
-export const authLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 5,
-  message: {
-    success: false,
-    error: {
-      message: 'Too many authentication attempts from this IP, please try again later',
-      statusCode: 429,
-      timestamp: new Date().toISOString(),
-    },
-  },
-  standardHeaders: true,
-  legacyHeaders: false,
-});
+export const messageLimiter = buildLimiter(RATE_LIMITS.message);
+
+/**
+ * Strictest rate limiter for authentication/sensitive endpoints
+ */
+export const authLimiter = buildLimiter(RATE_LIMITS.auth);
