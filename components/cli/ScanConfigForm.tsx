@@ -1,5 +1,6 @@
 // components/cli/ScanConfigForm.tsx
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import { useSettings } from '../../contexts/SettingsProvider.tsx';
 
 /**
  * ScanConfig mirrors the CLI API's CreateScanRequest exactly.
@@ -33,6 +34,16 @@ export const ScanConfigForm: React.FC<ScanConfigFormProps> = ({
   activeScan,
 }) => {
   const [urlError, setUrlError] = useState<string>('');
+  const [providerInfo, setProviderInfo] = useState<{ provider: string; name: string; api_key_configured: boolean } | null>(null);
+  const { cliUrl } = useSettings();
+
+  useEffect(() => {
+    if (!cliUrl) return;
+    fetch(`${cliUrl}/api/provider`, { signal: AbortSignal.timeout(5000) })
+      .then(r => r.ok ? r.json() : Promise.reject())
+      .then(setProviderInfo)
+      .catch(() => setProviderInfo(null));
+  }, [cliUrl]);
 
   const handleUrlChange = (value: string) => {
     if (value && value.trim() !== '') {
@@ -89,6 +100,18 @@ export const ScanConfigForm: React.FC<ScanConfigFormProps> = ({
             />
           )}
         </div>
+
+        {/* Active provider badge */}
+        {providerInfo && (
+          <div className="flex-shrink-0 flex flex-col items-center justify-end">
+            <span className="label-mini block mb-1">Provider</span>
+            <div className="h-8 px-2.5 rounded-md bg-white/[0.04] border border-white/[0.06] flex items-center gap-1.5 cursor-default"
+                 title={`Active CLI provider: ${providerInfo.name}`}>
+              <span className={`h-1.5 w-1.5 rounded-full flex-shrink-0 ${providerInfo.api_key_configured ? 'bg-green-400' : 'bg-yellow-400'}`} />
+              <span className="text-[11px] text-ui-text-muted whitespace-nowrap">{providerInfo.name}</span>
+            </div>
+          </div>
+        )}
 
         {/* Max Depth (1-10) */}
         <div className="w-20 flex-shrink-0">

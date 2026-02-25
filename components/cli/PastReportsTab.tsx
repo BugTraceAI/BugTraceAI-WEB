@@ -1,5 +1,6 @@
 // components/cli/PastReportsTab.tsx
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowPathIcon, ShieldExclamationIcon, TrashIcon, MagnifyingGlassIcon } from '../Icons.tsx';
 import { ReportMarkdownViewer } from './dashboard/ReportMarkdownViewer.tsx';
 import { usePastReports, CLIReport } from '../../hooks/usePastReports.ts';
@@ -93,6 +94,7 @@ const ReportsList: React.FC<ReportsListProps> = ({ loading, reports, filteredRep
             <tr className="border-b border-white/[0.05] bg-white/[0.02]">
               <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-muted">Assessment Target</th>
               <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-muted">Date</th>
+              <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-muted">Provider</th>
               <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-muted">Source</th>
               <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-muted">Findings</th>
               <th className="px-4 py-3 w-16"></th>
@@ -117,6 +119,15 @@ const ReportsList: React.FC<ReportsListProps> = ({ loading, reports, filteredRep
                   <span className="text-xs text-muted font-mono">{formatDate(report.scan_date)}</span>
                 </td>
                 <td className="px-4 py-3">
+                  {report.provider ? (
+                    <span className="text-[9px] font-black px-1.5 py-0.5 rounded border bg-purple-500/5 text-purple-400 border-purple-500/20">
+                      {report.provider.toUpperCase()}
+                    </span>
+                  ) : (
+                    <span className="text-[9px] text-muted/40">—</span>
+                  )}
+                </td>
+                <td className="px-4 py-3">
                   <span className={`text-[9px] font-black px-1.5 py-0.5 rounded border ${report.origin === 'web'
                     ? 'bg-coral/5 text-coral border-coral/20'
                     : 'bg-blue-500/5 text-blue-400 border-blue-500/20'
@@ -125,7 +136,13 @@ const ReportsList: React.FC<ReportsListProps> = ({ loading, reports, filteredRep
                   </span>
                 </td>
                 <td className="px-4 py-3">
-                  <SeverityDots summary={report.severity_summary} />
+                  {report.severity_summary ? (
+                    <SeverityDots summary={report.severity_summary} />
+                  ) : report.findings_count ? (
+                    <span className="text-[10px] font-bold text-white/60 font-mono">{report.findings_count}</span>
+                  ) : (
+                    <span className="text-[9px] text-muted/40">—</span>
+                  )}
                 </td>
                 <td className="px-4 py-3 text-right">
                   <button
@@ -178,6 +195,8 @@ const DeleteDialog: React.FC<DeleteDialogProps> = ({ target, deleting, onCancel,
 );
 
 export const PastReportsTab: React.FC<PastReportsTabProps> = ({ onViewScan }) => {
+  const { reportId } = useParams<{ reportId?: string }>();
+  const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedReport, setSelectedReport] = useState<CLIReport | null>(null);
 
@@ -201,16 +220,36 @@ export const PastReportsTab: React.FC<PastReportsTabProps> = ({ onViewScan }) =>
     handleResumeScan,
   } = usePastReports();
 
+  // URL-driven report selection: auto-select when reportId is in URL
+  useEffect(() => {
+    if (reportId && reports.length > 0) {
+      const match = reports.find((r) => r.id === reportId);
+      if (match) {
+        setSelectedReport(match);
+      }
+    } else if (!reportId) {
+      setSelectedReport(null);
+    }
+  }, [reportId, reports]);
+
   const filteredReports = reports.filter((report) =>
     !searchQuery || (report.target_url || '').toLowerCase().includes(searchQuery.toLowerCase())
   );
+
+  const handleSelectReport = (report: CLIReport) => {
+    navigate(`/bugtraceai/reports/${report.id}`);
+  };
+
+  const handleBack = () => {
+    navigate('/bugtraceai/reports');
+  };
 
   if (selectedReport) {
     return (
       <div className="flex-1 overflow-y-auto">
         <ReportMarkdownViewer
           report={selectedReport}
-          onBack={() => setSelectedReport(null)}
+          onBack={handleBack}
         />
       </div>
     );
@@ -340,7 +379,7 @@ export const PastReportsTab: React.FC<PastReportsTabProps> = ({ onViewScan }) =>
           loading={loading}
           reports={reports}
           filteredReports={filteredReports}
-          onSelectReport={setSelectedReport}
+          onSelectReport={handleSelectReport}
           onDeleteReport={setDeleteTarget}
         />
       </div>

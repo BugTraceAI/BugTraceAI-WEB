@@ -100,8 +100,14 @@ export function ProviderTab() {
                 if (resp.ok) {
                     const data = await resp.json();
                     setSelectedPreset(data);
+                } else {
+                    console.warn(`[ProviderTab] Failed to fetch preset for ${selectedProvider}: ${resp.status}`);
                 }
-            } catch { /* ignore */ }
+            } catch (e) {
+                if (!cancelled) {
+                    console.warn(`[ProviderTab] Failed to fetch preset for ${selectedProvider}:`, e);
+                }
+            }
         })();
         return () => { cancelled = true; };
     }, [selectedProvider, cliUrl, cliConnected, activeProvider, activePreset]);

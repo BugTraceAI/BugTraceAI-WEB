@@ -277,7 +277,7 @@ export const WebSecAgent: React.FC<WebSecAgentProps> = ({
                 </div>
               </div>
             </div>
-          ) : displayMessages.length === 0 ? (
+          ) : displayMessages.length === 0 && !isLoading ? (
             <div className="flex flex-col items-center justify-center h-full text-center px-4">
               <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-coral/20 to-purple-elevated/20 flex items-center justify-center mb-8 border border-0 shadow-[0_0_30px_-10px_rgba(6,182,212,0.3)]">
                 <AiBrainIcon className="h-8 w-8 text-coral" />
@@ -289,12 +289,12 @@ export const WebSecAgent: React.FC<WebSecAgentProps> = ({
               {displayMessages.map((msg) => (
                 <ChatBubble key={msg.id} message={msg} />
               ))}
-              {isLoading && legacyMessages.length > 0 && legacyMessages[legacyMessages.length - 1].role === 'user' && (
+              {isLoading && (
                 <ChatBubble
                   message={{
                     id: 'loading',
                     role: 'assistant',
-                    content: '...',
+                    content: '',
                     created_at: new Date().toISOString(),
                   }}
                   isLoading={true}

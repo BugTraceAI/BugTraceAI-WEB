@@ -17,6 +17,8 @@ export interface CLIReport {
   report_path: string;
   origin?: string;
   has_report?: boolean;
+  provider?: string | null;
+  findings_count?: number;
 }
 
 interface ActiveScan {
@@ -95,6 +97,8 @@ export const usePastReports = (): UsePastReportsReturn => {
           report_path: '',
           origin: s.origin || 'cli',
           has_report: s.has_report,
+          provider: s.provider || null,
+          findings_count: s.findings_count || 0,
         }));
       setReports(mapped);
     } catch (err) {

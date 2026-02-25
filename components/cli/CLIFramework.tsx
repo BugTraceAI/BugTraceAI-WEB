@@ -35,7 +35,11 @@ export const CLIFramework: React.FC<CLIFrameworkProps> = ({ onClose }) => {
 
   // Sync URL to tab on mount and location change
   useEffect(() => {
-    const tab = pathToTab[location.pathname];
+    let tab = pathToTab[location.pathname];
+    // Handle /bugtraceai/reports/:reportId deep links
+    if (!tab && location.pathname.startsWith('/bugtraceai/reports/')) {
+      tab = 'reports';
+    }
     if (tab && tab !== activeTab) {
       setActiveTab(tab);
     }

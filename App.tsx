@@ -527,6 +527,7 @@ const App: React.FC = () => {
           {/* Dynamic routes with URL parameters */}
           <Route path="/chat/:sessionId" element={renderActiveView()} />
           <Route path="/chat" element={renderActiveView()} />
+          <Route path="/bugtraceai/reports/:reportId" element={renderActiveView()} />
           <Route path="/bugtraceai/:tab" element={renderActiveView()} />
           <Route path="/bugtraceai" element={renderActiveView()} />
           {/* Sub-tab routes */}
@@ -558,7 +559,6 @@ const App: React.FC = () => {
         onClose={() => setIsThemeModalOpen(false)}
       />
       <ApiKeyWarningModal isOpen={isApiKeyWarningModalOpen} onClose={() => setIsApiKeyWarningModalOpen(false)} onGoToSettings={handleGoToSettings} />
-      <ErrorToast />
       {/* Report Viewer Modal */}
       {viewingReportId && (
         <ReportViewer

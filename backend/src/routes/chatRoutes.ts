@@ -2,7 +2,7 @@ import { Router } from 'express';
 import * as chatController from '../controllers/chatController.js';
 import * as messageController from '../controllers/messageController.js';
 import { validate, validateUuid } from '../middleware/validator.js';
-import { createLimiter } from '../middleware/rateLimiter.js';
+import { createLimiter, messageLimiter } from '../middleware/rateLimiter.js';
 import {
   createChatSessionSchema,
   updateChatSessionSchema,
@@ -85,7 +85,7 @@ router.get('/:sessionId/messages', validateUuid('sessionId'), messageController.
 router.post(
   '/:sessionId/messages',
   validateUuid('sessionId'),
-  createLimiter,
+  messageLimiter,
   validate(createMessageSchema),
   messageController.createMessage
 );
@@ -98,7 +98,7 @@ router.post(
 router.post(
   '/:sessionId/messages/bulk',
   validateUuid('sessionId'),
-  createLimiter,
+  messageLimiter,
   validate(createBulkMessagesSchema),
   messageController.createBulkMessages
 );

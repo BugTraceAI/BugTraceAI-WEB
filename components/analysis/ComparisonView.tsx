@@ -73,7 +73,7 @@ export const ComparisonView: React.FC<ComparisonViewProps> = ({
         });
         setComparison(res.data.data);
       } catch (err: any) {
-        const message = err.response?.data?.error || err.message || 'Failed to load comparison';
+        const message = err.response?.data?.error?.message || err.response?.data?.error || err.message || 'Failed to load comparison';
         setError(message);
       } finally {
         setLoading(false);

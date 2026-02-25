@@ -30,9 +30,19 @@ const WEB_PROVIDER_CONFIGS: Record<string, { name: string; recommended?: boolean
         baseUrl: 'https://openrouter.ai/api/v1/chat/completions',
     },
     zai: {
-        name: 'Z.ai',
-        models: ['glm-5', 'glm-4.7-flash', 'glm-4.6v'],
-        defaultModel: 'glm-5',
+        name: 'Z.ai (Experimental)',
+        models: [
+            'glm-4.7-flash',      // 1 credit
+            'glm-4.5-flash',      // 2 credits
+            'glm-4.6',            // 3 credits
+            'glm-4.7-flashx',     // 3 credits
+            'glm-5',              // 3 credits
+            'glm-4.7',            // 5 credits
+            'glm-4.5-air',        // 5 credits
+            'glm-4.5-airx',       // 5 credits
+            'glm-4.5',            // 10 credits
+        ],
+        defaultModel: 'glm-4.7-flash',
         description: 'Z.ai direct API. Single-provider option using GLM model family.',
         baseUrl: 'https://api.z.ai/api/paas/v4/chat/completions',
     },
@@ -330,10 +340,11 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, i
         const keyToTest = localProviderId === 'openrouter'
             ? localApiKeys.openrouter
             : (localApiKeys[localProviderId] || '');
-        const modelToTest = localOpenRouterModel;
 
-        // Resolve the correct API URL from static provider config
+        // Use first model from provider's list (cheapest/most accessible) to validate the key
+        // Falls back to selected model for providers with dynamic lists (e.g. OpenRouter)
         const providerConfig = WEB_PROVIDER_CONFIGS[localProviderId];
+        const modelToTest = providerConfig?.models[0] || localOpenRouterModel;
         const urlToTest = providerConfig?.baseUrl;
 
         if (!keyToTest) {
@@ -431,7 +442,10 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, i
                                         if (cfg?.defaultModel) {
                                             setLocalOpenRouterModel(cfg.defaultModel);
                                         } else {
-                                            setLocalOpenRouterModel(globalOpenRouterModel || OPEN_ROUTER_MODELS[0]);
+                                            // For OpenRouter: use stored model only if it's a valid OpenRouter model (has provider/ prefix)
+                                            const stored = globalOpenRouterModel;
+                                            const isValidForProvider = stored && stored.includes('/');
+                                            setLocalOpenRouterModel(isValidForProvider ? stored : OPEN_ROUTER_MODELS[0]);
                                         }
                                     }}
                                     className="w-full input-premium p-2"
@@ -547,7 +561,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, i
                                             ))}
                                         </select>
                                         <p className="text-xs text-muted mt-2">
-                                            <strong className="text-coral">Recommendation:</strong> <code>glm-5</code> for text, <code>glm-4.6v</code> for vision.
+                                            <strong className="text-coral">Recommendation:</strong> <code>glm-4.7-flash</code> (free tier). <code>glm-5</code> requires paid subscription.
                                         </p>
                                     </div>
                                 </>

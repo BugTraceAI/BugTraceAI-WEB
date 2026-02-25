@@ -30,7 +30,10 @@ export function useConfigEditor() {
     setIsLoading(true);
     try {
       const response = await cliApi.getConfig();
-      const cfg = typeof response.config === 'string' ? JSON.parse(response.config) : response.config;
+      let cfg = response.config;
+      if (typeof cfg === 'string') {
+        try { cfg = JSON.parse(cfg); } catch { cfg = {}; }
+      }
       setConfig(cfg);
       setEditedFields({});
       setVersion(response.version || '');

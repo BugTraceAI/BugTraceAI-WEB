@@ -5,10 +5,11 @@ import { CLI_API_URL, FindingItem } from '../lib/cliApi';
 
 export interface Finding {
   id?: string;
-  title: string;
+  title?: string;
   type?: string;
   severity: string;
-  description: string;
+  description?: string;
+  details?: string;
   url?: string;
   parameter?: string;
   payload?: string;
@@ -28,7 +29,7 @@ export interface Finding {
   confidence_score?: number;
 }
 
-export type SeverityFilter = 'all' | 'critical' | 'high' | 'medium' | 'low';
+export type SeverityFilter = 'all' | 'critical' | 'high' | 'medium' | 'low' | 'info';
 
 export interface TechEntry {
   name: string;
@@ -103,7 +104,9 @@ export const useReportViewer = (reportId: string): UseReportViewerReturn => {
       if (findingsResponse?.ok) {
         try {
           const data = await findingsResponse.json();
-          const items = data.findings || [];
+          const items = (data.findings || []).filter(
+            (f: Finding) => f.type?.toLowerCase() !== 'unknown'
+          );
           setFindings(items);
           hasFindings = items.length > 0;
         } catch { /* malformed JSON */ }
@@ -157,7 +160,12 @@ export const useReportViewer = (reportId: string): UseReportViewerReturn => {
   if (selectedCategory) {
     filteredFindings = findings.filter(f => (f.type || f.title) === selectedCategory);
   } else if (selectedSeverity !== 'all') {
-    filteredFindings = findings.filter(f => (f.severity || '').toLowerCase() === selectedSeverity);
+    filteredFindings = findings.filter(f => {
+      const sev = (f.severity || '').toLowerCase();
+      // "info" filter also matches findings with missing/empty severity
+      if (selectedSeverity === 'info') return sev === 'info' || sev === '';
+      return sev === selectedSeverity;
+    });
   }
 
   return {

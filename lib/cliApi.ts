@@ -57,6 +57,8 @@ export interface ScanSummary {
   timestamp: string; // ISO format
   origin: string; // "cli" or "web"
   has_report: boolean; // Whether report files exist on disk
+  provider?: string | null; // LLM provider used: "openrouter", "zai", etc.
+  findings_count?: number; // Total findings for this scan
 }
 
 export interface ScanListResponse {
@@ -338,6 +340,23 @@ export async function healthCheck(): Promise<HealthCheckResponse> {
 }
 
 
+/**
+ * Get active CLI provider info.
+ *
+ * @returns Provider configuration (id, name, api_key status)
+ */
+export interface CliProviderInfo {
+  provider: string;
+  name: string;
+  api_key_configured: boolean;
+}
+
+export async function getProvider(): Promise<CliProviderInfo> {
+  const response = await fetch(`${CLI_API_BASE}/provider`, { signal: AbortSignal.timeout(5000) });
+  return handleResponse<CliProviderInfo>(response);
+}
+
+
 // ============================================================================
 // Default Export
 // ============================================================================
@@ -355,6 +374,7 @@ const cliApi = {
   getConfig,
   updateConfig,
   healthCheck,
+  getProvider,
 };
 
 export { cliApi };

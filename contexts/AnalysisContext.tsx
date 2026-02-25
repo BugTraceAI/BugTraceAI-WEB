@@ -93,7 +93,7 @@ export const AnalysisProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
       return newAnalysis;
     } catch (err: any) {
-      const message = err.response?.data?.error || err.message || 'Failed to save analysis';
+      const message = err.response?.data?.error?.message || err.response?.data?.error || err.message || 'Failed to save analysis';
       setError(message);
       throw new Error(message);
     }
@@ -123,7 +123,7 @@ export const AnalysisProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
       setAnalyses(response.data.data.results || []);
     } catch (err: any) {
-      const message = err.response?.data?.error || err.message || 'Failed to load analyses';
+      const message = err.response?.data?.error?.message || err.response?.data?.error || err.message || 'Failed to load analyses';
       setError(message);
     } finally {
       setLoading(false);
@@ -143,7 +143,7 @@ export const AnalysisProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
       setCurrentAnalysis(analysisData);
     } catch (err: any) {
-      const message = err.response?.data?.error || err.message || 'Failed to load analysis';
+      const message = err.response?.data?.error?.message || err.response?.data?.error || err.message || 'Failed to load analysis';
       setError(message);
     } finally {
       setLoading(false);
@@ -167,7 +167,7 @@ export const AnalysisProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         setCurrentAnalysis(null);
       }
     } catch (err: any) {
-      const message = err.response?.data?.error || err.message || 'Failed to delete analysis';
+      const message = err.response?.data?.error?.message || err.response?.data?.error || err.message || 'Failed to delete analysis';
       setError(message);
       throw new Error(message);
     }

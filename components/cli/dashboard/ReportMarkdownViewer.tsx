@@ -21,6 +21,7 @@ interface CLIReport {
     high: number;
     medium: number;
     low: number;
+    info?: number;
   } | null;
   report_path: string;
 }
@@ -236,13 +237,19 @@ export const ReportMarkdownViewer: React.FC<ReportMarkdownViewerProps> = ({ repo
 
   // Compute severity counts
   const s = report.severity_summary;
-  const totalFindings = s ? s.critical + s.high + s.medium + s.low : findings.length;
   const severityCounts = s || {
-    critical: findings.filter(f => (f.severity || 'info').toLowerCase() === 'critical').length,
-    high: findings.filter(f => (f.severity || 'info').toLowerCase() === 'high').length,
-    medium: findings.filter(f => (f.severity || 'info').toLowerCase() === 'medium').length,
-    low: findings.filter(f => (f.severity || 'info').toLowerCase() === 'low').length,
+    critical: findings.filter(f => (f.severity || '').toLowerCase() === 'critical').length,
+    high: findings.filter(f => (f.severity || '').toLowerCase() === 'high').length,
+    medium: findings.filter(f => (f.severity || '').toLowerCase() === 'medium').length,
+    low: findings.filter(f => (f.severity || '').toLowerCase() === 'low').length,
+    info: findings.filter(f => {
+      const sev = (f.severity || '').toLowerCase();
+      return sev === 'info' || sev === '';
+    }).length,
   };
+  const totalFindings = s
+    ? s.critical + s.high + s.medium + s.low + (s.info || 0)
+    : severityCounts.critical + severityCounts.high + severityCounts.medium + severityCounts.low + severityCounts.info;
 
   // Donut chart data
   const chartData = useMemo(() => [
@@ -250,6 +257,7 @@ export const ReportMarkdownViewer: React.FC<ReportMarkdownViewerProps> = ({ repo
     { name: 'High', value: severityCounts.high },
     { name: 'Medium', value: severityCounts.medium },
     { name: 'Low', value: severityCounts.low },
+    { name: 'Info', value: severityCounts.info || 0 },
   ].filter(d => d.value > 0), [severityCounts]);
 
   const chartColors = chartData.map(d => SEVERITY_COLORS[d.name.toLowerCase()]?.fill || '#6b7280');
@@ -429,18 +437,20 @@ export const ReportMarkdownViewer: React.FC<ReportMarkdownViewerProps> = ({ repo
   // Send a single validated finding to chat
   const handleSendFindingToChat = async (f: Finding, e: React.MouseEvent) => {
     e.stopPropagation();
-    const fid = f.id || f.title;
+    const fid = f.id || f.title || f.type;
     setSendingFindingId(fid);
     try {
+      const displayName = f.title || f.type || 'Unknown';
       let msg = `I found a **${f.severity}** vulnerability on **${report.target_url}** and need your analysis.\n\n`;
-      msg += `## ${f.title}\n\n`;
-      if (f.type && f.type !== f.title) msg += `- **Type:** ${f.type}\n`;
+      msg += `## ${displayName}\n\n`;
+      if (f.type && f.type !== displayName) msg += `- **Type:** ${f.type}\n`;
       msg += `- **Severity:** ${f.severity}\n`;
       if (f.cvss_score != null) msg += `- **CVSS:** ${f.cvss_score}${f.cvss_vector ? ` (${f.cvss_vector})` : ''}\n`;
       if (f.url) msg += `- **URL:** ${f.url}\n`;
       if (f.parameter) msg += `- **Parameter:** ${f.parameter}\n`;
       if (f.payload) msg += `- **Payload:** \`${f.payload}\`\n`;
-      msg += `\n${f.description}\n`;
+      const desc = f.description || f.details || '';
+      if (desc) msg += `\n${desc}\n`;
       if (f.impact) msg += `\n### Impact\n${f.impact}\n`;
       if (f.exploitation_details) msg += `\n### Exploitation Details\n${f.exploitation_details}\n`;
       if (f.remediation) msg += `\n### Suggested Remediation\n${f.remediation}\n`;
@@ -645,13 +655,13 @@ export const ReportMarkdownViewer: React.FC<ReportMarkdownViewerProps> = ({ repo
                     <span className="text-[10px] text-muted font-mono">{totalFindings} Total</span>
                   </div>
 
-                  {['critical', 'high', 'medium', 'low'].map((sev) => {
-                    const count = severityCounts[sev as keyof typeof severityCounts];
+                  {['critical', 'high', 'medium', 'low', 'info'].map((sev) => {
+                    const count = severityCounts[sev as keyof typeof severityCounts] || 0;
                     const colors = SEVERITY_COLORS[sev];
                     const isSelected = selectedSeverity === sev;
                     const pct = totalFindings > 0 ? (count / totalFindings) * 100 : 0;
 
-                    if (!colors) return null;
+                    if (!colors || (sev === 'info' && count === 0)) return null;
 
                     return (
                       <button
@@ -930,7 +940,7 @@ export const ReportMarkdownViewer: React.FC<ReportMarkdownViewerProps> = ({ repo
                             onClick={(e) => handleSendFindingToChat(finding, e)}
                             className="flex items-center justify-center w-7 h-7 rounded-lg text-muted hover:text-coral hover:bg-coral/10 transition-colors cursor-pointer"
                           >
-                            {sendingFindingId === (finding.id || finding.title) ? (
+                            {sendingFindingId === (finding.id || finding.title || finding.type) ? (
                               <ArrowPathIcon className="h-3.5 w-3.5 animate-spin" />
                             ) : (
                               <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
@@ -990,9 +1000,9 @@ export const ReportMarkdownViewer: React.FC<ReportMarkdownViewerProps> = ({ repo
                                   </div>
                                 )}
 
-                                {/* Fallback description */}
-                                {!finding.exploitation_details && !finding.llm_reproduction_steps?.length && finding.description && (
-                                  <p className="text-sm text-purple-gray">{finding.description}</p>
+                                {/* Fallback description (validated_findings uses exploitation_details, DB detections use details) */}
+                                {!finding.exploitation_details && !finding.llm_reproduction_steps?.length && (finding.description || finding.details) && (
+                                  <p className="text-sm text-purple-gray">{finding.description || finding.details}</p>
                                 )}
                               </div>
 

@@ -73,7 +73,10 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
             if (savedSavePref) {
                 const savedKeys = localStorage.getItem('apiKeys');
-                if (savedKeys) setApiKeys(JSON.parse(savedKeys));
+                if (savedKeys) {
+                    try { setApiKeys(JSON.parse(savedKeys)); }
+                    catch { localStorage.removeItem('apiKeys'); }
+                }
             }
 
             const savedModel = localStorage.getItem('openRouterModel');

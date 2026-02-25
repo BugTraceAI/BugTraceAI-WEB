@@ -131,7 +131,7 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content }) =
     const parsedHtml = useMemo(() => {
         if (!content) return '';
         const rawHtml = marked.parse(content) as string;
-        return DOMPurify.sanitize(rawHtml, {
+        const clean = DOMPurify.sanitize(rawHtml, {
             ALLOWED_TAGS: [
                 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'p', 'br', 'hr',
                 'ul', 'ol', 'li', 'blockquote', 'pre', 'code',
@@ -142,6 +142,8 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content }) =
             ALLOWED_ATTR: ['href', 'src', 'alt', 'title', 'class', 'id', 'target', 'rel'],
             ALLOW_DATA_ATTR: false,
         });
+        // Open all links in new tab
+        return clean.replace(/<a /g, '<a target="_blank" rel="noopener noreferrer" ');
     }, [content]);
 
     return (

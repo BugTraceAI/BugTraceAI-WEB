@@ -105,7 +105,7 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       return newSession;
     } catch (err: any) {
-      const message = err.response?.data?.error || err.message || 'Failed to create chat session';
+      const message = err.response?.data?.error?.message || err.response?.data?.error || err.message || 'Failed to create chat session';
       setError(message);
       throw new Error(message);
     }
@@ -133,7 +133,7 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } catch (err: any) {
       // Skip toast for network errors (backend not reachable yet) — transient on startup
       if (!err.response) return;
-      const message = err.response?.data?.error || err.message || 'Failed to load chat sessions';
+      const message = err.response?.data?.error?.message || err.response?.data?.error || err.message || 'Failed to load chat sessions';
       setError(message);
     } finally {
       setLoadingSessions(false);
@@ -147,6 +147,8 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       setLoadingMessages(true);
       setError(null);
+      // Clear messages immediately to prevent old session's messages leaking into new session
+      setMessages([]);
 
       // Load session details
       const sessionResponse = await axios.get(`${API_BASE_URL}/chats/${sessionId}`);
@@ -163,7 +165,7 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const messagesResponse = await axios.get(`${API_BASE_URL}/chats/${sessionId}/messages`);
       setMessages(messagesResponse.data.data.results);
     } catch (err: any) {
-      const message = err.response?.data?.error || err.message || 'Failed to load chat session';
+      const message = err.response?.data?.error?.message || err.response?.data?.error || err.message || 'Failed to load chat session';
       setError(message);
       throw err;
     } finally {
@@ -198,11 +200,14 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
       );
 
       const newMessage = response.data.data;
-      setMessages((prev) => [...prev, newMessage]);
+      // Only append if the user hasn't switched sessions during the request
+      if (currentSessionRef.current?.id === session.id) {
+        setMessages((prev) => [...prev, newMessage]);
+      }
 
       return newMessage;
     } catch (err: any) {
-      const message = err.response?.data?.error || err.message || 'Failed to send message';
+      const message = err.response?.data?.error?.message || err.response?.data?.error || err.message || 'Failed to send message';
       setError(message);
       throw new Error(message);
     }
@@ -227,7 +232,7 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setMessages([]);
       }
     } catch (err: any) {
-      const message = err.response?.data?.error || err.message || 'Failed to archive session';
+      const message = err.response?.data?.error?.message || err.response?.data?.error || err.message || 'Failed to archive session';
       setError(message);
     }
   }, [currentSession]);
@@ -252,7 +257,7 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setCurrentSession(updatedSession);
       }
     } catch (err: any) {
-      const message = err.response?.data?.error || err.message || 'Failed to unarchive session';
+      const message = err.response?.data?.error?.message || err.response?.data?.error || err.message || 'Failed to unarchive session';
       setError(message);
     }
   }, [currentSession]);
@@ -274,7 +279,7 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setMessages([]);
       }
     } catch (err: any) {
-      const message = err.response?.data?.error || err.message || 'Failed to delete session';
+      const message = err.response?.data?.error?.message || err.response?.data?.error || err.message || 'Failed to delete session';
       setError(message);
     }
   }, [currentSession]);
@@ -299,7 +304,7 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setCurrentSession((prev) => (prev ? { ...prev, title: newTitle } : null));
       }
     } catch (err: any) {
-      const message = err.response?.data?.error || err.message || 'Failed to rename session';
+      const message = err.response?.data?.error?.message || err.response?.data?.error || err.message || 'Failed to rename session';
       setError(message);
     }
   }, [currentSession]);
@@ -315,7 +320,7 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
       });
       return response.data.data?.results || [];
     } catch (err: any) {
-      const message = err.response?.data?.error || err.message || 'Search failed';
+      const message = err.response?.data?.error?.message || err.response?.data?.error || err.message || 'Search failed';
       setError(message);
       return [];
     }

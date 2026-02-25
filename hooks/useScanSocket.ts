@@ -87,6 +87,7 @@ export function useScanSocket(): UseScanSocketReturn {
 
     currentScanIdRef.current = scanId;
     scanFinishedRef.current = false;
+    lastSeqRef.current = 0; // Reset sequence for fresh scan (only non-zero on reconnect)
     // Reset dashboard state for new scan
     setPipeline(INITIAL_PIPELINE);
     setAgents([]);
@@ -369,10 +370,14 @@ export function useScanSocket(): UseScanSocketReturn {
       ws.onclose = (event) => {
         console.log('[WebSocket] Connection closed', event.code, event.reason);
         setIsConnected(false);
-        // Only clear isScanning if we received a terminal event (scan_complete/error)
-        // or user manually unsubscribed. Transient disconnects (1005, 1006) should NOT
-        // reset scanning state — the scan is still running on the backend.
-        // Code 1000 = server closed after scan_complete (scanFinishedRef already set).
+        // If scan already finished (scan_complete/error received), scanFinishedRef is true — nothing to do.
+        // If WS closed abnormally WITHOUT a terminal event, the scan may still be running on backend
+        // but we have no way to receive updates. Clear isScanning so UI doesn't get stuck.
+        // Code 1000 = normal close (server sent scan_complete first, scanFinishedRef already set).
+        // Code 1005/1006 = abnormal close (network issue) — scan may still run, but WS is dead.
+        if (!scanFinishedRef.current) {
+          setIsScanning(false);
+        }
       };
 
 

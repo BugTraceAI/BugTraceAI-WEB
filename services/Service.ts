@@ -41,51 +41,36 @@ import {
     resetContinuousFailureCount,
 } from '../utils/apiManager.ts';
 
-const OPENROUTER_API_URL = "https://openrouter.ai/api/v1/chat/completions";
-
 // ── Provider-aware API URL resolution ──
-// Reads base_url from CLI /api/provider endpoint, cached for 5 minutes.
-// Uses in-flight promise dedup to prevent race conditions on concurrent calls.
-let _providerCache: { url: string; providerId: string; ts: number } | null = null;
-let _providerFetchPromise: Promise<string> | null = null;
-const PROVIDER_CACHE_TTL = 5 * 60 * 1000; // 5 min
-
-const _getCliUrl = (): string => {
-    try {
-        return localStorage.getItem('cliApiUrl') || import.meta.env.VITE_CLI_API_URL || 'http://localhost:8000';
-    } catch { return import.meta.env.VITE_CLI_API_URL || 'http://localhost:8000'; }
+// Reads WEB's own provider setting from localStorage, maps to static base URLs.
+// WEB and CLI are independent products — WEB never reads CLI's provider config.
+const WEB_PROVIDER_URLS: Record<string, string> = {
+    openrouter: 'https://openrouter.ai/api/v1/chat/completions',
+    zai: 'https://api.z.ai/api/paas/v4/chat/completions',
 };
+const DEFAULT_API_URL = WEB_PROVIDER_URLS.openrouter;
 
 const getProviderApiUrl = async (): Promise<string> => {
-    if (_providerCache && Date.now() - _providerCache.ts < PROVIDER_CACHE_TTL) {
-        return _providerCache.url;
+    try {
+        const providerId = localStorage.getItem('providerId') || 'openrouter';
+        return WEB_PROVIDER_URLS[providerId] || DEFAULT_API_URL;
+    } catch {
+        return DEFAULT_API_URL;
     }
-    // Dedup: if a fetch is already in-flight, reuse its promise
-    if (_providerFetchPromise) return _providerFetchPromise;
-    _providerFetchPromise = (async () => {
-        try {
-            const resp = await fetch(`${_getCliUrl()}/api/provider`, { signal: AbortSignal.timeout(3000) });
-            if (resp.ok) {
-                const data = await resp.json();
-                _providerCache = { url: data.base_url, providerId: data.provider, ts: Date.now() };
-                return data.base_url;
-            }
-        } catch { /* CLI unreachable, fall back */ }
-        return OPENROUTER_API_URL;
-    })().finally(() => { _providerFetchPromise = null; });
-    return _providerFetchPromise;
 };
 
-// Export for Settings UI to read/invalidate
+// Export for Settings UI — returns WEB's own provider config (not CLI)
 export const getProviderInfo = async () => {
     try {
-        const resp = await fetch(`${_getCliUrl()}/api/provider`, { signal: AbortSignal.timeout(3000) });
-        if (resp.ok) return await resp.json();
-    } catch { /* CLI unreachable */ }
-    return null;
+        const providerId = localStorage.getItem('providerId') || 'openrouter';
+        return {
+            provider: providerId,
+            base_url: WEB_PROVIDER_URLS[providerId] || DEFAULT_API_URL,
+        };
+    } catch { return null; }
 };
 
-export const invalidateProviderCache = () => { _providerCache = null; };
+export const invalidateProviderCache = () => { /* no-op, WEB uses static config */ };
 
 const callApi = async (prompt: string, options: ApiOptions, isJson: boolean = true) => {
     await enforceRateLimit();
@@ -117,12 +102,13 @@ const callApi = async (prompt: string, options: ApiOptions, isJson: boolean = tr
         });
 
         if (!response.ok) {
-            const errorData = await response.json();
-            throw new Error(errorData?.error?.message || `API request failed with status ${response.status}`);
+            let message = `API request failed with status ${response.status}`;
+            try { const err = await response.json(); message = err?.error?.message || message; } catch { /* non-JSON error body */ }
+            throw new Error(message);
         }
 
         const data = await response.json();
-        const content = data.choices[0].message.content;
+        const content = data?.choices?.[0]?.message?.content;
 
         if (!content) {
             throw new Error("Received an empty response from the AI. The model may have been filtered or refused the request.");
@@ -134,10 +120,8 @@ const callApi = async (prompt: string, options: ApiOptions, isJson: boolean = tr
     } catch (error: any) {
         incrementContinuousFailureCount();
         if (error.name === 'AbortError') {
-            console.log("API request was cancelled.");
             throw new Error("Request cancelled.");
         }
-        console.error("Error calling LLM API:", error);
         throw new Error(error.message || "An unknown error occurred while contacting the AI service.");
     } finally {
         setRequestStatus('idle');
@@ -192,6 +176,9 @@ export const analyzeCode = async (code: string, options: ApiOptions, iteration: 
   const prompt = createSastAnalysisPrompt(code, iteration);
   const resultText = await callApi(prompt, options, true);
   const result = await parseJsonWithCorrection<VulnerabilityReport>(resultText, prompt, options);
+  if (!result.analyzedTarget) {
+      result.analyzedTarget = 'Code Snippet';
+  }
   return processReport(result);
 };
 
@@ -403,27 +390,33 @@ const callOpenRouterChat = async (history: ChatMessage[], options: ApiOptions) =
             },
             body: JSON.stringify({
                 model: model,
-                messages: history.map(({ role, content }) => ({ role, content })),
+                messages: history.map(({ role, content }) => ({
+                    role: role === 'model' ? 'assistant' : role,
+                    content,
+                })),
             }),
             signal: signal,
         });
 
         if (!response.ok) {
-            const errorData = await response.json();
-            throw new Error(errorData?.error?.message || `API request failed with status ${response.status}`);
+            let message = `API request failed with status ${response.status}`;
+            try { const err = await response.json(); message = err?.error?.message || message; } catch { /* non-JSON error body */ }
+            throw new Error(message);
         }
 
         const data = await response.json();
+        const content = data?.choices?.[0]?.message?.content;
+        if (!content) {
+            throw new Error("Received an empty response from the AI.");
+        }
         resetContinuousFailureCount();
-        return data.choices[0].message.content;
+        return content;
 
     } catch (error: any) {
         incrementContinuousFailureCount();
         if (error.name === 'AbortError') {
-            console.log("Chat API request was cancelled.");
             throw new Error("Request cancelled.");
         }
-        console.error("Error calling LLM Chat:", error);
         throw new Error(error.message || "An unknown error occurred while contacting the AI service.");
     } finally {
         setRequestStatus('idle');
@@ -486,10 +479,9 @@ export const testApi = async (apiKey: string, model: string, explicitUrl?: strin
             }),
         });
 
-        const data = await response.json();
-
         if (!response.ok) {
-            const errorMessage = data?.error?.message || `HTTP error! status: ${response.status}`;
+            let errorMessage = `HTTP error! status: ${response.status}`;
+            try { const err = await response.json(); errorMessage = err?.error?.message || errorMessage; } catch { /* non-JSON error body */ }
             return { success: false, error: errorMessage };
         }
 

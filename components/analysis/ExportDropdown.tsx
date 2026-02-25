@@ -62,7 +62,7 @@ export const ExportDropdown: React.FC<ExportDropdownProps> = ({ reportId, disabl
         <div className="absolute right-0 mt-2 w-40 bg-purple-medium/60 border-0 rounded-lg shadow-lg overflow-hidden z-10">
           <button
             onClick={() => handleExport('json')}
-            className="w-full text-left px-4 py-2 text-sm text-white hover:bg-purple-medium/50/50 transition-colors flex items-center gap-2"
+            className="w-full text-left px-4 py-2 text-sm text-white hover:bg-purple-medium/50 transition-colors flex items-center gap-2"
             data-testid="export-json"
           >
             <svg className="h-4 w-4 text-coral" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -77,7 +77,7 @@ export const ExportDropdown: React.FC<ExportDropdownProps> = ({ reportId, disabl
           </button>
           <button
             onClick={() => handleExport('csv')}
-            className="w-full text-left px-4 py-2 text-sm text-white hover:bg-purple-medium/50/50 transition-colors flex items-center gap-2"
+            className="w-full text-left px-4 py-2 text-sm text-white hover:bg-purple-medium/50 transition-colors flex items-center gap-2"
             data-testid="export-csv"
           >
             <svg className="h-4 w-4 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -92,7 +92,7 @@ export const ExportDropdown: React.FC<ExportDropdownProps> = ({ reportId, disabl
           </button>
           <button
             onClick={() => handleExport('pdf')}
-            className="w-full text-left px-4 py-2 text-sm text-white hover:bg-purple-medium/50/50 transition-colors flex items-center gap-2"
+            className="w-full text-left px-4 py-2 text-sm text-white hover:bg-purple-medium/50 transition-colors flex items-center gap-2"
             data-testid="export-pdf"
           >
             <svg className="h-4 w-4 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">

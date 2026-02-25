@@ -23,6 +23,7 @@ const SEV_STYLE: Record<string, string> = {
   high: 'text-orange-300 bg-orange-900/30',
   medium: 'text-yellow-300 bg-yellow-900/30',
   low: 'text-blue-300 bg-blue-900/30',
+  info: 'text-gray-400 bg-gray-800/40',
 };
 
 export const MobileDashboard: React.FC = () => {
@@ -216,7 +217,7 @@ export const MobileDashboard: React.FC = () => {
                           {findings.slice().reverse().map((f, i) => (
                             <div key={i} className="flex items-start gap-2 text-[10px] py-1 border-t border-white/[0.04] first:border-0">
                               <span className={`shrink-0 font-bold px-1 py-0.5 rounded ${SEV_STYLE[(f.severity || 'info').toLowerCase()] || 'text-gray-300 bg-gray-900/30'}`}>
-                                {f.severity.slice(0, 4).toUpperCase()}
+                                {(f.severity || 'info').slice(0, 4).toUpperCase()}
                               </span>
                               <div className="min-w-0 flex-1">
                                 <div className="text-off-white font-bold truncate">{f.type}{f.parameter ? ` \u00B7 ${f.parameter}` : ''}</div>

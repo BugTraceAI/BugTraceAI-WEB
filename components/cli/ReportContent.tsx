@@ -3,11 +3,13 @@ import React, { useState } from 'react';
 import { ShieldCheckIcon, ChevronDownIcon, ChevronUpIcon, ClipboardDocumentListIcon } from '../Icons.tsx';
 
 interface Finding {
-  id: string;
-  title: string;
-  type: string;
+  id?: string;
+  title?: string;
+  type?: string;
   severity: string;
-  description: string;
+  description?: string;
+  details?: string;
+  exploitation_details?: string;
   url?: string;
   parameter?: string;
   payload?: string;
@@ -185,12 +187,14 @@ export const ReportContent: React.FC<ReportContentProps> = ({ data }) => {
                     <div className="h-px bg-white/[0.05] mb-4" />
 
                     {/* Description */}
+                    {(finding.description || finding.details || finding.exploitation_details) && (
                     <div>
                       <h4 className="text-[10px] font-bold text-muted uppercase tracking-widest mb-2">Description</h4>
                       <p className="text-sm text-white/70 leading-relaxed bg-white/[0.02] p-3 rounded-lg border border-white/5">
-                        {finding.description}
+                        {finding.description || finding.details || finding.exploitation_details}
                       </p>
                     </div>
+                    )}
 
                     {/* CVSS / CWE / CVE */}
                     {(finding.cvss_score || finding.cwe || finding.cve) && (
@@ -346,11 +350,11 @@ export const ReportContent: React.FC<ReportContentProps> = ({ data }) => {
                     {isOpen && (
                       <div className="px-4 pb-4 pt-1 space-y-4 animate-in fade-in slide-in-from-top-2 duration-300">
                         <div className="h-px bg-white/[0.05] mb-4" />
-                        {finding.description && (
+                        {(finding.description || finding.details || finding.exploitation_details) && (
                           <div>
                             <h4 className="text-[10px] font-bold text-muted uppercase tracking-widest mb-2">Description</h4>
                             <p className="text-sm text-white/70 leading-relaxed bg-white/[0.02] p-3 rounded-lg border border-white/5">
-                              {finding.description}
+                              {finding.description || finding.details || finding.exploitation_details}
                             </p>
                           </div>
                         )}
