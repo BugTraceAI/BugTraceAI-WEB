@@ -82,7 +82,7 @@ const App: React.FC = () => {
   // Auto-redirect mobile devices to /mobile (unless user chose "Desktop")
   useEffect(() => {
     if (location.pathname === '/mobile') return;
-    try { if (sessionStorage.getItem('preferDesktop') === 'true') return; } catch {}
+    try { if (sessionStorage.getItem('preferDesktop') === 'true') return; } catch { /* ignore */ }
     const isMobile = /Android|webOS|iPhone|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
     if (isMobile) {
       nav('/mobile', { replace: true });
@@ -497,7 +497,7 @@ const App: React.FC = () => {
           <a href="/mobile" className="text-xs text-ui-accent font-bold">Switch to mobile view</a>
           <button
             onClick={() => {
-              try { sessionStorage.setItem('mobileBannerDismissed', 'true'); } catch {}
+              try { sessionStorage.setItem('mobileBannerDismissed', 'true'); } catch { /* ignore */ }
               setMobileBannerDismissed(true);
             }}
             className="text-ui-text-dim text-xs px-2 py-1"

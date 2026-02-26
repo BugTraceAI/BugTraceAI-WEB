@@ -1,14 +1,17 @@
 import js from '@eslint/js';
+import globals from 'globals';
 import tseslint from '@typescript-eslint/eslint-plugin';
 import tsparser from '@typescript-eslint/parser';
 import reactHooks from 'eslint-plugin-react-hooks';
 import react from 'eslint-plugin-react';
 
 export default [
+  {
+    ignores: ['node_modules/**', '**/dist/**', '**/build/**', 'BugTraceAI-WEB-DEV2/**', '.trash/**']
+  },
   js.configs.recommended,
   {
     files: ['**/*.{ts,tsx}'],
-    ignores: ['node_modules/**', 'dist/**', 'build/**'],
     languageOptions: {
       parser: tsparser,
       parserOptions: {
@@ -17,44 +20,9 @@ export default [
         ecmaFeatures: { jsx: true }
       },
       globals: {
-        // Browser globals
-        window: 'readonly',
-        document: 'readonly',
-        console: 'readonly',
-        fetch: 'readonly',
-        localStorage: 'readonly',
-        sessionStorage: 'readonly',
-        URL: 'readonly',
-        URLSearchParams: 'readonly',
-        AbortController: 'readonly',
-        FormData: 'readonly',
-        File: 'readonly',
-        Blob: 'readonly',
-        Response: 'readonly',
-        Headers: 'readonly',
-        atob: 'readonly',
-        btoa: 'readonly',
-        setTimeout: 'readonly',
-        clearTimeout: 'readonly',
-        setInterval: 'readonly',
-        clearInterval: 'readonly',
-        requestAnimationFrame: 'readonly',
-        HTMLElement: 'readonly',
-        HTMLInputElement: 'readonly',
-        HTMLTextAreaElement: 'readonly',
-        KeyboardEvent: 'readonly',
-        MouseEvent: 'readonly',
-        Event: 'readonly',
-        CustomEvent: 'readonly',
-        WebSocket: 'readonly',
-        EventSource: 'readonly',
-        navigator: 'readonly',
-        location: 'readonly',
-        history: 'readonly',
-        // Node.js globals for scripts
-        process: 'readonly',
-        __dirname: 'readonly',
-        module: 'readonly',
+        ...globals.browser,
+        ...globals.node,
+        ...globals.es2021
       }
     },
     plugins: {
@@ -81,6 +49,7 @@ export default [
       // General rules
       'no-console': ['warn', { allow: ['warn', 'error'] }],
       'no-unused-vars': 'off', // Using @typescript-eslint version instead
+      'no-undef': 'off', // TypeScript compiler handles undefined variable checking
     },
     settings: {
       react: { version: 'detect' }

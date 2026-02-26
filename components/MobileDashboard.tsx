@@ -100,7 +100,7 @@ export const MobileDashboard: React.FC = () => {
         </div>
         <div className="flex items-center gap-3">
           <span className={`h-2 w-2 rounded-full ${cliConnected ? 'bg-green-400' : 'bg-red-400'}`} />
-          <a href="/" onClick={() => { try { sessionStorage.setItem('preferDesktop', 'true'); } catch {} }} className="text-[11px] text-ui-accent font-medium px-2.5 py-1 rounded-lg bg-ui-accent/10">
+          <a href="/" onClick={() => { try { sessionStorage.setItem('preferDesktop', 'true'); } catch { /* ignore */ } }} className="text-[11px] text-ui-accent font-medium px-2.5 py-1 rounded-lg bg-ui-accent/10">
             Desktop
           </a>
         </div>

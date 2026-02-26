@@ -7,7 +7,7 @@ import { VulnerabilityReport, HeadersReport } from '../types.ts';
  * @returns A sanitized string safe for filenames.
  */
 export const sanitizeFilename = (name: string): string => {
-    return name.replace(/[^a-z0-9_\-\.]/gi, '_').toLowerCase();
+    return name.replace(/[^a-z0-9_\-.]/gi, '_').toLowerCase();
 };
 
 /**

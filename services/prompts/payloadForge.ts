@@ -27,7 +27,7 @@ export const createPayloadForgePrompt = (basePayload: string): string => `
     11. **Polymorphic Variant (confirm):** Replace alert() with confirm().
     12. **Polymorphic Variant (prompt):** Replace alert() with prompt().
     13. **Null Byte Insertion:** e.g., <scr\\u0000ipt>alert(1)</scr\\u0000ipt>
-    14. **JavaScript Template Literals:** e.g., <script>alert(\`1\`)<\/script>
+    14. **JavaScript Template Literals:** e.g., <script>alert(\`1\`)</script>
 
     **Output Format:**
     Return a single, valid JSON object. This object must have a single key, "payloads", which is an array of objects.
