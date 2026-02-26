@@ -94,6 +94,7 @@ export const useReportViewer = (reportId: string): UseReportViewerReturn => {
 
       let hasMarkdown = false;
       let hasFindings = false;
+      let parsedFindings: Finding[] = [];
 
       if (mdResponse?.ok) {
         const text = await mdResponse.text();
@@ -104,19 +105,25 @@ export const useReportViewer = (reportId: string): UseReportViewerReturn => {
       if (findingsResponse?.ok) {
         try {
           const data = await findingsResponse.json();
-          const items = (data.findings || []).filter(
+          parsedFindings = (data.findings || []).filter(
             (f: Finding) => f.type?.toLowerCase() !== 'unknown'
           );
-          setFindings(items);
-          hasFindings = items.length > 0;
+          setFindings(parsedFindings);
+          hasFindings = parsedFindings.length > 0;
         } catch { /* malformed JSON */ }
       }
 
-      // Parse all detections from DB endpoint
+      // Parse detections from DB, excluding types already in Findings
       if (detectionsResponse?.ok) {
         try {
           const data = await detectionsResponse.json();
-          setDetections(data.findings || []);
+          const findingTypes = new Set(
+            parsedFindings.map((f: Finding) => (f.type || '').toUpperCase())
+          );
+          const filtered = (data.findings || []).filter(
+            (d: FindingItem) => !findingTypes.has((d.type || '').toUpperCase())
+          );
+          setDetections(filtered);
         } catch { /* malformed JSON */ }
       }
 
