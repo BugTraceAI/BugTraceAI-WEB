@@ -1,5 +1,5 @@
 // components/analysis/AnalysisTable.tsx
-// eslint-disable-next-line max-lines -- Table rendering component with extensive JSX structure (375 lines, 2 hooks)
+ 
 import React, { useState } from 'react';
 import { AnalysisReport } from '../../contexts/AnalysisContext.tsx';
 import { LinkIcon, CodeBracketIcon, TrashIcon } from '../Icons.tsx';

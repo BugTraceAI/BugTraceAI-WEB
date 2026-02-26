@@ -1,7 +1,7 @@
 // @author: Albert C | @yz9yt | github.com/yz9yt
 // components/UrlAnalyzer.tsx
 // version 0.1 Beta
-// eslint-disable-next-line max-lines -- Complex form with multiple scan options and configuration UI (243 lines, hook-extracted)
+ 
 import React, { useEffect } from 'react';
 import { Vulnerability, VulnerabilityReport, DastScanType } from '../types.ts';
 import { useApiOptions } from '../hooks/useApiOptions.ts';

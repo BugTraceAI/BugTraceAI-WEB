@@ -113,17 +113,11 @@ export const useReportViewer = (reportId: string): UseReportViewerReturn => {
         } catch { /* malformed JSON */ }
       }
 
-      // Parse detections from DB, excluding types already in Findings
+      // Parse detections from DB (all raw findings/signals)
       if (detectionsResponse?.ok) {
         try {
           const data = await detectionsResponse.json();
-          const findingTypes = new Set(
-            parsedFindings.map((f: Finding) => (f.type || '').toUpperCase())
-          );
-          const filtered = (data.findings || []).filter(
-            (d: FindingItem) => !findingTypes.has((d.type || '').toUpperCase())
-          );
-          setDetections(filtered);
+          setDetections(data.findings || []);
         } catch { /* malformed JSON */ }
       }
 

@@ -1,6 +1,6 @@
 // components/UserDocumentationModal.tsx
 // version 0.0.47
-// eslint-disable-next-line max-lines -- Content-heavy documentation component with internationalization (814 lines, 2 hooks)
+ 
 import React, { useState } from 'react';
 import { XMarkIcon, BookOpenIcon, LinkIcon, CodeBracketIcon, ShieldExclamationIcon, BeakerIcon, ChatIcon, CogIcon, ShieldCheckIcon, CodeSearchIcon, KeyIcon, FlowChartIcon, ArrowUpTrayIcon, JwtTokenIcon, MagnifyingGlassIcon, PencilDocumentIcon } from './Icons.tsx';
 

@@ -596,7 +596,7 @@ export const ReportMarkdownViewer: React.FC<ReportMarkdownViewerProps> = ({ repo
                 : 'text-muted hover:text-purple-gray'
                 }`}
             >
-              Detections ({detections.length})
+              ALL DETECTIONS ({detections.length})
             </button>
           )}
           {markdown && (
