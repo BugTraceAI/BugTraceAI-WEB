@@ -134,7 +134,7 @@ services:
     security_opt:
       - seccomp:unconfined
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8002/health || exit 0"]
+      test: ["CMD-SHELL", "curl -sS -m 2 http://localhost:8002/sse >/dev/null; res=$$?; [ $$res -eq 0 ] || [ $$res -eq 28 ] || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -162,7 +162,7 @@ services:
       - MCP_PORT=8001
       - SSE_MODE=${CLI_SSE_MODE:-false}
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8001/health || exit 0"]
+      test: ["CMD-SHELL", "curl -sS -m 2 http://localhost:8001/sse >/dev/null; res=$$?; [ $$res -eq 0 ] || [ $$res -eq 28 ] || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 3
