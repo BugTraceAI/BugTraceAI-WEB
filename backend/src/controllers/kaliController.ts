@@ -27,9 +27,19 @@ export const executeKaliCommand = asyncHandler(async (req: Request, res: Respons
     // We wrap it in a timeout because some tools hang
     const { stdout, stderr } = await execAsync(dockerCmd, { timeout: timeoutMs });
     
+    // Helper function to truncate strings, keeping head and tail
+    const truncateString = (str: string, maxLength: number) => {
+      if (str.length <= maxLength) return str;
+      const head = str.slice(0, maxLength / 2);
+      const tail = str.slice(str.length - (maxLength / 2));
+      return `${head}\n... [OUTPUT TRUNCATED BY BUGTRACEAI: OUTPUT TOO LONG] ...\n${tail}`;
+    };
+
     let result = '';
-    if (stdout.trim()) result += `---- [stdout] ----\n${stdout.trim()}\n`;
-    if (stderr.trim()) result += `---- [stderr] ----\n${stderr.trim()}\n`;
+    const MAX_OUTPUT_LENGTH = 4000;
+    
+    if (stdout.trim()) result += `---- [stdout] ----\n${truncateString(stdout.trim(), MAX_OUTPUT_LENGTH)}\n`;
+    if (stderr.trim()) result += `---- [stderr] ----\n${truncateString(stderr.trim(), MAX_OUTPUT_LENGTH)}\n`;
     if (!result) result = "(Command completed with no output)";
     
     sendSuccess(res, {
