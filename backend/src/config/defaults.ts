@@ -41,22 +41,22 @@ const RATE_LIMIT_WINDOW_MS = 15 * 60 * 1000; // 15 minutes
 export const RATE_LIMITS = {
   api: {
     windowMs: RATE_LIMIT_WINDOW_MS,
-    max: 500,
+    max: 5000, // Increased for MCP usage
     message: 'Too many requests from this IP, please try again later',
   },
   create: {
     windowMs: RATE_LIMIT_WINDOW_MS,
-    max: 50,
+    max: 1000,
     message: 'Too many creation requests from this IP, please try again later',
   },
   message: {
     windowMs: RATE_LIMIT_WINDOW_MS,
-    max: 120,
+    max: 5000, // Increased for active conversational agents
     message: 'Too many messages from this IP, please try again later',
   },
   auth: {
     windowMs: RATE_LIMIT_WINDOW_MS,
-    max: 5,
+    max: 50,
     message: 'Too many authentication attempts from this IP, please try again later',
   },
 } as const;
