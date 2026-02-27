@@ -29,6 +29,9 @@ import { apiLimiter } from './middleware/rateLimiter.js';
 import chatRoutes from './routes/chatRoutes.js';
 import analysisRoutes from './routes/analysisRoutes.js';
 import settingsRoutes from './routes/settingsRoutes.js';
+import kaliRoutes from './routes/kaliRoutes.js';
+import reconRoutes from './routes/reconRoutes.js';
+import bugtraceRoutes from './routes/bugtraceRoutes.js';
 
 // Create Express application
 const app: Express = express();
@@ -193,6 +196,9 @@ app.get('/api/version', asyncHandler(async (_req: Request, res: Response) => {
 app.use('/api/chats', chatRoutes);
 app.use('/api/analyses', analysisRoutes);
 app.use('/api/settings', settingsRoutes);
+app.use('/api/kali', kaliRoutes);
+app.use('/api/recon', reconRoutes);
+app.use('/api/bugtrace', bugtraceRoutes);
 
 // ============================================================================
 // Error Handling (must be last)

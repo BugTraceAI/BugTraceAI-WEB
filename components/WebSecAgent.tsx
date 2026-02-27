@@ -7,9 +7,9 @@
  */
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { ChatMessage as LegacyChatMessage } from '../types.ts';
+import { ChatMessage as LegacyChatMessage, AgentType } from '../types.ts';
 import { useChatOperations } from '../hooks/useChatOperations';
-import { PaperAirplaneIcon, MenuIcon, AiBrainIcon } from './Icons.tsx';
+import { MenuIcon, AiBrainIcon, TerminalIcon, ScanIcon, BugTraceAILogo } from './Icons.tsx';
 import { ChatBubble } from './ChatBubble.tsx';
 import { ChatLayout } from './ChatLayout.tsx';
 import { ChatSidebar } from './chat/ChatSidebar';
@@ -21,15 +21,20 @@ interface WebSecAgentProps {
   onSendMessage: (message: string) => void;
   onResetMessages: () => void;
   isLoading: boolean;
+  activeAgent: AgentType;
+  setActiveAgent: (agent: AgentType) => void;
 }
 
 export const WebSecAgent: React.FC<WebSecAgentProps> = ({
   messages: legacyMessages,
   onSendMessage,
   onResetMessages,
-  isLoading
+  isLoading,
+  activeAgent,
+  setActiveAgent,
 }) => {
   const [userInput, setUserInput] = useState('');
+  const [isToolsMenuOpen, setIsToolsMenuOpen] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const initializingRef = useRef(false);
   const initializedRef = useRef(false);
@@ -188,7 +193,7 @@ export const WebSecAgent: React.FC<WebSecAgentProps> = ({
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if ((e.ctrlKey || e.altKey) && e.key === 'Enter') {
+    if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       handleSendMessage();
     }
@@ -221,41 +226,168 @@ export const WebSecAgent: React.FC<WebSecAgentProps> = ({
 
   const footerContent = (
     <div className="relative w-full max-w-3xl mx-auto">
-      <form onSubmit={handleFormSubmit} className="relative flex items-end w-full bg-white/[0.03] backdrop-blur-md rounded-[26px] pl-4 pr-2 py-2 shadow-lg border border-white/[0.05] focus-within:border-coral/30 transition-colors">
+      <form onSubmit={handleFormSubmit} className={`relative flex flex-col w-full bg-white/[0.03] backdrop-blur-md rounded-[26px] shadow-lg border transition-all duration-300 ${
+        activeAgent === 'kali' ? 'border-cyan-500/50 focus-within:border-cyan-400/80 shadow-[0_0_15px_rgba(6,182,212,0.15)]' :
+        activeAgent === 'recon' ? 'border-purple-500/50 focus-within:border-purple-400/80 shadow-[0_0_15px_rgba(168,85,247,0.15)]' :
+        activeAgent === 'bugtrace' ? 'border-emerald-500/50 focus-within:border-emerald-400/80 shadow-[0_0_15px_rgba(16,185,129,0.15)]' :
+        'border-white/[0.05] focus-within:border-coral/30'
+      }`}>
+        
         <textarea
           ref={textareaRef}
           value={userInput}
           onChange={(e) => setUserInput(e.target.value)}
           onKeyDown={handleKeyDown}
-          placeholder="Message WebSec Agent..."
+          placeholder={`Message ${
+            activeAgent === 'kali' ? 'Kali Expert' :
+            activeAgent === 'recon' ? 'ReconFTW' :
+            activeAgent === 'bugtrace' ? 'BugTrace Scanner' :
+            'WebSecAgent'
+          }...`}
           disabled={isLoading}
           data-testid="chat-input"
-          className="w-full bg-transparent border-none text-white placeholder-text-tertiary focus:ring-0 focus:outline-none resize-none overflow-y-hidden py-2"
+          className="w-full bg-transparent border-none text-white placeholder-text-tertiary focus:ring-0 focus:outline-none resize-none overflow-y-hidden py-3 px-5 mt-1"
           rows={1}
           style={{ maxHeight: '200px', minHeight: '44px' }}
         />
-        {isLoading ? (
-          <button
-            type="button"
-            onClick={abortCurrentRequest}
-            className="flex-shrink-0 w-8 h-8 mb-1 rounded-full bg-red-500/20 text-red-400 flex items-center justify-center hover:bg-red-500/30 transition-all border border-red-500/20"
-            aria-label="Stop generating"
-          >
-            <div className="w-2.5 h-2.5 bg-current rounded-sm animate-pulse"></div>
-          </button>
-        ) : (
-          <button
-            type="submit"
-            disabled={!userInput.trim()}
-            data-testid="send-button"
-            className="group flex-shrink-0 w-10 h-10 rounded-full bg-ui-accent text-ui-bg flex items-center justify-center hover:bg-ui-accent-hover disabled:bg-white/5 disabled:text-ui-text-dim/30 transition-all shadow-glow-coral disabled:shadow-none"
-            aria-label="Send message"
-          >
-            <svg className="h-4 w-4 transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 19.5l15-15m0 0H8.25m11.25 0v11.25" />
-            </svg>
-          </button>
-        )}
+
+        <div className="flex justify-between items-center w-full px-3 pb-3">
+          {/* Tools Area (Left) - Empty now, or for secondary items */}
+          <div className="flex items-center gap-2">
+            <span className={`text-[10px] font-bold uppercase tracking-thicker ${
+              activeAgent === 'kali' ? 'text-cyan-400' :
+              activeAgent === 'recon' ? 'text-purple-400' :
+              activeAgent === 'bugtrace' ? 'text-emerald-400' :
+              'text-ui-text-dim/40'
+            }`}>
+              {activeAgent === 'kali' ? 'KALI MODE' :
+               activeAgent === 'recon' ? 'RECON MODE' :
+               activeAgent === 'bugtrace' ? 'BUGTRACE MODE' :
+               'STANDARD'}
+            </span>
+          </div>
+
+          {/* Action Area (Right) */}
+          <div className="flex items-center gap-2">
+            {/* Tool Selection Menu (3 dots) */}
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => setIsToolsMenuOpen(!isToolsMenuOpen)}
+                className={`flex items-center justify-center w-9 h-9 rounded-full transition-all ${
+                  isToolsMenuOpen ? 'bg-white/10 text-white' : 'text-ui-text-dim hover:text-white hover:bg-white/5'
+                }`}
+                title="Select Security Agent"
+              >
+                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M12 8a2 2 0 110-4 2 2 0 010 4zm0 6a2 2 0 110-4 2 2 0 010 4zm0 6a2 2 0 110-4 2 2 0 010 4z" />
+                </svg>
+              </button>
+
+              {/* Tools Menu Popover */}
+              {isToolsMenuOpen && (
+                <>
+                  <div className="fixed inset-0 z-40" onClick={() => setIsToolsMenuOpen(false)}></div>
+                  <div className="absolute bottom-full right-0 mb-3 w-56 bg-gray-900/95 backdrop-blur-xl border border-white/10 rounded-2xl shadow-2xl p-2 z-50 overflow-hidden transform origin-bottom-right animate-in fade-in zoom-in-95 duration-200">
+                    <div className="text-[10px] text-ui-text-dim px-3 pb-2 pt-1 font-bold uppercase tracking-widest opacity-60">Security Agents</div>
+                    
+                    {/* WebSec Agent (Default) */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setActiveAgent('web');
+                        setIsToolsMenuOpen(false);
+                      }}
+                      className={`w-full text-left flex items-center justify-between px-3 py-2.5 rounded-xl text-sm transition-all group ${activeAgent === 'web' ? 'bg-white/10' : 'hover:bg-white/5'}`}
+                    >
+                      <div className="flex items-center gap-3">
+                        <AiBrainIcon className={`w-4 h-4 ${activeAgent === 'web' ? 'text-ui-accent' : 'text-ui-text-dim group-hover:text-white'}`} />
+                        <span className={`${activeAgent === 'web' ? 'text-white font-medium' : 'text-ui-text-dim group-hover:text-white'}`}>Standard WebSec</span>
+                      </div>
+                      {activeAgent === 'web' && <div className="w-1.5 h-1.5 rounded-full bg-ui-accent shadow-[0_0_8px_rgba(255,127,80,0.6)]"></div>}
+                    </button>
+
+                    {/* Kali Agent */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setActiveAgent('kali');
+                        setIsToolsMenuOpen(false);
+                      }}
+                      className={`w-full text-left flex items-center justify-between px-3 py-2.5 rounded-xl text-sm transition-all group ${activeAgent === 'kali' ? 'bg-cyan-500/10' : 'hover:bg-white/5'}`}
+                    >
+                      <div className="flex items-center gap-3">
+                        <TerminalIcon className={`w-4 h-4 ${activeAgent === 'kali' ? 'text-cyan-400' : 'text-ui-text-dim group-hover:text-white'}`} />
+                        <span className={`${activeAgent === 'kali' ? 'text-cyan-400 font-medium' : 'text-ui-text-dim group-hover:text-white'}`}>Kali Expert Mode</span>
+                      </div>
+                      {activeAgent === 'kali' && <div className="w-1.5 h-1.5 rounded-full bg-cyan-400 shadow-[0_0_8px_rgba(6,182,212,0.6)]"></div>}
+                    </button>
+
+                    {/* ReconFTW Agent */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setActiveAgent('recon');
+                        setIsToolsMenuOpen(false);
+                      }}
+                      className={`w-full text-left flex items-center justify-between px-3 py-2.5 rounded-xl text-sm transition-all group ${activeAgent === 'recon' ? 'bg-purple-500/10' : 'hover:bg-white/5'}`}
+                    >
+                      <div className="flex items-center gap-3">
+                        <ScanIcon className={`w-4 h-4 ${activeAgent === 'recon' ? 'text-purple-400' : 'text-ui-text-dim group-hover:text-white'}`} />
+                        <span className={`${activeAgent === 'recon' ? 'text-purple-400 font-medium' : 'text-ui-text-dim group-hover:text-white'}`}>ReconFTW Automation</span>
+                      </div>
+                      {activeAgent === 'recon' && <div className="w-1.5 h-1.5 rounded-full bg-purple-400 shadow-[0_0_8px_rgba(168,85,247,0.6)]"></div>}
+                    </button>
+
+                    {/* BugTraceAI-CLI Agent */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setActiveAgent('bugtrace');
+                        setIsToolsMenuOpen(false);
+                      }}
+                      className={`w-full text-left flex items-center justify-between px-3 py-2.5 rounded-xl text-sm transition-all group ${activeAgent === 'bugtrace' ? 'bg-emerald-500/10' : 'hover:bg-white/5'}`}
+                    >
+                      <div className="flex items-center gap-3">
+                        <BugTraceAILogo className={`w-4 h-4 ${activeAgent === 'bugtrace' ? 'text-emerald-400' : 'text-ui-text-dim group-hover:text-white'}`} />
+                        <span className={`${activeAgent === 'bugtrace' ? 'text-emerald-400 font-medium' : 'text-ui-text-dim group-hover:text-white'}`}>BugTrace Scanner</span>
+                      </div>
+                      {activeAgent === 'bugtrace' && <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(16,185,129,0.6)]"></div>}
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
+
+            {isLoading ? (
+              <button
+                type="button"
+                onClick={abortCurrentRequest}
+                className="flex-shrink-0 w-9 h-9 rounded-full bg-red-500/20 text-red-400 flex items-center justify-center hover:bg-red-500/30 transition-all border border-red-500/20"
+                aria-label="Stop generating"
+              >
+                <div className="w-3 h-3 bg-current rounded-sm animate-pulse"></div>
+              </button>
+            ) : (
+              <button
+                type="submit"
+                disabled={!userInput.trim()}
+                data-testid="send-button"
+                className={`group flex-shrink-0 w-9 h-9 rounded-full text-ui-bg flex items-center justify-center disabled:bg-white/5 disabled:text-ui-text-dim/30 transition-all disabled:shadow-none ${
+                   activeAgent === 'kali' ? 'bg-cyan-500 hover:bg-cyan-400 shadow-[0_0_15px_rgba(6,182,212,0.4)]' :
+                   activeAgent === 'recon' ? 'bg-purple-500 hover:bg-purple-400 shadow-[0_0_15px_rgba(168,85,247,0.4)]' :
+                   activeAgent === 'bugtrace' ? 'bg-emerald-500 hover:bg-emerald-400 shadow-[0_0_15px_rgba(16,185,129,0.4)]' :
+                   'bg-ui-accent hover:bg-ui-accent-hover shadow-glow-coral'
+                }`}
+                aria-label="Send message"
+              >
+                <svg className="h-4 w-4 transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 19.5l15-15m0 0H8.25m11.25 0v11.25" />
+                </svg>
+              </button>
+            )}
+          </div>
+        </div>
       </form>
       <div className="text-center mt-3">
         <p className="text-[10px] text-muted opacity-60">WebSec Agent can make mistakes. Verify important information.</p>

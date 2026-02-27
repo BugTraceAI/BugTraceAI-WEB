@@ -40,7 +40,7 @@ import { UpdateBanner } from './components/UpdateBanner.tsx';
 import { useWebSecAgent } from './hooks/useWebSecAgent.tsx';
 import { useChatContext } from './contexts/ChatContext.tsx';
 import { useRouteSync } from './hooks/useRouteSync.ts';
-import { View, Tool, VulnerabilityReport, Vulnerability, ExploitContext, Severity } from './types.ts';
+import { View, Tool, VulnerabilityReport, Vulnerability, ExploitContext, Severity, AgentType } from './types.ts';
 
 const App: React.FC = () => {
   const [activeView, setActiveView] = useState<View>(View.CLI_FRAMEWORK);
@@ -107,6 +107,8 @@ const App: React.FC = () => {
     setIsApiKeyWarningModalOpen(true);
   };
 
+  const [activeAgent, setActiveAgent] = useState<AgentType>('web');
+
   // Use the new custom hook for all WebSec Agent logic
   const {
     messages: agentMessages,
@@ -115,7 +117,7 @@ const App: React.FC = () => {
     resetMessages: resetAgentMessages,
     startAnalysisWithAgent,
     startReportAnalysisWithAgent
-  } = useWebSecAgent(handleShowApiKeyWarning);
+  } = useWebSecAgent(handleShowApiKeyWarning, activeAgent);
 
   const { loadSession } = useChatContext();
 
@@ -463,6 +465,8 @@ const App: React.FC = () => {
             onSendMessage={sendAgentMessage}
             onResetMessages={resetAgentMessages}
             isLoading={isAgentLoading}
+            activeAgent={activeAgent}
+            setActiveAgent={setActiveAgent}
           />
         );
       case View.XSS_EXPLOIT_ASSISTANT:

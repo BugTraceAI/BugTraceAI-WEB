@@ -30,6 +30,8 @@ export enum Tool {
   SUBDOMAIN_FINDER = 'SUBDOMAIN_FINDER',
 }
 
+export type AgentType = 'web' | 'kali' | 'recon' | 'bugtrace';
+
 export enum Severity {
   CRITICAL = 'Critical',
   HIGH = 'High',

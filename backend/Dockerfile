@@ -31,8 +31,8 @@ RUN npm run build
 # =============================================================================
 FROM node:20-alpine AS production
 
-# Install OpenSSL for Prisma runtime
-RUN apk add --no-cache openssl wget
+# Install OpenSSL for Prisma runtime and Docker CLI for Kali MCP execution
+RUN apk add --no-cache openssl wget docker-cli
 
 WORKDIR /app
 

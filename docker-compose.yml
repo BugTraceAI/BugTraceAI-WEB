@@ -30,6 +30,8 @@ services:
       PORT: 3001
       DATABASE_URL: postgresql://${POSTGRES_USER:-bugtraceai}:${POSTGRES_PASSWORD:-bugtraceai_dev_2026}@postgres:5432/${POSTGRES_DB:-bugtraceai_web}?schema=public
       FRONTEND_URL: http://localhost:${FRONTEND_PORT:-6869}
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
     depends_on:
       postgres:
         condition: service_healthy
@@ -63,9 +65,130 @@ services:
     networks:
       - bugtraceai-network
 
+  # ============================================
+  # MCP Security Agents
+  # ============================================
+  
+  # Kali Linux MCP Server - Security tools container
+  # Start manually: docker-compose up -d kali-mcp
+  kali-mcp:
+    image: kalilinux/kali-rolling:latest
+    container_name: kali-mcp-server
+    profiles:
+      - kali
+      - all-agents
+    stdin_open: true
+    tty: true
+    volumes:
+      - kali-data:/root/data
+      - /tmp/.X11-unix:/tmp/.X11-unix
+    environment:
+      - DISPLAY=${DISPLAY:-}
+    cap_add:
+      - NET_ADMIN
+    security_opt:
+      - seccomp:unconfined
+    command: >
+      bash -c "
+        apt-get update && apt-get install -y \
+          nmap ffuf nuclei sqlmap dirb gobuster nikto \
+          hydra john hashcat curl wget netcat-openbsd \
+          python3 python3-pip git vim && \
+        echo 'Kali MCP Server ready!' && \
+        tail -f /dev/null
+      "
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    restart: unless-stopped
+    networks:
+      - bugtraceai-network
+
+  # reconFTW MCP Server - Automated reconnaissance container
+  # Start manually: docker-compose up -d reconftw-mcp
+  reconftw-mcp:
+    build:
+      context: ../reconftw-mcp
+      dockerfile: Dockerfile
+    container_name: reconftw-mcp
+    profiles:
+      - recon
+      - all-agents
+    ports:
+      - "${RECON_MCP_PORT:-8002}:8002"
+    volumes:
+      - reconftw-output:/opt/reconftw/output
+      - reconftw-config:/root/.config/reconftw
+    environment:
+      - RECONFTW_DIR=/root/reconftw
+      - OUTPUT_DIR=/opt/reconftw/output
+      - MCP_PORT=8002
+      - SSE_MODE=${RECON_SSE_MODE:-false}
+      # API Keys (pass from .env or host environment)
+      - SHODAN_API_KEY=${SHODAN_API_KEY:-}
+      - VIRUSTOTAL_API_KEY=${VIRUSTOTAL_API_KEY:-}
+      - CENSYS_API_ID=${CENSYS_API_ID:-}
+      - CENSYS_API_SECRET=${CENSYS_API_SECRET:-}
+      - GITHUB_TOKEN=${GITHUB_TOKEN:-}
+    cap_add:
+      - NET_ADMIN
+    security_opt:
+      - seccomp:unconfined
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8002/health || exit 0"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    restart: unless-stopped
+    networks:
+      - bugtraceai-network
+
+  # BugTraceAI-CLI MCP Server - Local scanner integration
+  # Start manually: docker-compose up -d bugtrace-cli-mcp
+  bugtrace-cli-mcp:
+    build:
+      context: ../BugTraceAI-CLI
+      dockerfile: Dockerfile.mcp
+    container_name: bugtrace-cli-mcp
+    profiles:
+      - cli
+      - all-agents
+    ports:
+      - "${CLI_MCP_PORT:-8001}:8001"
+    volumes:
+      - cli-scans:/app/scans
+      - cli-reports:/app/reports
+    environment:
+      - MCP_PORT=8001
+      - SSE_MODE=${CLI_SSE_MODE:-false}
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8001/health || exit 0"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    restart: unless-stopped
+    networks:
+      - bugtraceai-network
+
 volumes:
   postgres_data:
     name: bugtraceai_web_postgres_data
+    driver: local
+  kali-data:
+    name: bugtraceai_kali_data
+    driver: local
+  reconftw-output:
+    name: bugtraceai_reconftw_output
+    driver: local
+  reconftw-config:
+    name: bugtraceai_reconftw_config
+    driver: local
+  cli-scans:
+    name: bugtraceai_cli_scans
+    driver: local
+  cli-reports:
+    name: bugtraceai_cli_reports
     driver: local
 
 networks:

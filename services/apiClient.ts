@@ -214,6 +214,65 @@ export const callOpenRouterChat = async (history: ChatMessage[], options: ApiOpt
 };
 
 /**
+ * Sends a multi-turn chat conversation to the LLM provider with tool support.
+ * Returns the raw message object which might contain tool_calls.
+ */
+export const callOpenRouterChatWithTools = async (history: any[], tools: any[], options: ApiOptions): Promise<any> => {
+    await enforceRateLimit();
+    const { apiKey, model } = options;
+    if (!apiKey) {
+        throw new Error("API Key is not configured.");
+    }
+    const signal = getNewAbortSignal();
+    const apiUrl = await getProviderApiUrl();
+
+    try {
+        setRequestStatus('active');
+        updateRateLimitTimestamp();
+        incrementApiCallCount();
+
+        const response = await fetch(apiUrl, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${apiKey}`,
+                'Content-Type': 'application/json',
+                'Accept-Language': 'en-US,en'
+            },
+            body: JSON.stringify({
+                model: model,
+                messages: history,
+                tools: tools
+            }),
+            signal: signal,
+        });
+
+        if (!response.ok) {
+            let message = `API request failed with status ${response.status}`;
+            try { const err = await response.json(); message = err?.error?.message || message; } catch { /* non-JSON error body */ }
+            throw new Error(message);
+        }
+
+        const data = await response.json();
+        const message = data?.choices?.[0]?.message;
+        if (!message) {
+            throw new Error("Received an empty response from the AI.");
+        }
+        resetContinuousFailureCount();
+        return message;
+
+    } catch (error: any) {
+        incrementContinuousFailureCount();
+        if (error.name === 'AbortError') {
+            throw new Error("Request cancelled.");
+        }
+        throw new Error(error.message || "An unknown error occurred while contacting the AI service.");
+    } finally {
+        setRequestStatus('idle');
+        clearAbortController();
+    }
+};
+
+/**
  * Tests an API key/model combination by sending a trivial prompt.
  * I/O function: performs fetch directly (bypasses rate limiting and abort management).
  */
