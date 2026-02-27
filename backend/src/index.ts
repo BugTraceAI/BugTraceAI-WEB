@@ -63,7 +63,8 @@ app.use(
 // CORS configuration
 app.use(
   cors({
-    origin: process.env.FRONTEND_URL || 'http://localhost:5173',
+    // Reflect the request origin to allow access from any network interface (Local, LAN IP, etc.)
+    origin: true,
     credentials: true,
     methods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
   })

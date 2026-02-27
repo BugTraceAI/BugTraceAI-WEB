@@ -6,7 +6,7 @@ let io: Server | null = null;
 export function initializeWebSocket(httpServer: HTTPServer): Server {
   io = new Server(httpServer, {
     cors: {
-      origin: process.env.FRONTEND_URL || 'http://localhost:5173',
+      origin: true,
       methods: ['GET', 'POST'],
       credentials: true,
     },
