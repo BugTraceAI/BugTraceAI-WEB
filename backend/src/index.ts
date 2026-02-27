@@ -38,6 +38,10 @@ const app: Express = express();
 const port = process.env.PORT || 3001;
 const isDevelopment = process.env.NODE_ENV !== 'production';
 
+// Trust the reverse proxy (Docker network proxy, Nginx, etc.)
+// This ensures req.ip represents the client instead of the Docker gateway, preventing global rate limits.
+app.set('trust proxy', 1);
+
 // ============================================================================
 // Security Middleware
 // ============================================================================
