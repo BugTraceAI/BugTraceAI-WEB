@@ -20,11 +20,12 @@ interface ApiHistoryItem {
 }
 
 const getAgentConfig = (agent: AgentType) => {
+    const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
     switch (agent) {
-        case 'kali': return { prompt: KALI_SYSTEM_PROMPT, tools: KALI_TOOLS, endpoint: '/api/kali/execute', label: 'Kali' };
-        case 'recon': return { prompt: RECON_SYSTEM_PROMPT, tools: RECON_TOOLS, endpoint: '/api/recon/execute', label: 'ReconFTW' };
-        case 'bugtrace': return { prompt: BUGTRACE_SYSTEM_PROMPT, tools: BUGTRACE_TOOLS, endpoint: '/api/bugtrace/execute', label: 'BugTrace' };
-        default: return { prompt: KALI_SYSTEM_PROMPT, tools: KALI_TOOLS, endpoint: '/api/kali/execute', label: 'Kali' };
+        case 'kali': return { prompt: KALI_SYSTEM_PROMPT, tools: KALI_TOOLS, endpoint: `${baseUrl}/kali/execute`, label: 'Kali' };
+        case 'recon': return { prompt: RECON_SYSTEM_PROMPT, tools: RECON_TOOLS, endpoint: `${baseUrl}/recon/execute`, label: 'ReconFTW' };
+        case 'bugtrace': return { prompt: BUGTRACE_SYSTEM_PROMPT, tools: BUGTRACE_TOOLS, endpoint: `${baseUrl}/bugtrace/execute`, label: 'BugTrace' };
+        default: return { prompt: KALI_SYSTEM_PROMPT, tools: KALI_TOOLS, endpoint: `${baseUrl}/kali/execute`, label: 'Kali' };
     }
 };
 export const useWebSecAgent = (onShowApiKeyWarning: () => void, activeAgent: AgentType = 'web') => {
@@ -56,6 +57,7 @@ export const useWebSecAgent = (onShowApiKeyWarning: () => void, activeAgent: Age
                             { role: 'user' as const, content: lastMessage.content }
                         ];
                         let keepPrompting = true;
+                        let toolCallCount = 0;
                         while (keepPrompting) {
                             const messageObj = await callOpenRouterChatWithTools(currentHistory, tools, apiOptions!);
                             
@@ -131,6 +133,22 @@ export const useWebSecAgent = (onShowApiKeyWarning: () => void, activeAgent: Age
                             } else {
                                 currentHistory.push({ role: 'assistant', content: messageObj.content });
                                 setMessages(prev => [...prev, { role: 'model', content: messageObj.content }]);
+                                keepPrompting = false;
+                            }
+                            
+                            // Safety circuit breaker (allow max 5 consecutive tool hops to prevent infinite loops)
+                            if (++toolCallCount >= 5) {
+                                const circuitBreakerMsg = "--- Circuit Breaker: Max tool execution depth reached. Stopped to prevent recursive loop. ---";
+                                currentHistory.push({ role: 'assistant', content: circuitBreakerMsg });
+                                setMessages(prev => {
+                                    const last = prev[prev.length - 1];
+                                    if (last && last.role === 'model') {
+                                        const updated = [...prev];
+                                        updated[updated.length - 1] = { ...last, content: last.content + '\n\n' + circuitBreakerMsg };
+                                        return updated;
+                                    }
+                                    return [...prev, { role: 'model', content: circuitBreakerMsg }];
+                                });
                                 keepPrompting = false;
                             }
                         }
