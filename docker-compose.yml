@@ -90,6 +90,7 @@ services:
       - seccomp:unconfined
     command: >
       bash -c "
+        echo 'Waiting for network initialization...' && sleep 5 && \
         apt-get update && apt-get install -y \
           nmap ffuf nuclei sqlmap dirb gobuster nikto \
           hydra john hashcat curl wget netcat-openbsd \
