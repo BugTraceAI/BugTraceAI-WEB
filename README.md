@@ -25,8 +25,8 @@
 
 ---
 
-| Product Demo (English) | Demostración del producto (Español) |
-| :---: | :---: |
+|                                    Product Demo (English)                                     |                              Demostración del producto (Español)                              |
+| :-------------------------------------------------------------------------------------------: | :-------------------------------------------------------------------------------------------: |
 | [![English Demo](https://img.youtube.com/vi/exrqesNWp1M/0.jpg)](https://youtu.be/exrqesNWp1M) | [![Spanish Demo](https://img.youtube.com/vi/CwT66Uqe6to/0.jpg)](https://youtu.be/CwT66Uqe6to) |
 
 ---
@@ -78,7 +78,9 @@ When connected to BugTraceAI-CLI (optional):
 
 ### AI Assistants
 
-- **WebSec Agent** — Expert chat for web security questions, techniques, mitigations
+- **WebSec Agent** — Integrated chat for security questions and **unified control for Kali MCP and ReconFTW agents**.
+- **Kali Expert Agent (MCP)** — Real-time terminal access to the full Kali Linux toolset (Nmap, SQLMap, etc.) via the WebSec Chat.
+- **ReconFTW Agent (MCP)** — Fully automated reconnaissance pipelines managed directly from the browser.
 - **XSS Exploitation Assistant** — Given a confirmed XSS: cookie theft, keyloggers, phishing overlays, session hijacking
 - **SQL Exploitation Assistant** — Given a confirmed SQLi: data extraction, auth bypass, privilege escalation, DB enumeration
 
@@ -143,6 +145,7 @@ Each analysis runs through multiple AI passes with different perspectives (Bug H
 ```
 
 **Dual database design:**
+
 - **PostgreSQL** (WEB) — Local to each WEB instance. Stores chat sessions, analysis reports, and app settings.
 - **SQLite** (CLI) — Source of truth for all scan data. Accessed via CLI API on port 8000.
 
@@ -158,6 +161,7 @@ They work **autonomously or together** — the WEB app doesn't need the CLI to f
 ### Installation (Docker)
 
 **Interactive wizard (recommended):**
+
 ```bash
 git clone https://github.com/BugTraceAI/BugTraceAI-WEB
 cd BugTraceAI-WEB
@@ -168,6 +172,7 @@ chmod +x install.sh
 The wizard guides you through port selection, database configuration, and CLI backend URL.
 
 **Quick start:**
+
 ```bash
 git clone https://github.com/BugTraceAI/BugTraceAI-WEB
 cd BugTraceAI-WEB
@@ -236,12 +241,14 @@ Frontend runs on **http://localhost:5173** with Vite proxy forwarding `/api` to 
 ### Environment Variables
 
 **Frontend** (`.env`):
+
 ```bash
 VITE_API_URL=http://localhost:3001/api      # Backend API
 VITE_CLI_API_URL=http://localhost:8000      # BugTraceAI-CLI API (optional)
 ```
 
 **Backend** (`.env`):
+
 ```bash
 DATABASE_URL="postgresql://bugtraceai:your_password@localhost:5432/bugtraceai_web?schema=public"
 PORT=3001
@@ -254,6 +261,7 @@ FRONTEND_URL="http://localhost:5173"
 Connecting to BugTraceAI-CLI unlocks the dashboard features (scan launcher, report viewer, config editor, etc.).
 
 1. Start the CLI API server:
+
    ```bash
    cd BugTraceAI-CLI
    python3 -m uvicorn bugtrace.api.main:app --host 0.0.0.0 --port 8000
@@ -269,20 +277,20 @@ Multiple WEB instances can connect to the same CLI API server over the network.
 
 ## Tech Stack
 
-| Layer | Technology |
-|-------|-----------|
-| Frontend | React 18, TypeScript 5, Vite 4 |
-| Styling | Tailwind CSS |
-| State | React Context + Custom Hooks |
-| Charts | Recharts |
-| Code Editor | Monaco Editor |
-| Backend | Express 5, TypeScript, Prisma ORM |
-| Database | PostgreSQL 16 |
-| Real-time | Socket.IO |
-| Validation | Zod |
+| Layer       | Technology                                          |
+| ----------- | --------------------------------------------------- |
+| Frontend    | React 18, TypeScript 5, Vite 4                      |
+| Styling     | Tailwind CSS                                        |
+| State       | React Context + Custom Hooks                        |
+| Charts      | Recharts                                            |
+| Code Editor | Monaco Editor                                       |
+| Backend     | Express 5, TypeScript, Prisma ORM                   |
+| Database    | PostgreSQL 16                                       |
+| Real-time   | Socket.IO                                           |
+| Validation  | Zod                                                 |
 | AI Provider | OpenRouter (Gemini, Claude, GPT, DeepSeek, Mistral) |
-| Testing | Vitest + Supertest |
-| Deployment | Docker Compose, Nginx reverse proxy |
+| Testing     | Vitest + Supertest                                  |
+| Deployment  | Docker Compose, Nginx reverse proxy                 |
 
 ## Project Structure
 
