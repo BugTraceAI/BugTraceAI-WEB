@@ -16,6 +16,8 @@ services:
       timeout: 5s
       retries: 5
     restart: unless-stopped
+    ports:
+      - "5432:5432"
     networks:
       - bugtraceai-network
 
