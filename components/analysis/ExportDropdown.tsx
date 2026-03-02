@@ -8,7 +8,7 @@ interface ExportDropdownProps {
 export const ExportDropdown: React.FC<ExportDropdownProps> = ({ reportId, disabled }) => {
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
-  const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
+  const API_URL = import.meta.env.VITE_API_URL || '/api';
 
   const handleExport = (format: 'json' | 'csv' | 'pdf') => {
     window.open(`${API_URL}/analyses/${reportId}/export?format=${format}`, '_blank');

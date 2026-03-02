@@ -243,8 +243,8 @@ Frontend runs on **http://localhost:5173** with Vite proxy forwarding `/api` to 
 **Frontend** (`.env`):
 
 ```bash
-VITE_API_URL=http://localhost:3001/api      # Backend API
-VITE_CLI_API_URL=http://localhost:8000      # BugTraceAI-CLI API (optional)
+VITE_API_URL=/api      # Backend API
+VITE_CLI_API_URL=/cli-api      # BugTraceAI-CLI API (optional)
 ```
 
 **Backend** (`.env`):

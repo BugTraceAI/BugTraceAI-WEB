@@ -10,7 +10,7 @@
  */
 
 // CLI FastAPI base URL (default: http://localhost:8000)
-export const CLI_API_URL = import.meta.env.VITE_CLI_API_URL || 'http://localhost:8000';
+export const CLI_API_URL = import.meta.env.VITE_CLI_API_URL || '/cli-api';
 const CLI_API_BASE = `${CLI_API_URL}/api`;
 
 // WebSocket base URL

@@ -20,7 +20,7 @@ interface ApiHistoryItem {
 }
 
 const getAgentConfig = (agent: AgentType) => {
-    const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
+    const baseUrl = import.meta.env.VITE_API_URL || '/api';
     switch (agent) {
         case 'kali': return { prompt: KALI_SYSTEM_PROMPT, tools: KALI_TOOLS, endpoint: `${baseUrl}/kali/execute`, label: 'Kali' };
         case 'recon': return { prompt: RECON_SYSTEM_PROMPT, tools: RECON_TOOLS, endpoint: `${baseUrl}/recon/execute`, label: 'ReconFTW' };

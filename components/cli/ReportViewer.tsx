@@ -26,7 +26,7 @@ export const ReportViewer: React.FC<ReportViewerProps> = ({ report, onRescan }) 
   const [error, setError] = useState<string | null>(null);
   const [reportData, setReportData] = useState<any>(null);
 
-  const CLI_API_URL = (import.meta.env.VITE_CLI_API_URL || 'http://localhost:8000').replace(/\/+$/, '');
+  const CLI_API_URL = (import.meta.env.VITE_CLI_API_URL || '/cli-api').replace(/\/+$/, '');
 
   useEffect(() => {
     if (report) {

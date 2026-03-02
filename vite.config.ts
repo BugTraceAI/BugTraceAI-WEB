@@ -21,6 +21,11 @@ export default defineConfig({
         target: 'http://localhost:3001',
         changeOrigin: true,
       },
+      '/cli-api': {
+        target: 'http://localhost:8000',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/cli-api/, ''),
+      },
       '/health': {
         target: 'http://localhost:3001',
         changeOrigin: true,

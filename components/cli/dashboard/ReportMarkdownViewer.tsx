@@ -54,8 +54,8 @@ export const ReportMarkdownViewer: React.FC<ReportMarkdownViewerProps> = ({ repo
   const [sort, setSort] = useState<{ col: SortCol | null; dir: SortDir }>({ col: null, dir: 'desc' });
   const [detSort, setDetSort] = useState<{ col: DetSortCol | null; dir: SortDir }>({ col: null, dir: 'desc' });
   const [showMetrics, setShowMetrics] = useState(false);
-  const CLI_API_URL = import.meta.env.VITE_CLI_API_URL || 'http://localhost:8000';
-  const WEB_API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
+  const CLI_API_URL = import.meta.env.VITE_CLI_API_URL || '/cli-api';
+  const WEB_API_URL = import.meta.env.VITE_API_URL || '/api';
 
   // Compute severity counts
   const severityCounts = computeSeverityCounts(report.severity_summary, findings);
