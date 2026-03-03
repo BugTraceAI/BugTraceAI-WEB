@@ -90,16 +90,7 @@ services:
       - NET_ADMIN
     security_opt:
       - seccomp:unconfined
-    command: >
-      bash -c "
-        echo 'Waiting for network initialization...' && sleep 5 && \
-        apt-get update && apt-get install -y \
-          nmap ffuf nuclei sqlmap dirb gobuster nikto \
-          hydra john hashcat curl wget netcat-openbsd \
-          python3 python3-pip git vim && \
-        echo 'Kali MCP Server ready!' && \
-        tail -f /dev/null
-      "
+    command: ["bash", "-c", "apt-get update && apt-get install -y nmap ffuf nuclei sqlmap dirb gobuster nikto hydra john hashcat curl wget netcat-traditional python3 python3-pip git vim && echo 'Kali MCP Server ready!' && tail -f /dev/null"]
     extra_hosts:
       - "host.docker.internal:host-gateway"
     restart: unless-stopped
@@ -116,6 +107,7 @@ services:
     profiles:
       - recon
       - all-agents
+    command: ["mcp", "--sse"]
     ports:
       - "${RECON_MCP_PORT:-8002}:8002"
     volumes:
