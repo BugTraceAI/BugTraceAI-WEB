@@ -23,6 +23,7 @@ interface WebSecAgentProps {
   isLoading: boolean;
   activeAgent: AgentType;
   setActiveAgent: (agent: AgentType) => void;
+  onSyncHistory: (dbMessages: any[]) => void;
 }
 
 export const WebSecAgent: React.FC<WebSecAgentProps> = ({
@@ -32,6 +33,7 @@ export const WebSecAgent: React.FC<WebSecAgentProps> = ({
   isLoading,
   activeAgent,
   setActiveAgent,
+  onSyncHistory,
 }) => {
   const [userInput, setUserInput] = useState('');
   const [isToolsMenuOpen, setIsToolsMenuOpen] = useState(false);
@@ -92,7 +94,7 @@ export const WebSecAgent: React.FC<WebSecAgentProps> = ({
     };
     initSession();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sessionId]);
+  }, [sessionId, currentSession?.id]);
 
   // Sync URL when current session changes (e.g., when user switches sessions in sidebar)
   // Also clear legacy messages when switching to a different session
@@ -138,27 +140,20 @@ export const WebSecAgent: React.FC<WebSecAgentProps> = ({
     persistAiResponse();
   }, [legacyMessages, currentSession, persistMessage, persistedMessages]);
 
-  // Auto-trigger AI response when session loads with an unanswered user message
-  // (e.g., when a report is sent to chat from the reports page)
+  // Sync history when a session successfully loads for the first time
+  const syncedSessionIdRef = useRef<string | null>(null);
   useEffect(() => {
     if (
-      !currentSession ||
-      loadingMessages ||
-      isLoading ||
-      initializingRef.current ||
-      persistedMessages.length === 0
-    ) return;
-
-    const lastMsg = persistedMessages[persistedMessages.length - 1];
-    if (lastMsg.role !== 'user') return;
-
-    // Guard: only trigger once per session+message combination
-    const triggerKey = `${currentSession.id}:${lastMsg.id}`;
-    if (autoRespondTriggeredRef.current === triggerKey) return;
-    autoRespondTriggeredRef.current = triggerKey;
-
-    onSendMessage(lastMsg.content);
-  }, [currentSession, persistedMessages, loadingMessages, isLoading, onSendMessage]);
+      currentSession && 
+      currentSession.id === sessionId && 
+      !loadingMessages && 
+      syncedSessionIdRef.current !== currentSession.id
+    ) {
+      // Session has loaded, sync its history to the AI agent
+      onSyncHistory(persistedMessages);
+      syncedSessionIdRef.current = currentSession.id;
+    }
+  }, [currentSession, sessionId, loadingMessages, persistedMessages, onSyncHistory]);
 
   useEffect(() => {
     if (textareaRef.current) {
@@ -199,9 +194,14 @@ export const WebSecAgent: React.FC<WebSecAgentProps> = ({
     }
   };
 
-  // Convert persisted messages to display format, or show welcome if empty
-  const displayMessages = persistedMessages.length > 0
-    ? persistedMessages
+  // Convert legacyMessages to display format, map 'model' to 'assistant'
+  const displayMessages = legacyMessages.length > 0
+    ? legacyMessages.map((msg, idx) => ({
+        id: `legacy-${idx}`,
+        role: (msg.role === 'model' ? 'assistant' : msg.role) as 'user' | 'assistant' | 'error',
+        content: msg.content,
+        created_at: new Date().toISOString()
+      }))
     : currentSession
       ? []
       : [];

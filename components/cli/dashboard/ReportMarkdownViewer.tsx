@@ -190,7 +190,7 @@ export const ReportMarkdownViewer: React.FC<ReportMarkdownViewerProps> = ({ repo
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           session_type: 'websec',
-          title: `Report: ${report.target_url}`,
+          title: `Report: ${report.target_url}`.substring(0, 250),
         }),
       });
       if (!sessionRes.ok) throw new Error('Failed to create chat session');
@@ -224,11 +224,12 @@ export const ReportMarkdownViewer: React.FC<ReportMarkdownViewerProps> = ({ repo
     setSendingFindingId(fid);
     try {
       const msg = buildFindingMessage(f, report.target_url);
+      const findingTitle = f.title || f.type || 'Finding';
 
       const sessionRes = await fetch(`${WEB_API_URL}/chats`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ session_type: 'websec', title: `${f.title} — ${report.target_url}` }),
+        body: JSON.stringify({ session_type: 'websec', title: `${findingTitle} — ${report.target_url}`.substring(0, 250) }),
       });
       if (!sessionRes.ok) throw new Error('Failed to create chat session');
       const { data: session } = await sessionRes.json();
@@ -256,7 +257,7 @@ export const ReportMarkdownViewer: React.FC<ReportMarkdownViewerProps> = ({ repo
       const sessionRes = await fetch(`${WEB_API_URL}/chats`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ session_type: 'websec', title: `${d.type} — ${report.target_url}` }),
+        body: JSON.stringify({ session_type: 'websec', title: `Detection: ${d.type} — ${report.target_url}`.substring(0, 250) }),
       });
       if (!sessionRes.ok) throw new Error('Failed to create chat session');
       const { data: session } = await sessionRes.json();

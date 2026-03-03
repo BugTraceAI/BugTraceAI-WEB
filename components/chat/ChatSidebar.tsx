@@ -1,6 +1,7 @@
 // components/chat/ChatSidebar.tsx
 // Clean sidebar - ChatGPT-inspired minimal design
 import React, { useState, useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useChatOperations } from '../../hooks/useChatOperations';
 import { SessionCard } from './SessionCard';
 import { NewChatModal } from './NewChatModal';
@@ -22,11 +23,11 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({ isOpen, onToggle }) =>
     loadingSessions,
     loadSessions,
     startNewChat,
-    resumeChat,
     archiveSession,
     deleteSession,
     renameSession,
   } = useChatOperations();
+  const navigate = useNavigate();
 
   const [showNewChatModal, setShowNewChatModal] = useState(false);
   const [showArchived, setShowArchived] = useState(false);
@@ -53,7 +54,8 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({ isOpen, onToggle }) =>
 
   const handleNewChat = async (type: 'websec' | 'xss' | 'sql') => {
     try {
-      await startNewChat(type);
+      const session = await startNewChat(type);
+      navigate(`/chat/${session.id}`);
       setShowNewChatModal(false);
     } catch (error) {
       console.error('Failed to create new chat:', error);
@@ -89,9 +91,9 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({ isOpen, onToggle }) =>
 
   const handleSearchResultSelect = async (sessionId: string) => {
     try {
-      await resumeChat(sessionId);
+      navigate(`/chat/${sessionId}`);
     } catch (error) {
-      console.error('Failed to load search result:', error);
+      console.error('Failed to navigate to search result:', error);
     }
   };
 
@@ -151,7 +153,7 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({ isOpen, onToggle }) =>
                 key={session.id}
                 session={session}
                 isActive={currentSession?.id === session.id}
-                onSelect={() => resumeChat(session.id)}
+                onSelect={() => navigate(`/chat/${session.id}`)}
                 onArchive={() => handleArchive(session.id)}
                 onDelete={() => setDeleteTarget(session)}
                 onRename={(newTitle) => handleRename(session.id, newTitle)}

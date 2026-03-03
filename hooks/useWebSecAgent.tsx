@@ -207,11 +207,27 @@ export const useWebSecAgent = (onShowApiKeyWarning: () => void, activeAgent: Age
         setIsLoading(false);
         isResponding.current = false;
     }, []);
+
+    const syncHistory = useCallback((dbMessages: any[]) => {
+        const mapped = dbMessages.map(m => ({
+            role: m.role === 'assistant' ? 'model' : m.role,
+            content: m.content
+        }));
+        setMessages(mapped);
+
+        const mappedApi = dbMessages.map(m => ({
+            role: m.role,
+            content: m.content
+        }));
+        setApiHistory(mappedApi);
+    }, []);
+
     return {
         messages,
         isLoading,
         sendMessage,
         resetMessages,
+        syncHistory,
         startAnalysisWithAgent,
         startReportAnalysisWithAgent,
     };

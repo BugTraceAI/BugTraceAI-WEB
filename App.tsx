@@ -116,7 +116,8 @@ const App: React.FC = () => {
     sendMessage: sendAgentMessage,
     resetMessages: resetAgentMessages,
     startAnalysisWithAgent,
-    startReportAnalysisWithAgent
+    startReportAnalysisWithAgent,
+    syncHistory: syncAgentHistory
   } = useWebSecAgent(handleShowApiKeyWarning, activeAgent);
 
   const { loadSession } = useChatContext();
@@ -467,6 +468,7 @@ const App: React.FC = () => {
             isLoading={isAgentLoading}
             activeAgent={activeAgent}
             setActiveAgent={setActiveAgent}
+            onSyncHistory={syncAgentHistory}
           />
         );
       case View.XSS_EXPLOIT_ASSISTANT:
