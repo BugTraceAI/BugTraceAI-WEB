@@ -64,16 +64,8 @@ export const WebSecAgent: React.FC<WebSecAgentProps> = ({
   useEffect(() => {
     const loadSessionFromUrl = async () => {
       if (!sessionId) {
-        // No session in URL → create a fresh one
-        if (!activeSessionRef.current) {
-          try {
-            const s = await createSession('websec', 'WebSec Agent Chat');
-            activeSessionRef.current = s.id;
-            navigate(`/chat/${s.id}`, { replace: true });
-          } catch (err) {
-            console.error('Failed to create initial session:', err);
-          }
-        }
+        // No session in URL -> Stay in initial state, don't auto-create
+        activeSessionRef.current = null;
         return;
       }
 

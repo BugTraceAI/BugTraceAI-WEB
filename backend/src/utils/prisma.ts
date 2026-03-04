@@ -75,17 +75,26 @@ export async function getDatabaseStats() {
  * Deletes all records from all tables except AppSettings
  */
 export async function clearAllData() {
-  // Delete in order to respect foreign key constraints
-  // Messages depend on Sessions, so delete messages first
-  const deletedMessages = await prisma.chatMessage.deleteMany({});
-  const deletedSessions = await prisma.chatSession.deleteMany({});
-  const deletedAnalyses = await prisma.analysisReport.deleteMany({});
-  const deletedCliReports = await prisma.cliReport.deleteMany({});
+  return await prisma.$transaction(async (tx) => {
+    // Delete in order to respect foreign key constraints
+    
+    // 1. Delete reports that might point to sessions
+    const deletedAnalyses = await tx.analysisReport.deleteMany({});
+    
+    // 2. Delete messages (cascade on session is defined in schema, but we do it manually for extra safety)
+    const deletedMessages = await tx.chatMessage.deleteMany({});
+    
+    // 3. Delete sessions
+    const deletedSessions = await tx.chatSession.deleteMany({});
+    
+    // 4. Delete CLI reports (independent)
+    const deletedCliReports = await tx.cliReport.deleteMany({});
 
-  return {
-    chatMessages: deletedMessages.count,
-    chatSessions: deletedSessions.count,
-    analysisReports: deletedAnalyses.count,
-    cliReports: deletedCliReports.count,
-  };
+    return {
+      chatMessages: deletedMessages.count,
+      chatSessions: deletedSessions.count,
+      analysisReports: deletedAnalyses.count,
+      cliReports: deletedCliReports.count,
+    };
+  });
 }

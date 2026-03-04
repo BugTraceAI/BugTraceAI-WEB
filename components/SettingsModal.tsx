@@ -321,11 +321,16 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, i
 
             setClearResult({
                 success: true,
-                message: 'All data cleared successfully!',
+                message: 'All data cleared successfully! Redirecting...',
                 deleted: { ...webResult.data?.deleted, cliScans: cliCleared },
             });
             setShowDangerConfirm(false);
             setDangerConfirmation('');
+            
+            // Redirect to home and reload to clear application state
+            setTimeout(() => {
+                window.location.href = '/';
+            }, 1500);
         } catch (error: any) {
             setClearResult({
                 success: false,
