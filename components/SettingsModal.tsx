@@ -845,7 +845,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, i
                                             setClearResult(null);
                                         }}
                                         placeholder="Type 'Delete All' here"
-                                        className="w-full px-3 py-2 bg-purple-deep/50 border border-red-500/30 rounded-lg text-white placeholder-red-300/30 focus:ring-2 focus:ring-red-500/50 focus:border-red-500/50 focus:outline-none transition-colors"
+                                        className="w-full px-3 py-2 bg-[#1A0F2E] border border-red-500/50 rounded-lg text-[#F8F9FA] placeholder-red-300/30 focus:ring-2 focus:ring-red-500 focus:border-red-500 focus:outline-none transition-all shadow-inner"
                                     />
                                 </div>
 
