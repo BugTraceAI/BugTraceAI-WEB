@@ -1,11 +1,11 @@
 // components/WebSecAgent.tsx
-// version 0.3.0 - Added URL-based session routing
-/* eslint-disable max-lines -- WebSec agent chat component (263 lines).
+// version 0.4.0 - Fixed session isolation & duplicate messages
+/* eslint-disable max-lines -- WebSec agent chat component.
  * Interactive security agent with session management and WebSocket streaming.
  * Manages chat history, message streaming, session persistence, and routing.
  * Complex state orchestration for real-time agent interaction - splitting would break chat coherence.
  */
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { ChatMessage as LegacyChatMessage, AgentType } from '../types.ts';
 import { useChatOperations } from '../hooks/useChatOperations';
@@ -23,7 +23,7 @@ interface WebSecAgentProps {
   isLoading: boolean;
   activeAgent: AgentType;
   setActiveAgent: (agent: AgentType) => void;
-  onSyncHistory: (dbMessages: any[]) => void;
+  onSyncHistory: (dbMessages: Array<{ role: string; content: string }>) => void;
 }
 
 export const WebSecAgent: React.FC<WebSecAgentProps> = ({
@@ -38,14 +38,15 @@ export const WebSecAgent: React.FC<WebSecAgentProps> = ({
   const [userInput, setUserInput] = useState('');
   const [isToolsMenuOpen, setIsToolsMenuOpen] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const initializingRef = useRef(false);
-  const initializedRef = useRef(false);
-  const autoRespondTriggeredRef = useRef<string | null>(null);
-  const prevSessionIdRef = useRef<string | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const navigate = useNavigate();
   const { sessionId } = useParams<{ sessionId?: string }>();
   const { openRouterModel } = useSettings();
+
+  // Track which session we've already loaded/synced to prevent re-entrancy
+  const activeSessionRef = useRef<string | null>(null);
+  // Track which session the streaming messages belong to
+  const streamingSessionRef = useRef<string | null>(null);
 
   // Get ChatContext operations for persistence
   const {
@@ -57,127 +58,120 @@ export const WebSecAgent: React.FC<WebSecAgentProps> = ({
     sendMessage: persistMessage,
   } = useChatOperations();
 
-  // Load session from URL if sessionId is present
+  // ── SESSION LOADING ────────────────────────────────────────────────────────
+  // React to URL changes: load the session whose ID is in the URL.
+  // This is the SINGLE entry point for all session switching.
   useEffect(() => {
-    const initSession = async () => {
-      // Prevent multiple simultaneous initializations for the SAME session
-      if (initializingRef.current) return;
-
-      if (sessionId && sessionId !== currentSession?.id) {
-        // Load existing session from URL (either initial load or user clicked different session)
-        initializingRef.current = true;
-        try {
-          await loadSession(sessionId);
-          initializedRef.current = true;
-        } catch (error) {
-          console.error('Failed to load session from URL:', error);
-          // If session doesn't exist, create a new one
-          const newSession = await createSession('websec', 'WebSec Agent Chat');
-          navigate(`/chat/${newSession.id}`, { replace: true });
-          initializedRef.current = true;
-        } finally {
-          initializingRef.current = false;
-        }
-      } else if (!sessionId && !currentSession && !initializedRef.current) {
-        // No sessionId in URL and no current session - create new one (only on first mount)
-        initializingRef.current = true;
-        try {
-          const newSession = await createSession('websec', 'WebSec Agent Chat');
-          navigate(`/chat/${newSession.id}`, { replace: true });
-          initializedRef.current = true;
-        } catch (error) {
-          console.error('Failed to create session:', error);
-        } finally {
-          initializingRef.current = false;
-        }
-      }
-    };
-    initSession();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sessionId, currentSession?.id]);
-
-  // Sync URL when current session changes (e.g., when user switches sessions in sidebar)
-  // Also clear legacy messages when switching to a different session
-  useEffect(() => {
-    if (currentSession && sessionId !== currentSession.id && initializedRef.current && !initializingRef.current) {
-      navigate(`/chat/${currentSession.id}`, { replace: false });
-    }
-    // Reset auto-respond guard when switching sessions
-    if (currentSession) {
-      autoRespondTriggeredRef.current = null;
-    }
-    // Clear legacy messages when switching to a new/different session
-    if (currentSession?.id && prevSessionIdRef.current && currentSession.id !== prevSessionIdRef.current) {
-      onResetMessages();
-    }
-    prevSessionIdRef.current = currentSession?.id || null;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentSession?.id, sessionId]);
-
-  // Persist AI responses when legacyMessages change
-  useEffect(() => {
-    const persistAiResponse = async () => {
-      if (!currentSession || legacyMessages.length === 0) return;
-
-      const lastMessage = legacyMessages[legacyMessages.length - 1];
-      // Check if this is a new AI response (role 'model')
-      if (lastMessage.role === 'model' && !lastMessage.isLoading) {
-        // Check if this message is already persisted
-        const alreadyPersisted = persistedMessages.some(
-          (pm) => pm.content === lastMessage.content && pm.role === 'assistant'
-        );
-
-        if (!alreadyPersisted) {
+    const loadSessionFromUrl = async () => {
+      if (!sessionId) {
+        // No session in URL → create a fresh one
+        if (!activeSessionRef.current) {
           try {
-            await persistMessage(lastMessage.content, 'assistant');
-          } catch (error) {
-            console.error('Failed to persist assistant message:', error);
+            const s = await createSession('websec', 'WebSec Agent Chat');
+            activeSessionRef.current = s.id;
+            navigate(`/chat/${s.id}`, { replace: true });
+          } catch (err) {
+            console.error('Failed to create initial session:', err);
           }
         }
+        return;
+      }
+
+      // If we already loaded this session, skip
+      if (activeSessionRef.current === sessionId && currentSession?.id === sessionId) {
+        return;
+      }
+
+      // New session ID in URL → flush old state and load
+      activeSessionRef.current = sessionId;
+      streamingSessionRef.current = null;  // invalidate any in-flight streaming
+      onResetMessages();                    // clear legacy/streaming messages
+
+      try {
+        await loadSession(sessionId);
+      } catch (err) {
+        console.error('Failed to load session:', err);
+        // Session doesn't exist → create new
+        try {
+          const s = await createSession('websec', 'WebSec Agent Chat');
+          activeSessionRef.current = s.id;
+          navigate(`/chat/${s.id}`, { replace: true });
+        } catch (e) {
+          console.error('Failed to create fallback session:', e);
+        }
       }
     };
 
-    persistAiResponse();
-  }, [legacyMessages, currentSession, persistMessage, persistedMessages]);
+    loadSessionFromUrl();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sessionId]);
 
-  // Sync history when a session successfully loads for the first time
-  const syncedSessionIdRef = useRef<string | null>(null);
+  // ── SYNC HISTORY TO AI AGENT ───────────────────────────────────────────────
+  // Once the DB messages finish loading for the current session,
+  // inject them into useWebSecAgent so the AI has the conversation context.
+  const syncedForSessionRef = useRef<string | null>(null);
+
   useEffect(() => {
     if (
-      currentSession && 
-      currentSession.id === sessionId && 
-      !loadingMessages && 
-      syncedSessionIdRef.current !== currentSession.id
+      currentSession &&
+      currentSession.id === sessionId &&
+      !loadingMessages &&
+      syncedForSessionRef.current !== currentSession.id
     ) {
-      // Session has loaded, sync its history to the AI agent
+      syncedForSessionRef.current = currentSession.id;
+      streamingSessionRef.current = currentSession.id;
       onSyncHistory(persistedMessages);
-      syncedSessionIdRef.current = currentSession.id;
     }
   }, [currentSession, sessionId, loadingMessages, persistedMessages, onSyncHistory]);
 
+  // ── PERSIST AI RESPONSES ───────────────────────────────────────────────────
+  // When the AI finishes a response (a 'model' message appears in legacyMessages
+  // that isn't loading), persist it to the DB if it belongs to the current session.
+  useEffect(() => {
+    if (!currentSession || legacyMessages.length === 0) return;
+    // Only persist if streaming belongs to THIS session
+    if (streamingSessionRef.current !== currentSession.id) return;
+
+    const last = legacyMessages[legacyMessages.length - 1];
+    if (last.role !== 'model' || last.isLoading) return;
+
+    // Check not already persisted (by content match)
+    const alreadyPersisted = persistedMessages.some(
+      (pm) => pm.content === last.content && pm.role === 'assistant'
+    );
+    if (alreadyPersisted) return;
+
+    persistMessage(last.content, 'assistant').catch((err) =>
+      console.error('Failed to persist assistant message:', err)
+    );
+  }, [legacyMessages, currentSession, persistMessage, persistedMessages]);
+
+  // ── TEXTAREA AUTO-RESIZE ───────────────────────────────────────────────────
   useEffect(() => {
     if (textareaRef.current) {
       textareaRef.current.style.height = 'auto';
-      const scrollHeight = textareaRef.current.scrollHeight;
-      textareaRef.current.style.height = `${scrollHeight}px`;
+      textareaRef.current.style.height = `${textareaRef.current.scrollHeight}px`;
     }
   }, [userInput]);
 
+  // ── SEND MESSAGE ───────────────────────────────────────────────────────────
   const handleSendMessage = useCallback(async () => {
     if (!userInput.trim() || isLoading || !currentSession) return;
 
     const messageContent = userInput;
     setUserInput('');
 
-    try {
-      // Persist user message to database
-      await persistMessage(messageContent, 'user');
+    // Mark streaming as belonging to this session
+    streamingSessionRef.current = currentSession.id;
 
-      // Send to AI (existing useWebSecAgent functionality)
+    try {
+      // 1. Persist to DB
+      await persistMessage(messageContent, 'user');
+      // 2. Send to AI agent (useWebSecAgent will add user msg + trigger response)
       onSendMessage(messageContent);
-    } catch (error) {
-      console.error('Failed to persist user message:', error);
-      // Still send to AI even if persistence fails
+    } catch (err) {
+      console.error('Failed to send message:', err);
+      // Still try to send to AI
       onSendMessage(messageContent);
     }
   }, [userInput, isLoading, currentSession, persistMessage, onSendMessage]);
@@ -194,18 +188,49 @@ export const WebSecAgent: React.FC<WebSecAgentProps> = ({
     }
   };
 
-  // Convert legacyMessages to display format, map 'model' to 'assistant'
-  const displayMessages = legacyMessages.length > 0
-    ? legacyMessages.map((msg, idx) => ({
-        id: `legacy-${idx}`,
-        role: (msg.role === 'model' ? 'assistant' : msg.role) as 'user' | 'assistant' | 'error',
-        content: msg.content,
-        created_at: new Date().toISOString()
-      }))
-    : currentSession
-      ? []
-      : [];
+  // ── DISPLAY MESSAGES ───────────────────────────────────────────────────────
+  // Combine persisted (DB) messages with live streaming messages.
+  // DB messages are the source of truth for history.
+  // Legacy (streaming) messages may contain a NEW assistant response not yet in DB.
+  const displayMessages = useMemo(() => {
+    // If we're still loading or session not ready, show nothing
+    if (loadingMessages || !currentSession) return [];
 
+    // Start from persisted messages (DB = source of truth)
+    const dbMsgs = persistedMessages.map((pm) => ({
+      id: pm.id,
+      role: pm.role as 'user' | 'assistant' | 'error',
+      content: pm.content,
+      created_at: pm.created_at,
+    }));
+
+    // Check if there's a live streaming response not yet persisted
+    if (
+      legacyMessages.length > 0 &&
+      streamingSessionRef.current === currentSession.id
+    ) {
+      const lastLegacy = legacyMessages[legacyMessages.length - 1];
+      if (lastLegacy.role === 'model') {
+        // Check if this response is already in DB
+        const alreadyInDb = persistedMessages.some(
+          (pm) => pm.role === 'assistant' && pm.content === lastLegacy.content
+        );
+        if (!alreadyInDb) {
+          // Append the live streaming response
+          dbMsgs.push({
+            id: 'streaming-response',
+            role: 'assistant',
+            content: lastLegacy.content,
+            created_at: new Date().toISOString(),
+          });
+        }
+      }
+    }
+
+    return dbMsgs;
+  }, [persistedMessages, legacyMessages, currentSession, loadingMessages]);
+
+  // ── RENDER ─────────────────────────────────────────────────────────────────
   const headerContent = (
     <div className="flex items-center gap-3">
       <button
@@ -252,7 +277,7 @@ export const WebSecAgent: React.FC<WebSecAgentProps> = ({
         />
 
         <div className="flex justify-between items-center w-full px-3 pb-3">
-          {/* Tools Area (Left) - Empty now, or for secondary items */}
+          {/* Tools Area (Left) */}
           <div className="flex items-center gap-2">
             <span className={`text-[10px] font-bold uppercase tracking-thicker ${
               activeAgent === 'kali' ? 'text-cyan-400' :
@@ -294,10 +319,7 @@ export const WebSecAgent: React.FC<WebSecAgentProps> = ({
                     {/* WebSec Agent (Default) */}
                     <button
                       type="button"
-                      onClick={() => {
-                        setActiveAgent('web');
-                        setIsToolsMenuOpen(false);
-                      }}
+                      onClick={() => { setActiveAgent('web'); setIsToolsMenuOpen(false); }}
                       className={`w-full text-left flex items-center justify-between px-3 py-2.5 rounded-xl text-sm transition-all group ${activeAgent === 'web' ? 'bg-white/10' : 'hover:bg-white/5'}`}
                     >
                       <div className="flex items-center gap-3">
@@ -310,10 +332,7 @@ export const WebSecAgent: React.FC<WebSecAgentProps> = ({
                     {/* Kali Agent */}
                     <button
                       type="button"
-                      onClick={() => {
-                        setActiveAgent('kali');
-                        setIsToolsMenuOpen(false);
-                      }}
+                      onClick={() => { setActiveAgent('kali'); setIsToolsMenuOpen(false); }}
                       className={`w-full text-left flex items-center justify-between px-3 py-2.5 rounded-xl text-sm transition-all group ${activeAgent === 'kali' ? 'bg-cyan-500/10' : 'hover:bg-white/5'}`}
                     >
                       <div className="flex items-center gap-3">
@@ -326,10 +345,7 @@ export const WebSecAgent: React.FC<WebSecAgentProps> = ({
                     {/* ReconFTW Agent */}
                     <button
                       type="button"
-                      onClick={() => {
-                        setActiveAgent('recon');
-                        setIsToolsMenuOpen(false);
-                      }}
+                      onClick={() => { setActiveAgent('recon'); setIsToolsMenuOpen(false); }}
                       className={`w-full text-left flex items-center justify-between px-3 py-2.5 rounded-xl text-sm transition-all group ${activeAgent === 'recon' ? 'bg-purple-500/10' : 'hover:bg-white/5'}`}
                     >
                       <div className="flex items-center gap-3">
@@ -342,10 +358,7 @@ export const WebSecAgent: React.FC<WebSecAgentProps> = ({
                     {/* BugTraceAI-CLI Agent */}
                     <button
                       type="button"
-                      onClick={() => {
-                        setActiveAgent('bugtrace');
-                        setIsToolsMenuOpen(false);
-                      }}
+                      onClick={() => { setActiveAgent('bugtrace'); setIsToolsMenuOpen(false); }}
                       className={`w-full text-left flex items-center justify-between px-3 py-2.5 rounded-xl text-sm transition-all group ${activeAgent === 'bugtrace' ? 'bg-emerald-500/10' : 'hover:bg-white/5'}`}
                     >
                       <div className="flex items-center gap-3">

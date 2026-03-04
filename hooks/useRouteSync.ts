@@ -155,8 +155,10 @@ export const useRouteSync = ({ activeView, activeSubTab, onNavigate, onSubTabCha
     // Mobile route — don't redirect away
     if (currentPath === '/mobile') return;
 
-    // Don't auto-navigate for dynamic routes
-    if (activeView === View.WEB_SEC_AGENT && currentPath.startsWith('/chat')) {
+    // Don't auto-navigate for dynamic routes.
+    // IMPORTANT: Also guard /chat paths even if activeView hasn't synced yet,
+    // to prevent a race where state→URL sync fires before URL→state sync updates activeView.
+    if (currentPath.startsWith('/chat')) {
       return;
     }
     if (activeView === View.CLI_FRAMEWORK && currentPath.startsWith('/bugtraceai')) {
