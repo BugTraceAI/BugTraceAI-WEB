@@ -108,8 +108,12 @@ export interface HealthCheckResponse {
   status: string;
   version: string;
   docker_available: boolean;
+  provider?: string;
+  provider_ready?: boolean;
+  api_key_configured?: boolean;
   active_scans: number;
   event_bus_stats: Record<string, any>;
+  warnings?: string[];
 }
 
 
