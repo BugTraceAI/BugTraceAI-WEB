@@ -757,8 +757,22 @@ export const ReportMarkdownViewer: React.FC<ReportMarkdownViewerProps> = ({ repo
                                 )}
 
                                 {/* Fallback description */}
-                                {!finding.exploitation_details && !finding.llm_reproduction_steps?.length && (finding.description || finding.details) && (
-                                  <p className="text-sm text-purple-gray">{finding.description || finding.details}</p>
+                                {!finding.exploitation_details && !finding.llm_reproduction_steps?.length && (
+                                  <div className="text-sm text-purple-gray space-y-4">
+                                    {(finding.description || finding.details) ? (
+                                      typeof (finding.description || finding.details) === 'object'
+                                        ? <pre className="bg-black/20 p-3 rounded font-mono text-xs overflow-auto">{JSON.stringify(finding.description || finding.details, null, 2)}</pre>
+                                        : <MarkdownRenderer content={finding.description || finding.details} />
+                                    ) : (
+                                      <p className="italic text-muted">No explicit description or exploitation details available.</p>
+                                    )}
+                                    {finding.validator_notes && !finding.validator_notes.includes('**CVSS Analysis**') && (
+                                      <div className="bg-white/5 border border-white/10 rounded-lg p-3">
+                                        <p className="text-xs text-muted uppercase tracking-wider font-bold mb-2">Validation Notes</p>
+                                        <MarkdownRenderer content={finding.validator_notes} />
+                                      </div>
+                                    )}
+                                  </div>
                                 )}
                               </div>
 
