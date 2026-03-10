@@ -1,5 +1,5 @@
 # Stage 1: Build the React application
-FROM node:18.18.0-alpine AS builder
+FROM node:20-alpine AS builder
 
 WORKDIR /app
 
@@ -13,8 +13,11 @@ ENV VITE_CLI_API_URL=$VITE_CLI_API_URL
 # Copy package configuration files
 COPY package.json package-lock.json ./
 
-# Install dependencies (deterministic via lockfile)
-RUN npm ci
+# Install dependencies with increased timeout to prevent socket issues
+RUN npm config set fetch-retries 5 && \
+    npm config set fetch-retry-mintimeout 20000 && \
+    npm config set fetch-retry-maxtimeout 120000 && \
+    npm ci
 
 # Copy the rest of the application source code
 COPY . .
