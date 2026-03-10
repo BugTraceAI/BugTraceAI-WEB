@@ -41,12 +41,20 @@ export const ReportViewer: React.FC<ReportViewerProps> = ({ report, onRescan }) 
     setError(null);
 
     try {
-      const response = await fetch(
+      // First attempt: Get validated findings (final product)
+      let response = await fetch(
         `${CLI_API_URL}/api/scans/${report.id}/files/validated_findings.json`
       );
 
+      // Fallback: Get raw findings if scan is in progress or failed before validation
       if (!response.ok) {
-        throw new Error('Failed to load report data');
+        response = await fetch(
+          `${CLI_API_URL}/api/scans/${report.id}/files/raw_findings.json`
+        );
+      }
+
+      if (!response.ok) {
+        throw new Error('No findings data available for this scan yet');
       }
 
       const data = await response.json();
