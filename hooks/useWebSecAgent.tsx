@@ -154,6 +154,7 @@ export const useWebSecAgent = (onShowApiKeyWarning: () => void, activeAgent: Age
                         }
                         setApiHistory(currentHistory.slice(1));
                     } else {
+                        // Web agent - uses simpler chat API without tools
                         const historyForApi = messages.slice(0, -1);
                         const responseText = historyForApi.length === 0
                             ? await startGeneralChat(getWebSecAgentSystemPrompt(), lastMessage.content, apiOptions!)
@@ -168,6 +169,13 @@ export const useWebSecAgent = (onShowApiKeyWarning: () => void, activeAgent: Age
                             }
                             return [...prev, { role: 'model', content: responseText }];
                         });
+                        
+                        // FIX: Update apiHistory for web agent to maintain conversation context
+                        const newHistory: ApiHistoryItem[] = [
+                            ...historyForApi,
+                            { role: 'assistant', content: responseText }
+                        ];
+                        setApiHistory(newHistory);
                     }
                 } catch (e: unknown) {
                     const error = e as Error;
@@ -184,6 +192,7 @@ export const useWebSecAgent = (onShowApiKeyWarning: () => void, activeAgent: Age
             }
         };
         processMessageQueue();
+
     }, [messages, apiOptions, isApiKeySet, onShowApiKeyWarning, activeAgent, apiHistory]);
     
     const sendMessage = useCallback((message: string) => {

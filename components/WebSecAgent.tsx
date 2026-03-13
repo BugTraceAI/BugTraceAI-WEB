@@ -101,18 +101,26 @@ export const WebSecAgent: React.FC<WebSecAgentProps> = ({
   // ── SYNC HISTORY TO AI AGENT ───────────────────────────────────────────────
   // Once the DB messages finish loading for the current session,
   // inject them into useWebSecAgent so the AI has the conversation context.
+  // Track both session ID and message count to allow re-sync when DB updates
   const syncedForSessionRef = useRef<string | null>(null);
+  const syncedMessagesCountRef = useRef<number>(0);
 
   useEffect(() => {
     if (
       currentSession &&
       currentSession.id === sessionId &&
-      !loadingMessages &&
-      syncedForSessionRef.current !== currentSession.id
+      !loadingMessages
     ) {
-      syncedForSessionRef.current = currentSession.id;
-      streamingSessionRef.current = currentSession.id;
-      onSyncHistory(persistedMessages);
+      // Allow sync when: new session OR messages count changed (DB updated)
+      const messageCountChanged = syncedMessagesCountRef.current !== persistedMessages.length;
+      const sessionChanged = syncedForSessionRef.current !== currentSession.id;
+      
+      if (sessionChanged || messageCountChanged) {
+        syncedForSessionRef.current = currentSession.id;
+        syncedMessagesCountRef.current = persistedMessages.length;
+        streamingSessionRef.current = currentSession.id;
+        onSyncHistory(persistedMessages);
+      }
     }
   }, [currentSession, sessionId, loadingMessages, persistedMessages, onSyncHistory]);
 
