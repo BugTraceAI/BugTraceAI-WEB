@@ -12,6 +12,17 @@ YELLOW='\033[1;33m'
 RED='\033[0;31m'
 NC='\033[0m' # No Color
 
+# Detect OS
+detect_os() {
+    case "$(uname -s)" in
+        Linux*)     echo "linux";;
+        Darwin*)    echo "macos";;
+        CYGWIN*|MINGW*|MSYS*) echo "windows";;
+    esac
+}
+
+OS_TYPE=$(detect_os)
+
 # ASCII Art Banner
 echo -e "${BLUE}"
 cat << "EOF"
@@ -32,11 +43,34 @@ echo -e "${NC}"
 # Function to check if a port is available
 check_port() {
     local port=$1
-    if lsof -Pi :$port -sTCP:LISTEN -t >/dev/null 2>&1 ; then
-        return 1  # Port is in use
-    else
-        return 0  # Port is available
-    fi
+
+    case "$OS_TYPE" in
+        windows)
+            if netstat -ano 2>/dev/null | grep -qE ":${port}[^0-9]"; then
+                return 1  # Port is in use
+            fi
+            ;;
+        *)
+            # Try ss first (modern Linux)
+            if command -v ss &> /dev/null; then
+                if ss -tuln 2>/dev/null | grep -qE ":${port}[^0-9]"; then
+                    return 1  # Port is in use
+                fi
+            # Fallback to netstat
+            elif command -v netstat &> /dev/null; then
+                if netstat -tuln 2>/dev/null | grep -qE ":${port}[^0-9]"; then
+                    return 1  # Port is in use
+                fi
+            # Final fallback to lsof
+            elif command -v lsof &> /dev/null; then
+                if lsof -Pi :$port -sTCP:LISTEN -t >/dev/null 2>&1; then
+                    return 1  # Port is in use
+                fi
+            fi
+            ;;
+    esac
+
+    return 0  # Port is available
 }
 
 # Function to find available ports
@@ -79,18 +113,21 @@ else
     docker --version
 fi
 
-# Check if Docker Compose is installed
-if ! command -v docker-compose &> /dev/null && ! docker compose version &> /dev/null; then
+# Check if Docker Compose is installed and set command
+DOCKER_COMPOSE_CMD=""
+if docker compose version &> /dev/null; then
+    DOCKER_COMPOSE_CMD="docker compose"
+elif command -v docker-compose &> /dev/null; then
+    DOCKER_COMPOSE_CMD="docker-compose"
+fi
+
+if [ -z "$DOCKER_COMPOSE_CMD" ]; then
     echo -e "${RED}❌ Docker Compose is not installed!${NC}"
     echo -e "${YELLOW}Please install Docker Compose first${NC}"
     exit 1
 else
     echo -e "${GREEN}✓ Docker Compose is installed${NC}"
-    if command -v docker-compose &> /dev/null; then
-        docker-compose --version
-    else
-        docker compose version
-    fi
+    $DOCKER_COMPOSE_CMD version
 fi
 
 # Check if Docker daemon is running
@@ -150,8 +187,56 @@ fi
 
 echo -e "${GREEN}✓ Port $selected_port will be used${NC}"
 
+# PostgreSQL port configuration
+section_header "Step 3: PostgreSQL Port Configuration"
+echo "Configure PostgreSQL database port"
+echo ""
+
+# Find available ports starting from 5432
+echo "Scanning for available PostgreSQL ports..."
+pg_available_ports=($(find_available_ports 5432 5))
+
+if [ ${#pg_available_ports[@]} -eq 0 ]; then
+    echo -e "${RED}❌ No available ports found for PostgreSQL!${NC}"
+    exit 1
+fi
+
+# Check if default port is available
+if check_port 5432; then
+    echo -e "${GREEN}✓ Default PostgreSQL port 5432 is available${NC}"
+    default_pg_port=5432
+else
+    echo -e "${YELLOW}⚠ Warning: Default PostgreSQL port 5432 is already in use${NC}"
+    default_pg_port=${pg_available_ports[0]}
+fi
+
+echo ""
+echo "Available PostgreSQL ports detected: ${pg_available_ports[@]}"
+echo ""
+echo -e "${YELLOW}Which port would you like to use for PostgreSQL?${NC}"
+read -p "Enter port number (press Enter for $default_pg_port): " selected_pg_port
+
+# Use default if no input
+if [ -z "$selected_pg_port" ]; then
+    selected_pg_port=$default_pg_port
+fi
+
+# Validate port number
+if ! [[ "$selected_pg_port" =~ ^[0-9]+$ ]] || [ "$selected_pg_port" -lt 1024 ] || [ "$selected_pg_port" -gt 65535 ]; then
+    echo -e "${RED}❌ Invalid port number. Must be between 1024 and 65535${NC}"
+    exit 1
+fi
+
+# Check if selected port is available
+if ! check_port $selected_pg_port; then
+    echo -e "${RED}❌ Port $selected_pg_port is already in use!${NC}"
+    exit 1
+fi
+
+echo -e "${GREEN}✓ PostgreSQL port $selected_pg_port will be used${NC}"
+
 # Database configuration
-section_header "Step 3: Database Configuration"
+section_header "Step 4: Database Configuration"
 echo "Configure PostgreSQL database settings"
 echo ""
 
@@ -166,20 +251,25 @@ echo ""
 db_password=${db_password:-bugtraceai_dev_2026}
 
 # CLI Backend URL configuration
-section_header "Step 4: CLI Backend Configuration"
+section_header "Step 5: CLI Backend Configuration"
 echo "Configure the BugTraceAI CLI backend URL"
 echo ""
+echo "Options:"
+echo "  • /cli-api           - Use nginx proxy (recommended for production)"
+echo "  • http://localhost:8000 - Direct connection (for local development)"
+echo ""
 
-read -p "CLI API URL (default: http://localhost:8000): " cli_api_url
-cli_api_url=${cli_api_url:-http://localhost:8000}
+read -p "CLI API URL (default: /cli-api): " cli_api_url
+cli_api_url=${cli_api_url:-/cli-api}
 
 # Create or update .env file
-section_header "Step 5: Creating Configuration File"
+section_header "Step 6: Creating Configuration File"
 cat > .env << EOF
 # Frontend Configuration
 FRONTEND_PORT=$selected_port
 
 # Database Configuration
+POSTGRES_PORT=$selected_pg_port
 POSTGRES_DB=$db_name
 POSTGRES_USER=$db_user
 POSTGRES_PASSWORD=$db_password
@@ -192,13 +282,14 @@ echo -e "${GREEN}✓ Configuration file (.env) created${NC}"
 cat .env
 
 # Confirmation
-section_header "Step 6: Final Confirmation"
+section_header "Step 7: Final Confirmation"
 echo "The following configuration will be used:"
 echo ""
-echo -e "  ${BLUE}Frontend URL:${NC}     http://localhost:$selected_port"
-echo -e "  ${BLUE}Database:${NC}         $db_name"
-echo -e "  ${BLUE}Database User:${NC}    $db_user"
-echo -e "  ${BLUE}CLI Backend:${NC}      $cli_api_url"
+echo -e "  ${BLUE}Frontend URL:${NC}       http://localhost:$selected_port"
+echo -e "  ${BLUE}PostgreSQL Port:${NC}    $selected_pg_port"
+echo -e "  ${BLUE}Database:${NC}           $db_name"
+echo -e "  ${BLUE}Database User:${NC}      $db_user"
+echo -e "  ${BLUE}CLI Backend:${NC}        $cli_api_url"
 echo ""
 read -p "Do you want to proceed with the installation? (yes/no): " confirm
 
@@ -208,24 +299,20 @@ if [[ ! "$confirm" =~ ^[Yy][Ee][Ss]$|^[Yy]$ ]]; then
 fi
 
 # Stop existing containers
-section_header "Step 7: Stopping Existing Containers"
+section_header "Step 8: Stopping Existing Containers"
 echo "Checking for existing containers..."
-if docker-compose -f docker-compose.yml down -v 2>/dev/null; then
+if $DOCKER_COMPOSE_CMD -f docker-compose.yml down -v 2>/dev/null; then
     echo -e "${GREEN}✓ Existing containers stopped${NC}"
 else
     echo -e "${YELLOW}⚠ No existing containers found (this is ok for first run)${NC}"
 fi
 
 # Build and start containers
-section_header "Step 8: Building and Starting Docker Containers"
+section_header "Step 9: Building and Starting Docker Containers"
 echo "This may take a few minutes on first run..."
 echo ""
 
-if command -v docker-compose &> /dev/null; then
-    docker-compose -f docker-compose.yml up --build -d
-else
-    docker compose -f docker-compose.yml up --build -d
-fi
+$DOCKER_COMPOSE_CMD -f docker-compose.yml up --build -d
 
 if [ $? -eq 0 ]; then
     # Success
@@ -235,10 +322,10 @@ if [ $? -eq 0 ]; then
     echo -e "${BLUE}Access the application at:${NC} ${GREEN}http://localhost:$selected_port${NC}"
     echo ""
     echo -e "${YELLOW}Useful commands:${NC}"
-    echo "  • View logs:       docker-compose logs -f"
-    echo "  • Stop services:   docker-compose down"
-    echo "  • Restart:         docker-compose restart"
-    echo "  • View status:     docker-compose ps"
+    echo "  • View logs:       $DOCKER_COMPOSE_CMD logs -f"
+    echo "  • Stop services:   $DOCKER_COMPOSE_CMD down"
+    echo "  • Restart:         $DOCKER_COMPOSE_CMD restart"
+    echo "  • View status:     $DOCKER_COMPOSE_CMD ps"
     echo ""
     
     # Wait for services to be ready

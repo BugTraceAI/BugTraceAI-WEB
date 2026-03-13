@@ -171,8 +171,12 @@ export const useWebSecAgent = (onShowApiKeyWarning: () => void, activeAgent: Age
                         });
                         
                         // FIX: Update apiHistory for web agent to maintain conversation context
+                        // Map ChatMessage roles to ApiHistoryItem roles ('model' -> 'assistant')
                         const newHistory: ApiHistoryItem[] = [
-                            ...historyForApi,
+                            ...historyForApi.map(msg => ({
+                                role: (msg.role === 'model' ? 'assistant' : msg.role) as 'user' | 'system' | 'assistant',
+                                content: msg.content
+                            })),
                             { role: 'assistant', content: responseText }
                         ];
                         setApiHistory(newHistory);
