@@ -35,6 +35,7 @@ export interface CreateScanRequest {
   use_vertical?: boolean;
   focused_agents?: string[];
   param?: string;
+  url_list?: string[];  // Pre-defined URL list (from URL list file or Swagger import)
 }
 
 export interface ScanStatusResponse {

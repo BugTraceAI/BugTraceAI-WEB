@@ -25,6 +25,7 @@ const DEFAULT_CONFIG: ScanConfig = {
   use_vertical: true,
   focused_agents: [],
   param: '',
+  url_list: undefined,
 };
 
 interface ActiveScan {
@@ -117,6 +118,7 @@ export const ScanTargetTab: React.FC<ScanTargetTabProps> = ({ onScanStart }) => 
         use_vertical: config.use_vertical,
         focused_agents: config.focused_agents.length > 0 ? config.focused_agents : undefined,
         param: config.param || undefined,
+        url_list: config.url_list,
       });
 
       // Clear logs from previous run to avoid "SCAN COMPLETE" check triggering immediately
