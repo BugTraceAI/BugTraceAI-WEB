@@ -54,22 +54,47 @@ export const ScanConfigForm: React.FC<ScanConfigFormProps> = ({
       .catch(() => setProviderInfo(null));
   }, [cliUrl]);
 
+  const getUrlOrigin = useCallback((value: string): string | null => {
+    try {
+      return new URL(value).origin;
+    } catch {
+      return null;
+    }
+  }, []);
+
+  const getUrlHost = useCallback((value: string): string | null => {
+    try {
+      return new URL(value).host;
+    } catch {
+      return null;
+    }
+  }, []);
+
   // Parse URL list file (one URL per line, comments with #)
   const parseUrlList = useCallback((content: string, targetUrl: string): string[] => {
-    const baseUrl = targetUrl.replace(/\/$/, '');
+    const baseUrl = getUrlOrigin(targetUrl);
+    const targetHost = getUrlHost(targetUrl);
+    if (!baseUrl || !targetHost) return [];
+
     return content
       .split('\n')
       .map(line => line.trim())
       .filter(line => line && !line.startsWith('#'))
-      .map(url => {
+      .flatMap(url => {
         // If URL is relative, prepend target base URL
-        if (url.startsWith('/')) return `${baseUrl}${url}`;
-        // If URL already has protocol, use as-is
-        if (url.startsWith('http://') || url.startsWith('https://')) return url;
+        if (url.startsWith('/')) return [`${baseUrl}${url}`];
+        // If URL already has protocol, keep only same-host entries
+        if (url.startsWith('http://') || url.startsWith('https://')) {
+          try {
+            return new URL(url).host === targetHost ? [url] : [];
+          } catch {
+            return [];
+          }
+        }
         // Otherwise, assume it's a path
-        return `${baseUrl}/${url}`;
+        return [`${baseUrl}/${url}`];
       });
-  }, []);
+  }, [getUrlHost, getUrlOrigin]);
 
   // Parse Swagger/OpenAPI JSON file
   const parseSwagger = useCallback((content: string, targetUrl: string): string[] => {
@@ -248,7 +273,12 @@ export const ScanConfigForm: React.FC<ScanConfigFormProps> = ({
           autoTargetUrl = extractedTarget;
         }
 
-        urls = parseSwagger(content, autoTargetUrl || 'https://example.com');
+        if (!autoTargetUrl) {
+          setFileError('This Swagger file uses relative paths. Set a Target URL first or use a spec with an absolute server URL.');
+          return;
+        }
+
+        urls = parseSwagger(content, autoTargetUrl);
         if (urls.length === 0) {
           setFileError('No endpoints found in Swagger/OpenAPI file.');
           return;
@@ -273,14 +303,24 @@ export const ScanConfigForm: React.FC<ScanConfigFormProps> = ({
           return;
         }
 
+        const hasRelativeLine = lines.some(l => {
+          const value = l.trim();
+          return value.startsWith('/') || (!value.startsWith('http://') && !value.startsWith('https://'));
+        });
+
         const extractedTarget = extractUrlListTarget(content);
         if (extractedTarget && !config.target_url) {
           autoTargetUrl = extractedTarget;
         }
 
-        urls = parseUrlList(content, autoTargetUrl || 'https://example.com');
+        if (hasRelativeLine && !autoTargetUrl) {
+          setFileError('Relative paths require a Target URL first. Set the target and re-import the file.');
+          return;
+        }
+
+        urls = parseUrlList(content, autoTargetUrl || '');
         if (urls.length === 0) {
-          setFileError('No valid URLs found in file.');
+          setFileError('No valid URLs found in file for the selected target domain.');
           return;
         }
         setUploadedFile({ name: file.name, type: 'url-list', count: urls.length });
@@ -345,11 +385,17 @@ export const ScanConfigForm: React.FC<ScanConfigFormProps> = ({
     setFileError('');
     setIsFetchingSwagger(true);
 
+    let url: URL;
     try {
-      // Validate URL format
-      const url = new URL(swaggerUrlInput.trim());
+      url = new URL(swaggerUrlInput.trim());
+    } catch {
+      setFileError('Invalid URL format. Please enter a full URL (e.g. https://api.example.com/swagger.json).');
+      setIsFetchingSwagger(false);
+      return;
+    }
 
-      const response = await fetch(swaggerUrlInput.trim());
+    try {
+      const response = await fetch(url.toString());
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}`);
       }
@@ -424,6 +470,15 @@ export const ScanConfigForm: React.FC<ScanConfigFormProps> = ({
     } else {
       setUrlError('');
     }
+
+    if (uploadedFile && value !== config.target_url) {
+      setUploadedFile(null);
+      setFileError('Imported URLs were cleared because the target changed. Re-import the file to rebuild the list.');
+      if (fileInputRef.current) fileInputRef.current.value = '';
+      onChange({ ...config, target_url: value, url_list: undefined });
+      return;
+    }
+
     onChange({ ...config, target_url: value });
   };
 
