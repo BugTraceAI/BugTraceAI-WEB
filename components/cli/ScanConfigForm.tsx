@@ -523,11 +523,6 @@ export const ScanConfigForm: React.FC<ScanConfigFormProps> = ({
                 className={`input-premium font-mono text-sm h-8 px-3 w-full disabled:opacity-50 disabled:cursor-not-allowed ${urlError ? 'border-error animate-shake' : ''}`}
                 title={uploadedFile ? 'Clear imported URLs first to change target' : ''}
               />
-              {uploadedFile && (
-                <p className="text-[10px] text-yellow-500/70 mt-1 ml-1">
-                  Target locked until URLs cleared
-                </p>
-              )}
             </div>
           )}
         </div>
