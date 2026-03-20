@@ -511,16 +511,24 @@ export const ScanConfigForm: React.FC<ScanConfigFormProps> = ({
               <span className="ml-auto opacity-30 font-sans text-[9px]">ID: {activeScan.id}</span>
             </div>
           ) : (
-            <input
-              id="target-url"
-              type="text"
-              value={config.target_url}
-              onChange={(e) => handleUrlChange(e.target.value)}
-              disabled={disabled}
-              placeholder="https://example.com"
-              data-testid="scan-target-url-input"
-              className={`input-premium font-mono text-sm h-8 px-3 w-full ${urlError ? 'border-error animate-shake' : ''}`}
-            />
+            <div>
+              <input
+                id="target-url"
+                type="text"
+                value={config.target_url}
+                onChange={(e) => handleUrlChange(e.target.value)}
+                disabled={disabled || uploadedFile !== null}
+                placeholder="https://example.com"
+                data-testid="scan-target-url-input"
+                className={`input-premium font-mono text-sm h-8 px-3 w-full disabled:opacity-50 disabled:cursor-not-allowed ${urlError ? 'border-error animate-shake' : ''}`}
+                title={uploadedFile ? 'Clear imported URLs first to change target' : ''}
+              />
+              {uploadedFile && (
+                <p className="text-[10px] text-yellow-500/70 mt-1 ml-1">
+                  Target locked until URLs cleared
+                </p>
+              )}
+            </div>
           )}
         </div>
 
