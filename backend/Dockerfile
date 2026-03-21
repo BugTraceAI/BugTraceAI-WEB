@@ -12,18 +12,19 @@ RUN apk add --no-cache openssl
 WORKDIR /app
 
 # Copy package files first for better layer caching
-COPY package.json package-lock.json ./
+COPY backend/package.json backend/package-lock.json ./
+COPY VERSION ./
 
 # Install all dependencies (including dev for build)
 RUN npm ci
 
 # Copy Prisma schema and generate client
-COPY prisma ./prisma
+COPY backend/prisma ./prisma
 RUN npx prisma generate
 
 # Copy source files and build
-COPY src ./src
-COPY tsconfig.json ./
+COPY backend/src ./src
+COPY backend/tsconfig.json ./
 RUN npm run build
 
 # =============================================================================
@@ -37,11 +38,12 @@ RUN apk add --no-cache openssl wget docker-cli
 WORKDIR /app
 
 # Copy package files and install production dependencies only
-COPY package.json package-lock.json ./
+COPY backend/package.json backend/package-lock.json ./
+COPY VERSION ./
 RUN npm ci --omit=dev
 
 # Copy Prisma schema for migrations
-COPY prisma ./prisma
+COPY backend/prisma ./prisma
 
 # Copy generated Prisma client from builder
 COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
@@ -53,7 +55,7 @@ RUN npx prisma generate
 COPY --from=builder /app/dist ./dist
 
 # Copy entrypoint script
-COPY docker-entrypoint.sh ./
+COPY backend/docker-entrypoint.sh ./
 RUN chmod +x docker-entrypoint.sh
 
 # Set environment variables

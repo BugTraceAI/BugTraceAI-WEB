@@ -180,12 +180,30 @@ import { dirname, join } from 'path';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
-const pkg = JSON.parse(readFileSync(join(__dirname, '..', 'package.json'), 'utf-8'));
+
+function readAppVersion(): string {
+  const candidatePaths = [
+    join(__dirname, '..', 'VERSION'),
+    join(__dirname, '..', '..', 'VERSION'),
+  ];
+
+  for (const candidatePath of candidatePaths) {
+    try {
+      return readFileSync(candidatePath, 'utf-8').trim();
+    } catch {
+      // Try next location.
+    }
+  }
+
+  return '0.0.0';
+}
+
+const appVersion = readAppVersion();
 
 app.get('/api/version', asyncHandler(async (_req: Request, res: Response) => {
-  const update = await checkForUpdate(pkg.version);
+  const update = await checkForUpdate(appVersion);
   sendSuccess(res, {
-    version: pkg.version,
+    version: appVersion,
     apiVersion: 'v1',
     name: 'BugTraceAI-WEB API',
     updateAvailable: update?.updateAvailable ?? false,

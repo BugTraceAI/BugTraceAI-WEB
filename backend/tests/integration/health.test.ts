@@ -1,6 +1,10 @@
 import { describe, it, expect } from 'vitest';
 import request from 'supertest';
+import { readFileSync } from 'fs';
+import { join } from 'path';
 import { app } from '../../src/index.js';
+
+const appVersion = readFileSync(join(process.cwd(), '..', 'VERSION'), 'utf-8').trim();
 
 describe('Health Endpoints Integration Tests', () => {
   describe('GET /health', () => {
@@ -76,13 +80,13 @@ describe('Health Endpoints Integration Tests', () => {
   });
 
   describe('GET /api/version', () => {
-    it('should return version 2.0.0', async () => {
+    it('should return the shared WEB version', async () => {
       const response = await request(app)
         .get('/api/version')
         .expect(200);
 
       expect(response.body.success).toBe(true);
-      expect(response.body.data.version).toBe('2.0.0');
+      expect(response.body.data.version).toBe(appVersion);
     });
 
     it('should return API name', async () => {

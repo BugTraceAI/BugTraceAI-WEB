@@ -24,8 +24,8 @@ services:
   # Express/Prisma Backend
   backend:
     build:
-      context: ./backend
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: backend/Dockerfile
       network: host
     container_name: bugtraceai-web-backend
     environment:
