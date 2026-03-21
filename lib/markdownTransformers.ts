@@ -15,6 +15,9 @@ export type SortCol = 'name' | 'severity' | 'status' | 'cvss' | 'url';
 export type DetSortCol = 'type' | 'severity' | 'status' | 'confidence' | 'parameter';
 export type SortDir = 'asc' | 'desc';
 
+const isPrevalidatedDetection = (detection: FindingItem): boolean =>
+  detection.status === 'VALIDATED_CONFIRMED' || detection.status === 'VALIDATED' || detection.validated;
+
 // --- Sorting ---
 
 export const sortFindings = (list: Finding[], col: SortCol, dir: SortDir): Finding[] => {
@@ -59,7 +62,7 @@ export const sortDetections = (list: FindingItem[], col: DetSortCol, dir: SortDi
         cmp = (SEV_RANK[(a.severity || 'info').toLowerCase()] ?? 0) - (SEV_RANK[(b.severity || 'info').toLowerCase()] ?? 0);
         break;
       case 'status': {
-        const rank = (f: FindingItem) => f.validated ? 1 : 0;
+        const rank = (f: FindingItem) => isPrevalidatedDetection(f) ? 1 : 0;
         cmp = rank(a) - rank(b);
         break;
       }
@@ -115,7 +118,7 @@ export const buildFullMarkdown = (markdown: string, detections: FindingItem[]): 
   if (!markdown || detections.length === 0) return markdown;
   const rows = detections.map(d => {
     const conf = d.confidence != null && d.confidence > 0 ? `${Math.round(d.confidence * 100)}%` : '-';
-    const status = d.validated ? 'Confirmed' : 'Unconfirmed';
+    const status = isPrevalidatedDetection(d) ? 'Prevalidated' : 'Unconfirmed';
     return `| ${d.type} | ${d.severity} | ${status} | ${conf} | ${d.parameter || '-'} | ${d.url || '-'} |`;
   });
   const table = [

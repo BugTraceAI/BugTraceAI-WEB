@@ -47,6 +47,9 @@ export interface CLIReport {
   report_path: string;
 }
 
+const isPrevalidatedDetection = (detection: { validated?: boolean; status?: string | null }): boolean =>
+  detection.status === 'VALIDATED_CONFIRMED' || detection.status === 'VALIDATED' || Boolean(detection.validated);
+
 // --- Report summary builder (pure) ---
 
 /** Build a structured markdown summary for sending to chat */
@@ -132,11 +135,11 @@ export const buildFindingMessage = (finding: Finding, targetUrl: string): string
 };
 
 /** Build a markdown message for a single detection to send to chat */
-export const buildDetectionMessage = (detection: { type: string; severity: string; validated: boolean; confidence?: number | null; url?: string; parameter?: string; payload?: string; details?: string }, targetUrl: string): string => {
+export const buildDetectionMessage = (detection: { type: string; severity: string; validated: boolean; status?: string; confidence?: number | null; url?: string; parameter?: string; payload?: string; details?: string }, targetUrl: string): string => {
   let msg = `I have a **${detection.severity}** detection on **${targetUrl}** that needs analysis.\n\n`;
   msg += `## ${detection.type}\n\n`;
   msg += `- **Severity:** ${detection.severity}\n`;
-  msg += `- **Status:** ${detection.validated ? 'Confirmed' : 'Unconfirmed'}\n`;
+  msg += `- **Status:** ${isPrevalidatedDetection(detection) ? 'Prevalidated' : 'Unconfirmed'}\n`;
   if (detection.confidence != null && detection.confidence > 0) msg += `- **Confidence:** ${Math.round(detection.confidence * 100)}%\n`;
   if (detection.url) msg += `- **URL:** ${detection.url}\n`;
   if (detection.parameter) msg += `- **Parameter:** ${detection.parameter}\n`;

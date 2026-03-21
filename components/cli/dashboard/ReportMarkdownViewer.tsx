@@ -591,7 +591,7 @@ export const ReportMarkdownViewer: React.FC<ReportMarkdownViewerProps> = ({ repo
           {detections.length > 0 && (
             <button
               onClick={() => setActiveTab('detections')}
-              title="Raw detections from scanning agents before validation. Includes probes, canaries, and unconfirmed signals that may contain false positives."
+              title="Raw detections from scanning agents before final report validation. Includes probes, canaries, unconfirmed signals, and prevalidated results that may still require manual review."
               className={`px-5 py-3 text-xs font-semibold uppercase tracking-wider transition-colors ${activeTab === 'detections'
                 ? 'text-coral border-b-2 border-coral'
                 : 'text-muted hover:text-purple-gray'
@@ -901,9 +901,10 @@ export const ReportMarkdownViewer: React.FC<ReportMarkdownViewerProps> = ({ repo
                     const isExpanded = expandedDetIdx === globalIdx;
                     const sev = (det.severity || 'info').toLowerCase();
                     const colors = SEVERITY_COLORS[sev] || SEVERITY_COLORS.info;
-                    const statusLabel = det.validated ? 'Confirmed' : 'Unconfirmed';
-                    const statusColor = det.validated
-                      ? 'text-emerald-400 bg-emerald-500/15'
+                    const isPrevalidated = det.status === 'VALIDATED_CONFIRMED' || det.status === 'VALIDATED' || det.validated;
+                    const statusLabel = isPrevalidated ? 'Prevalidated' : 'Unconfirmed';
+                    const statusColor = isPrevalidated
+                      ? 'text-sky-400 bg-sky-500/15'
                       : 'text-amber-400 bg-amber-500/15';
 
                     return (
