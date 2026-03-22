@@ -22,5 +22,24 @@
     },
     "allowImportingTsExtensions": true,
     "noEmit": true
-  }
+  },
+  "include": [
+    "App.tsx",
+    "index.tsx",
+    "vite-env.d.ts",
+    "components/**/*",
+    "contexts/**/*",
+    "hooks/**/*",
+    "lib/**/*",
+    "services/**/*",
+    "styles/**/*",
+    "utils/**/*",
+    "types.ts",
+    "constants.ts"
+  ],
+  "exclude": [
+    "backend",
+    "dist",
+    "node_modules"
+  ]
 }
