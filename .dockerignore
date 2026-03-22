@@ -23,8 +23,10 @@ dist/
 *.swp
 *.swo
 
-# Backend (builds separately)
-backend/
+# Backend artifacts
+backend/node_modules/
+backend/dist/
+backend/backend.log
 
 # Tests
 *.test.tsx
