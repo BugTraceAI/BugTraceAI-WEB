@@ -58,6 +58,7 @@ export interface ScanSummary {
   timestamp: string; // ISO format
   origin: string; // "cli" or "web"
   has_report: boolean; // Whether report files exist on disk
+  recovery_available?: boolean; // Whether partial or full scan artifacts exist on disk
   provider?: string | null; // LLM provider used: "openrouter", "zai", etc.
   findings_count?: number; // Total findings for this scan
 }

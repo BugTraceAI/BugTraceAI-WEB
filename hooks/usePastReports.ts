@@ -17,6 +17,7 @@ export interface CLIReport {
   report_path: string;
   origin?: string;
   has_report?: boolean;
+  recovery_available?: boolean;
   provider?: string | null;
   findings_count?: number;
 }
@@ -86,7 +87,7 @@ export const usePastReports = (): UsePastReportsReturn => {
         .filter(s => {
           const status = s.status.toLowerCase();
           const terminal = ['completed', 'stopped', 'failed'].includes(status);
-          return terminal && s.has_report !== false;
+          return terminal && (s.has_report !== false || s.recovery_available === true);
         })
         .map(s => ({
           id: String(s.scan_id),
@@ -97,6 +98,7 @@ export const usePastReports = (): UsePastReportsReturn => {
           report_path: '',
           origin: s.origin || 'cli',
           has_report: s.has_report,
+          recovery_available: s.recovery_available,
           provider: s.provider || null,
           findings_count: s.findings_count || 0,
         }));
