@@ -15,6 +15,7 @@ const toolToSlug: Partial<Record<Tool, string>> = {
   [Tool.OOB_INTERACTION_HELPER]: 'oob-helper',
   [Tool.URL_LIST_FINDER]: 'url-finder',
   [Tool.SUBDOMAIN_FINDER]: 'subdomain-finder',
+  [Tool.API_DISCOVERY]: 'api-discovery',
 };
 
 const slugToTool: Record<string, Tool> = {};
@@ -42,7 +43,7 @@ const viewSubTabConfig: Partial<Record<View, { basePath: string; defaultTool: To
   [View.DISCOVERY_TOOLS]: {
     basePath: '/discovery-tools',
     defaultTool: Tool.URL_LIST_FINDER,
-    tools: [Tool.URL_LIST_FINDER, Tool.SUBDOMAIN_FINDER],
+    tools: [Tool.URL_LIST_FINDER, Tool.SUBDOMAIN_FINDER, Tool.API_DISCOVERY],
   },
 };
 

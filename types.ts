@@ -28,6 +28,7 @@ export enum Tool {
   OOB_INTERACTION_HELPER = 'OOB_INTERACTION_HELPER',
   URL_LIST_FINDER = 'URL_LIST_FINDER',
   SUBDOMAIN_FINDER = 'SUBDOMAIN_FINDER',
+  API_DISCOVERY = 'API_DISCOVERY',
 }
 
 export type AgentType = 'web' | 'kali' | 'recon' | 'bugtrace';

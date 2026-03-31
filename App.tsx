@@ -21,6 +21,7 @@ import { PrivEscPathfinder } from './components/PrivEscPathfinder.tsx';
 import { FileUploadAuditor } from './components/FileUploadAuditor.tsx';
 import { UrlListFinder } from './components/UrlListFinder.tsx';
 import { SubdomainFinder } from './components/SubdomainFinder.tsx';
+import { ApiDiscovery } from './components/ApiDiscovery.tsx';
 import { SubTabs } from './components/SubTabs.tsx';
 import { Header } from './components/Header.tsx';
 import { Footer } from './components/Footer.tsx';
@@ -327,6 +328,7 @@ const App: React.FC = () => {
     const discoveryTools = [
       { id: Tool.URL_LIST_FINDER, name: "URL Finder" },
       { id: Tool.SUBDOMAIN_FINDER, name: "Subdomain Finder" },
+      { id: Tool.API_DISCOVERY, name: "API Discovery" },
     ];
 
     switch (activeView) {
@@ -428,6 +430,7 @@ const App: React.FC = () => {
             <SubTabs tools={discoveryTools} activeTool={activeSubTab} setTool={handleSubTabNavigation} />
             {activeSubTab === Tool.URL_LIST_FINDER && <UrlListFinder />}
             {activeSubTab === Tool.SUBDOMAIN_FINDER && <SubdomainFinder />}
+            {activeSubTab === Tool.API_DISCOVERY && <ApiDiscovery />}
           </>
         );
       case View.JWT_ANALYZER:

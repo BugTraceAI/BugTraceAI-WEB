@@ -4,6 +4,7 @@
  * Manages scan lifecycle from form submission through WebSocket monitoring.
  */
 import React, { useState, useEffect, useRef } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { ScanConfigForm, ScanConfig } from './ScanConfigForm.tsx';
 import { ScanConsole } from './ScanConsole.tsx';
 import { ScanDashboard } from './ScanDashboard.tsx';
@@ -42,7 +43,23 @@ export const ScanTargetTab: React.FC<ScanTargetTabProps> = ({ onScanStart }) => 
   const [isStarting, setIsStarting] = useState(false);
   const [hasFinished, setHasFinished] = useState(false);
   const startingRef = useRef(false);
+  const location = useLocation();
+  const navigate = useNavigate();
   const { logs, isConnected, isScanning, subscribe, clearLogs, pipeline, agents, metrics, findings } = useScanSocket();
+
+  // Hydrate config from router state (e.g. "Load into Scan" from API Discovery)
+  useEffect(() => {
+    const state = location.state as { url_list?: string[]; target_url?: string } | null;
+    if (state?.url_list && state.url_list.length > 0) {
+      setConfig(prev => ({
+        ...prev,
+        url_list: state.url_list,
+        target_url: state.target_url ?? prev.target_url,
+      }));
+      // Clear state so a page refresh doesn't re-apply it
+      navigate(location.pathname, { replace: true, state: null });
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Check for running scans on mount
   useEffect(() => {
