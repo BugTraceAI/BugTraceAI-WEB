@@ -36,6 +36,19 @@ export interface CreateScanRequest {
   focused_agents?: string[];
   param?: string;
   url_list?: string[];  // Pre-defined URL list (from URL list file or Swagger import)
+  auth?: {              // Auth config for authenticated scanning with TOTP/2FA
+    login_url: string;
+    credentials: {
+      username: string;
+      password: string;
+      totp_secret?: string;
+    };
+    login_flow?: string[];
+    success_condition?: {
+      type: string;
+      value: string;
+    };
+  };
 }
 
 export interface ScanStatusResponse {

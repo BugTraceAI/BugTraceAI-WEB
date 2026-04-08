@@ -1,7 +1,26 @@
 // components/cli/ScanConfigForm.tsx
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
+import yaml from 'js-yaml';
 import { useSettings } from '../../contexts/SettingsProvider.tsx';
+
+/**
+ * Auth config structure from YAML file
+ */
+export interface AuthConfig {
+  login_url: string;
+  login_type?: string;
+  credentials: {
+    username: string;
+    password: string;
+    totp_secret?: string;
+  };
+  login_flow?: string[];
+  success_condition?: {
+    type: string;
+    value: string;
+  };
+}
 
 /**
  * ScanConfig mirrors the CLI API's CreateScanRequest exactly.
@@ -18,6 +37,7 @@ export interface ScanConfig {
   focused_agents: string[];
   param: string;            // empty string = not set
   url_list?: string[];      // Pre-defined URL list (from file upload)
+  auth?: AuthConfig;        // Auth config from YAML file (TOTP/2FA login)
 }
 
 interface ScanConfigFormProps {
@@ -44,7 +64,13 @@ export const ScanConfigForm: React.FC<ScanConfigFormProps> = ({
   const [isFetchingSwagger, setIsFetchingSwagger] = useState(false);
   const [showImportDropdown, setShowImportDropdown] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const { cliUrl } = useSettings();
+  const authFileInputRef = useRef<HTMLInputElement>(null);
+  const { cliUrl, authConfigEnabled } = useSettings();
+
+  // Auth config state
+  const [authConfigFile, setAuthConfigFile] = useState<{ name: string; config: AuthConfig } | null>(null);
+  const [authConfigError, setAuthConfigError] = useState<string>('');
+  const [isAuthDragging, setIsAuthDragging] = useState(false);
 
   useEffect(() => {
     if (!cliUrl) return;
@@ -459,6 +485,122 @@ export const ScanConfigForm: React.FC<ScanConfigFormProps> = ({
     }
   }, [swaggerUrlInput, config, onChange, parseSwagger, extractSwaggerTarget]);
 
+  // Parse and validate auth config YAML
+  const parseAuthConfigYaml = useCallback((content: string): AuthConfig | null => {
+    try {
+      const parsed = yaml.load(content) as any;
+      if (!parsed) return null;
+
+      // Extract authentication section (support both root and nested)
+      const auth = parsed.authentication || parsed;
+
+      // Validate required fields
+      if (!auth.login_url) {
+        setAuthConfigError('Missing required field: login_url');
+        return null;
+      }
+      if (!auth.credentials) {
+        setAuthConfigError('Missing required field: credentials');
+        return null;
+      }
+      if (!auth.credentials.username && !auth.credentials.email) {
+        setAuthConfigError('Missing required field: credentials.username or credentials.email');
+        return null;
+      }
+      if (!auth.credentials.password) {
+        setAuthConfigError('Missing required field: credentials.password');
+        return null;
+      }
+
+      // Build sanitized config
+      const authConfig: AuthConfig = {
+        login_url: auth.login_url,
+        login_type: auth.login_type || 'form',
+        credentials: {
+          username: auth.credentials.username || auth.credentials.email || '',
+          password: auth.credentials.password || '',
+          totp_secret: auth.credentials.totp_secret,
+        },
+        login_flow: auth.login_flow,
+        success_condition: auth.success_condition,
+      };
+
+      return authConfig;
+    } catch (e: any) {
+      setAuthConfigError(`Invalid YAML: ${e.message}`);
+      return null;
+    }
+  }, []);
+
+  // Handle auth config file upload
+  const handleAuthConfigUpload = useCallback(async (file: File) => {
+    setAuthConfigError('');
+
+    // Validate file extension
+    const isYaml = file.name.toLowerCase().endsWith('.yaml') || file.name.toLowerCase().endsWith('.yml');
+    if (!isYaml) {
+      setAuthConfigError('Invalid file type. Only .yaml or .yml files allowed.');
+      return;
+    }
+
+    // Validate file size (max 100KB)
+    if (file.size > 100 * 1024) {
+      setAuthConfigError('File too large. Maximum 100KB allowed.');
+      return;
+    }
+
+    try {
+      const content = await file.text();
+      const authConfig = parseAuthConfigYaml(content);
+
+      if (authConfig) {
+        setAuthConfigFile({ name: file.name, config: authConfig });
+        onChange({ ...config, auth: authConfig });
+      }
+    } catch {
+      setAuthConfigError('Failed to read file.');
+    }
+  }, [config, onChange, parseAuthConfigYaml]);
+
+  // Auth config drag handlers
+  const handleAuthDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!disabled) setIsAuthDragging(true);
+  }, [disabled]);
+
+  const handleAuthDragLeave = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsAuthDragging(false);
+  }, []);
+
+  const handleAuthDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsAuthDragging(false);
+    if (disabled) return;
+
+    const files = e.dataTransfer.files;
+    if (files.length > 0) {
+      handleAuthConfigUpload(files[0]);
+    }
+  }, [disabled, handleAuthConfigUpload]);
+
+  const handleAuthFileInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (files && files.length > 0) {
+      handleAuthConfigUpload(files[0]);
+    }
+  }, [handleAuthConfigUpload]);
+
+  const clearAuthConfig = useCallback(() => {
+    setAuthConfigFile(null);
+    setAuthConfigError('');
+    onChange({ ...config, auth: undefined });
+    if (authFileInputRef.current) authFileInputRef.current.value = '';
+  }, [config, onChange]);
+
   const handleUrlChange = (value: string) => {
     if (value && value.trim() !== '') {
       try {
@@ -622,6 +764,50 @@ export const ScanConfigForm: React.FC<ScanConfigFormProps> = ({
           document.body
         )}
 
+        {/* Auth Config YAML upload (when enabled in config) */}
+        {authConfigEnabled && !activeScan && (
+          <div className="flex-shrink-0 relative">
+            <label className="label-mini block mb-1 ml-1">Auth</label>
+            <input
+              ref={authFileInputRef}
+              type="file"
+              accept=".yaml,.yml"
+              onChange={handleAuthFileInputChange}
+              className="hidden"
+            />
+            {authConfigFile ? (
+              <div
+                className="h-8 px-2 rounded-md bg-purple-500/10 border border-purple-500/30 flex items-center gap-1.5 cursor-pointer text-[10px]"
+                title={`Auth config: ${authConfigFile.name} (${authConfigFile.config.credentials.totp_secret ? 'TOTP' : 'Basic'})`}
+              >
+                <span className="h-1.5 w-1.5 rounded-full bg-purple-400" />
+                <span className="text-purple-300 truncate max-w-[60px]">{authConfigFile.name.replace(/\.(yaml|yml)$/i, '')}</span>
+                <button
+                  onClick={(e) => { e.stopPropagation(); clearAuthConfig(); }}
+                  className="ml-1 text-white/30 hover:text-error"
+                >
+                  x
+                </button>
+              </div>
+            ) : (
+              <div
+                onClick={() => authFileInputRef.current?.click()}
+                onDragOver={handleAuthDragOver}
+                onDragLeave={handleAuthDragLeave}
+                onDrop={handleAuthDrop}
+                className={`h-8 px-3 rounded-md border border-dashed cursor-pointer text-[10px] flex items-center justify-center transition-all ${
+                  isAuthDragging
+                    ? 'border-purple-400 bg-purple-500/10 text-purple-300'
+                    : 'border-white/[0.15] bg-white/[0.02] text-white/40 hover:border-purple-400/50 hover:text-purple-300'
+                } ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+                title="Drop auth-config.yaml for authenticated scanning with TOTP"
+              >
+                + YAML
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Active provider badge */}
         {providerInfo && (
           <div className="flex-shrink-0 flex flex-col items-center justify-end">
@@ -689,6 +875,12 @@ export const ScanConfigForm: React.FC<ScanConfigFormProps> = ({
       {fileError && (
         <p className="text-xs text-error flex items-center gap-1">
           <span>!</span> {fileError}
+        </p>
+      )}
+
+      {authConfigError && (
+        <p className="text-xs text-error flex items-center gap-1">
+          <span>!</span> {authConfigError}
         </p>
       )}
     </div>

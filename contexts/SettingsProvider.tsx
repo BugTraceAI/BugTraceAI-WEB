@@ -29,6 +29,9 @@ interface SettingsContextType {
         version?: string;
         dockerAvailable?: boolean;
     }) => void;
+    // Auth Config (TOTP login YAML)
+    authConfigEnabled: boolean;
+    setAuthConfigEnabled: (enabled: boolean) => void;
 }
 
 const SettingsContext = createContext<SettingsContextType | undefined>(undefined);
@@ -48,6 +51,9 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     const [cliStatus, setCliStatus] = useState<'healthy' | 'degraded' | 'unreachable' | null>(null);
     const [cliVersion, setCliVersion] = useState<string | undefined>(undefined);
     const [cliDockerAvailable, setCliDockerAvailable] = useState<boolean | undefined>(undefined);
+
+    // Auth Config (TOTP login YAML) - disabled by default
+    const [authConfigEnabled, setAuthConfigEnabled] = useState<boolean>(false);
 
     const setCli = useCallback((state: {
         connected: boolean;
@@ -96,6 +102,10 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
                 if (savedCliUrl) setCliUrl(savedCliUrl);
             }
 
+            // Load auth config enabled state
+            const savedAuthConfigEnabled = localStorage.getItem('authConfigEnabled') === 'true';
+            setAuthConfigEnabled(savedAuthConfigEnabled);
+
         } catch (e) { console.error("Could not load settings:", e); }
     }, []);
 
@@ -139,6 +149,11 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         }
     }, [cliUrl]);
 
+    useEffect(() => {
+        try { localStorage.setItem('authConfigEnabled', String(authConfigEnabled)); }
+        catch (e) { console.error("Could not save authConfigEnabled:", e); }
+    }, [authConfigEnabled]);
+
     const value = useMemo(() => ({
         themeId, setThemeId,
         apiKeys, setApiKeys,
@@ -148,7 +163,8 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         cliUrl, setCliUrl,
         cliConnected, cliStatus, cliVersion, cliDockerAvailable,
         setCli,
-    }), [themeId, setThemeId, apiKeys, openRouterModel, saveApiKeys, providerId, cliUrl, cliConnected, cliStatus, cliVersion, cliDockerAvailable, setCli]);
+        authConfigEnabled, setAuthConfigEnabled,
+    }), [themeId, setThemeId, apiKeys, openRouterModel, saveApiKeys, providerId, cliUrl, cliConnected, cliStatus, cliVersion, cliDockerAvailable, setCli, authConfigEnabled]);
 
     return <SettingsContext.Provider value={value}>{children}</SettingsContext.Provider>;
 };

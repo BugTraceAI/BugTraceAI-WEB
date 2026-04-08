@@ -39,6 +39,16 @@ function interp(template: string, d: Record<string, any>): string {
 
 const T: Record<string, [LogLevel, string]> = {
 
+  // ── Authentication ────────────────────────────────────────────────────
+
+  'auth.phase.started':          ['INFO',    '[AUTH] Authentication phase starting — Target: {target}, User: {user}, TOTP: {totp_enabled}'],
+  'auth.step':                   ['INFO',    '[AUTH] Step {step}/{total}: {action}'],
+  'auth.step.failed':            ['ERROR',   '[AUTH] Step {step}/{total} FAILED: {error}'],
+  'auth.steps.complete':         ['INFO',    '[AUTH] All {total} steps completed'],
+  'auth.verified':               ['INFO',    '[AUTH] Success condition VERIFIED! ({condition}: {value})'],
+  'auth.success':                ['INFO',    '[AUTH] AUTHENTICATION SUCCESSFUL — {cookies_count} cookies captured'],
+  'auth.failed':                 ['ERROR',   '[AUTH] Authentication FAILED: {reason}'],
+
   // ── Pipeline ──────────────────────────────────────────────────────────
 
   'pipeline.initializing':       ['INFO',    '[PIPELINE] Initializing scan pipeline'],
@@ -220,6 +230,7 @@ const T: Record<string, [LogLevel, string]> = {
 // ---------------------------------------------------------------------------
 
 const CATEGORY_TAGS: Record<string, string> = {
+  auth: 'AUTH',
   pipeline: 'PIPELINE',
   recon: 'RECON',
   discovery: 'DAST',

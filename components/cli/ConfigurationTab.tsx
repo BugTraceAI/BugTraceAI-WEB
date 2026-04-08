@@ -5,6 +5,7 @@
  */
 import { useState, ReactNode } from 'react';
 import { useConfigEditor, EDITABLE_KEYS } from '../../hooks/useConfigEditor';
+import { useSettings } from '../../contexts/SettingsProvider.tsx';
 
 // --- Types ---
 
@@ -724,6 +725,80 @@ function ThresholdsSection({ config, defaultOpen }: { config: Record<string, any
   );
 }
 
+// --- Auth Config Section (Web-only setting) ---
+
+function AuthConfigSection() {
+  const { authConfigEnabled, setAuthConfigEnabled } = useSettings();
+  const [isOpen, setIsOpen] = useState(true);
+
+  return (
+    <div className="card-premium overflow-hidden">
+      <button
+        onClick={() => setIsOpen(!isOpen)}
+        className="w-full px-4 py-3 flex items-center gap-3 text-left hover:bg-white/[0.02] transition-colors"
+      >
+        <div className="p-2 rounded-xl bg-purple-500/10 border border-purple-500/20 text-purple-400">
+          <LockIcon />
+        </div>
+        <span className="title-standard flex-1">Authenticated Scanning</span>
+        <div className="flex items-center gap-3">
+          <span className={`badge-mini ${authConfigEnabled ? 'badge-mini-accent' : '!bg-white/5'}`}>
+            {authConfigEnabled ? 'ENABLED' : 'disabled'}
+          </span>
+          <div className={`text-ui-text-dim transition-transform duration-300 ${isOpen ? 'rotate-180' : ''}`}>
+            <ChevronIcon open={false} />
+          </div>
+        </div>
+      </button>
+
+      {isOpen && (
+        <div className="px-4 pb-4">
+          <div className="group flex items-center justify-between py-3 px-3 rounded-xl hover:bg-white/[0.03] border border-transparent">
+            <div className="flex-1 min-w-0 mr-4">
+              <div className="flex items-center gap-2">
+                <span className="text-[13px] font-bold tracking-tight text-ui-text-main">
+                  Enable Auth Config Upload
+                </span>
+              </div>
+              <p className="text-[11px] text-ui-text-muted mt-0.5 leading-relaxed opacity-60 group-hover:opacity-100 transition-opacity">
+                When enabled, shows a YAML file upload option in the Scan tab for authenticated scanning with TOTP/2FA support.
+                Upload a <code className="text-purple-400">auth-config.yaml</code> file to perform scans with automatic login.
+              </p>
+            </div>
+            <ToggleSwitch
+              checked={authConfigEnabled}
+              onChange={setAuthConfigEnabled}
+            />
+          </div>
+
+          {authConfigEnabled && (
+            <div className="mt-3 px-3 py-3 rounded-xl bg-purple-500/5 border border-purple-500/10">
+              <p className="text-[11px] text-purple-300/80 leading-relaxed">
+                <strong className="text-purple-300">YAML Format:</strong> The auth config file defines login credentials, TOTP secrets, and custom login flows.
+                Variables: <code className="text-purple-400">$username</code>, <code className="text-purple-400">$password</code>, <code className="text-purple-400">$totp</code>
+              </p>
+              <pre className="mt-2 p-2 rounded bg-black/30 text-[10px] text-purple-200/70 overflow-x-auto">
+{`authentication:
+  login_type: form
+  login_url: "/login"
+  credentials:
+    username: "user@example.com"
+    password: "secret"
+    totp_secret: "JBSWY3DPEHPK3PXP"
+  login_flow:
+    - "Type $username into the email field"
+    - "Type $password into the password field"
+    - "Click the 'Sign In' button"
+    - "Enter $totp in the code field"`}
+              </pre>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // --- Main Component ---
 
 export function ConfigurationTab() {
@@ -832,6 +907,9 @@ export function ConfigurationTab() {
             defaultOpen={false}
           />
         )}
+
+        {/* Auth Config - Web-only setting */}
+        <AuthConfigSection />
       </div>
     </div>
   );

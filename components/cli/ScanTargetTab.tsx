@@ -27,6 +27,7 @@ const DEFAULT_CONFIG: ScanConfig = {
   focused_agents: [],
   param: '',
   url_list: undefined,
+  auth: undefined,
 };
 
 interface ActiveScan {
@@ -136,6 +137,7 @@ export const ScanTargetTab: React.FC<ScanTargetTabProps> = ({ onScanStart }) => 
         focused_agents: config.focused_agents.length > 0 ? config.focused_agents : undefined,
         param: config.param || undefined,
         url_list: config.url_list,
+        auth: config.auth,
       });
 
       // Clear logs from previous run to avoid "SCAN COMPLETE" check triggering immediately
