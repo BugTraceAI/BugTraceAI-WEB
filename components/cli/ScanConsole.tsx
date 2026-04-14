@@ -40,6 +40,7 @@ function getLogIcon(log: LogEntry): string {
   if (msg.includes('[VULN FOUND]') || log.level === 'CRITICAL') return '\u{1F6A8}';
   if (msg.includes('[SPECIALIST]')) return '\u{1F52C}';
   if (msg.includes('[RECON]')) return '\u{1F4E1}';
+  if (msg.includes('[JSOrchestrator]') || msg.includes('[JSAnalysisAgent]')) return '\u{1F4DC}';
   if (msg.includes('[DAST]')) return '\u{1F50D}';
   if (msg.includes('[EXPLOITATION]')) return '\u26A1';
   if (msg.includes('[STRATEGY]')) return '\u{1F9E0}';

@@ -314,6 +314,19 @@ const CONFIG_SECTIONS: SectionDef[] = [
     ],
   },
   {
+    id: 'js_intelligence',
+    title: 'JS Intelligence',
+    icon: <CodeIcon />,
+    fields: [
+      { key: 'JS_ENABLED', label: 'Enable JS Analysis', description: 'Analyze JavaScript assets for secrets, endpoints, DOM XSS', type: 'boolean', editable: true },
+      { key: 'JS_MAX_ASSETS', label: 'Max Assets', description: 'Maximum JS assets to analyze per scan', type: 'number', editable: false },
+      { key: 'JS_MAX_FILE_BYTES', label: 'Max File Size', description: 'Maximum bytes per JS file (default 2MB)', type: 'number', editable: false },
+      { key: 'JS_MAX_LLM_CHUNKS_TOTAL', label: 'Max LLM Chunks', description: 'Global max chunks sent to LLM', type: 'number', editable: false },
+      { key: 'JS_ENABLE_EMBEDDING_RANKING', label: 'Embedding Ranking', description: 'Use embeddings to rank chunks by relevance', type: 'boolean', editable: false },
+      { key: 'JS_ENABLE_GEMINI_ESCALATION', label: 'Gemini Escalation', description: 'Escalate complex assets to Gemini large model', type: 'boolean', editable: true },
+    ],
+  },
+  {
     id: 'anthropic',
     title: 'Anthropic OAuth',
     icon: <LockIcon />,
@@ -477,6 +490,14 @@ function WrenchIcon() {
   return (
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
       <path fillRule="evenodd" d="M19 5.5a4.5 4.5 0 0 1-4.791 4.49c-.873-.055-1.808.128-2.368.8l-6.024 7.23a2.724 2.724 0 1 1-3.837-3.837l7.23-6.024c.672-.56.855-1.495.8-2.368A4.5 4.5 0 0 1 14.5 1 3.5 3.5 0 0 0 18 4.5a.75.75 0 0 1 1 1Z" clipRule="evenodd" />
+    </svg>
+  );
+}
+
+function CodeIcon() {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
+      <path fillRule="evenodd" d="M6.28 5.22a.75.75 0 0 1 0 1.06L2.56 10l3.72 3.72a.75.75 0 0 1-1.06 1.06L.97 10.53a.75.75 0 0 1 0-1.06l4.25-4.25a.75.75 0 0 1 1.06 0Zm7.44 0a.75.75 0 0 1 1.06 0l4.25 4.25a.75.75 0 0 1 0 1.06l-4.25 4.25a.75.75 0 0 1-1.06-1.06L17.44 10l-3.72-3.72a.75.75 0 0 1 0-1.06ZM11.377 2.011a.75.75 0 0 1 .612.867l-2.5 14.5a.75.75 0 0 1-1.478-.255l2.5-14.5a.75.75 0 0 1 .866-.612Z" clipRule="evenodd" />
     </svg>
   );
 }
@@ -735,9 +756,9 @@ function AuthConfigSection() {
     <div className="card-premium overflow-hidden">
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="w-full px-4 py-3 flex items-center gap-3 text-left hover:bg-white/[0.02] transition-colors"
+        className="w-full flex items-center gap-3 px-5 py-4 text-left hover:bg-white/[0.03] transition-all duration-300"
       >
-        <div className="p-2 rounded-xl bg-purple-500/10 border border-purple-500/20 text-purple-400">
+        <div className="p-2 rounded-xl bg-coral/5 border border-coral/10 text-coral group-hover:scale-110 transition-transform">
           <LockIcon />
         </div>
         <span className="title-standard flex-1">Authenticated Scanning</span>
@@ -745,6 +766,7 @@ function AuthConfigSection() {
           <span className={`badge-mini ${authConfigEnabled ? 'badge-mini-accent' : '!bg-white/5'}`}>
             {authConfigEnabled ? 'ENABLED' : 'disabled'}
           </span>
+          <span className="label-mini opacity-40">1 field</span>
           <div className={`text-ui-text-dim transition-transform duration-300 ${isOpen ? 'rotate-180' : ''}`}>
             <ChevronIcon open={false} />
           </div>
@@ -752,7 +774,7 @@ function AuthConfigSection() {
       </button>
 
       {isOpen && (
-        <div className="px-4 pb-4">
+        <div className="px-2 pb-3 space-y-0.5">
           <div className="group flex items-center justify-between py-3 px-3 rounded-xl hover:bg-white/[0.03] border border-transparent">
             <div className="flex-1 min-w-0 mr-4">
               <div className="flex items-center gap-2">
