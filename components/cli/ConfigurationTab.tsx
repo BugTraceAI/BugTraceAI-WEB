@@ -789,7 +789,10 @@ function AuthConfigSection() {
     - "Type $username into the email field"
     - "Type $password into the password field"
     - "Click the 'Sign In' button"
-    - "Enter $totp in the code field"`}
+    - "Enter $totp in the code field"
+  success_condition:
+    type: url_contains
+    value: "/"`}
               </pre>
             </div>
           )}

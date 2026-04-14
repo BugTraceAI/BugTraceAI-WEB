@@ -555,7 +555,13 @@ export const ScanConfigForm: React.FC<ScanConfigFormProps> = ({
 
       if (authConfig) {
         setAuthConfigFile({ name: file.name, config: authConfig });
-        onChange({ ...config, auth: authConfig });
+        // Auto-fill target_url with login_url if target is empty
+        const newConfig = {
+          ...config,
+          auth: authConfig,
+          target_url: !config.target_url ? authConfig.login_url : config.target_url,
+        };
+        onChange(newConfig);
       }
     } catch {
       setAuthConfigError('Failed to read file.');
