@@ -21,6 +21,7 @@ export const downloadFiles = [
   { filename: 'validated_findings.json', label: 'Validated', icon: 'JSON' },
   { filename: 'raw_findings.json', label: 'Raw', icon: 'JSON' },
   { filename: 'engagement_data.json', label: 'Engagement', icon: 'JSON' },
+  { filename: 'auth_config.yaml', label: 'Auth Config', icon: 'YAML' },
 ] as const;
 
 // --- Attack chain interface ---
