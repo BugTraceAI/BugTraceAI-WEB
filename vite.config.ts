@@ -31,6 +31,11 @@ export default defineConfig({
         target: 'http://localhost:3001',
         changeOrigin: true,
       },
+      '/kr-api': {
+        target: 'http://localhost:8004',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/kr-api/, ''),
+      },
       '/kr-mcp': {
         target: 'http://localhost:8003',
         changeOrigin: true,

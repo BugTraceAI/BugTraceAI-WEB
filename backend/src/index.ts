@@ -200,6 +200,24 @@ function readAppVersion(): string {
 
 const appVersion = readAppVersion();
 
+app.get('/api', asyncHandler(async (_req: Request, res: Response) => {
+  sendSuccess(res, {
+    name: 'BugTraceAI-WEB API',
+    version: appVersion,
+    apiVersion: 'v1',
+    status: 'ok',
+    endpoints: {
+      version: '/api/version',
+      chats: '/api/chats',
+      analyses: '/api/analyses',
+      settings: '/api/settings',
+      kali: '/api/kali',
+      recon: '/api/recon',
+      bugtrace: '/api/bugtrace',
+    },
+  });
+}));
+
 app.get('/api/version', asyncHandler(async (_req: Request, res: Response) => {
   const update = await checkForUpdate(appVersion);
   sendSuccess(res, {

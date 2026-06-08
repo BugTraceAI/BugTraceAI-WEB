@@ -1,8 +1,11 @@
 // @author: Albert C | @yz9yt | github.com/yz9yt
 // lib/krMcpClient.ts
-// Minimal MCP-over-SSE client for kiterunner-mcp service
+// Minimal MCP-over-SSE client for api-routes-mcp service
 
-const KR_MCP_BASE = import.meta.env.VITE_KR_MCP_URL || '/kr-mcp';
+const KR_MCP_BASE = import.meta.env.VITE_KR_MCP_URL ||
+  (typeof window !== 'undefined'
+    ? `http://${window.location.hostname}:8003`
+    : '/kr-mcp');
 
 interface McpResponse {
   jsonrpc: '2.0';
@@ -32,21 +35,16 @@ export class KrMcpClient {
     this.es = new EventSource(`${KR_MCP_BASE}/sse`);
 
     this.es.addEventListener('endpoint', (ev: MessageEvent) => {
-      // The endpoint event data is the messages path, e.g. "/messages?sessionId=xxx"
-      // or a full URL "http://host:port/messages?sessionId=xxx"
-      let raw: string = (ev.data as string).trim();
+      // endpoint event has the session_id — just extract the search params
+      // and build the URL from KR_MCP_BASE (direct to server, handles CORS)
+      const raw: string = (ev.data as string).trim();
       let search = '';
       if (raw.startsWith('http')) {
-        try {
-          const u = new URL(raw);
-          search = u.search;
-        } catch {
-          search = raw.slice(raw.indexOf('?'));
-        }
+        try { search = new URL(raw).search; } catch { /* ignore */ }
       } else {
-        search = raw.includes('?') ? raw.slice(raw.indexOf('?')) : raw;
+        search = raw.includes('?') ? raw.slice(raw.indexOf('?')) : '';
       }
-      this.messagesEndpoint = `${KR_MCP_BASE}/messages${search}`;
+      this.messagesEndpoint = `${KR_MCP_BASE}/messages/${search}`;
       this._initHandshake();
     });
 
@@ -68,7 +66,7 @@ export class KrMcpClient {
 
     this.es.onerror = () => {
       if (!this.initialized) {
-        this.onErrorCallback('Cannot connect to kiterunner-mcp service');
+        this.onErrorCallback('Cannot connect to api-routes-mcp service');
       }
     };
   }
