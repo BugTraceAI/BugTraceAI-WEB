@@ -164,11 +164,11 @@ export default {
           '100%': { backgroundPosition: '-200% 0' },
         },
         'heartbeat': {
-          '0%, 100%': { transform: 'scale(1)' },
-          '14%': { transform: 'scale(1.05)' },
-          '28%': { transform: 'scale(1)' },
-          '42%': { transform: 'scale(1.05)' },
-          '70%': { transform: 'scale(1)' },
+          '0%, 100%': { transform: 'scale(1)', boxShadow: '0 0 0 rgba(239, 68, 68, 0)' },
+          '14%': { transform: 'scale(1.15)', boxShadow: '0 0 15px rgba(239, 68, 68, 0.6)' },
+          '28%': { transform: 'scale(1)', boxShadow: '0 0 0 rgba(239, 68, 68, 0)' },
+          '42%': { transform: 'scale(1.15)', boxShadow: '0 0 15px rgba(239, 68, 68, 0.6)' },
+          '70%': { transform: 'scale(1)', boxShadow: '0 0 0 rgba(239, 68, 68, 0)' },
         },
       },
 

@@ -64,7 +64,7 @@ export const Header: React.FC<HeaderProps> = ({ onMenuClick, onSettingsClick, on
                             rel="noopener noreferrer"
                             className="ml-4 h-9 px-4 rounded-xl flex items-center justify-center bg-ui-input-bg border border-ui-border text-ui-text-dim hover:text-ui-text-main hover:border-ui-accent/40 hover:bg-ui-accent/5 hover:animate-none active:scale-95 transition-all shadow-sm text-[10px] font-bold uppercase tracking-widest animate-heartbeat"
                             aria-label="Donate"
-                            title="Support BugTraceAI"
+                            title="Please do a small donation to continue this project"
                         >
                             Donate <span className="text-coral ml-1.5 text-xs animate-pulse">♥</span>
                         </a>
