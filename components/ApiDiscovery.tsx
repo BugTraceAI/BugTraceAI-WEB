@@ -177,6 +177,9 @@ export const ApiDiscovery: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'current' | 'history'>('current');
   const [target, setTarget] = useState('');
   const [wordlist, setWordlist] = useState('api');
+  const [speed, setSpeed] = useState('medium');
+  const [workers, setWorkers] = useState(20);
+  const [maxConnections, setMaxConnections] = useState(3);
   const [filterStatus, setFilterStatus] = useState('');
   const [filterMethod, setFilterMethod] = useState('');
   const [filterPath, setFilterPath] = useState('');
@@ -226,9 +229,9 @@ export const ApiDiscovery: React.FC = () => {
   const handleScan = useCallback(() => {
     const t = target.trim();
     if (!t) return;
-    startScan(t, wordlist);
+    startScan(t, wordlist, speed, workers, maxConnections);
     setActiveTab('current');
-  }, [target, wordlist, startScan]);
+  }, [target, wordlist, speed, workers, maxConnections, startScan]);
 
   const handleDownload = useCallback((scanRoutes: KrRoute[], targetHint: string, scanId?: number) => {
     const blob = new Blob([JSON.stringify(scanRoutes, null, 2)], { type: 'application/json' });
@@ -349,6 +352,43 @@ export const ApiDiscovery: React.FC = () => {
                 <option value="large">routes-large (~90 MB)</option>
               </optgroup>
             </select>
+
+            <select
+              value={speed}
+              onChange={(e) => setSpeed(e.target.value)}
+              disabled={isRunning}
+              className="input-premium !py-3 px-4 !rounded-xl !text-sm !bg-ui-bg cursor-pointer"
+            >
+              <option value="slow">Slow</option>
+              <option value="medium">Medium</option>
+              <option value="fast">Fast</option>
+              <option value="manual">Manual</option>
+            </select>
+
+            {speed === 'manual' && (
+              <>
+                <input
+                  type="number"
+                  min="1"
+                  value={workers}
+                  onChange={e => setWorkers(parseInt(e.target.value) || 1)}
+                  placeholder="Workers"
+                  disabled={isRunning}
+                  className="input-premium !py-3 px-3 !rounded-xl !text-sm w-24"
+                  title="Workers"
+                />
+                <input
+                  type="number"
+                  min="1"
+                  value={maxConnections}
+                  onChange={e => setMaxConnections(parseInt(e.target.value) || 1)}
+                  placeholder="Max Conn"
+                  disabled={isRunning}
+                  className="input-premium !py-3 px-3 !rounded-xl !text-sm w-28"
+                  title="Max Connections per Host"
+                />
+              </>
+            )}
 
             {!isRunning ? (
               <button

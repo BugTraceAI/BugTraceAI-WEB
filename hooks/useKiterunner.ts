@@ -34,7 +34,7 @@ export interface KrSavedScan {
 }
 
 export interface UseKiterunnerReturn {
-  startScan: (target: string, wordlist?: string) => void;
+  startScan: (target: string, wordlist?: string, speed?: string, workers?: number, maxConnections?: number) => void;
   stopScan: () => void;
   scanStatus: KrScanStatus;
   progress: number;
@@ -535,7 +535,7 @@ export function useKiterunner(): UseKiterunnerReturn {
     return () => { mounted = false; };
   }, [applySavedSnapshot, fetchResults, hydrateActiveScan, recoverPreviousScan, startPolling]);
 
-  const startScan = useCallback(async (target: string, wordlist = 'api') => {
+  const startScan = useCallback(async (target: string, wordlist = 'api', speed = 'medium', workers = 20, maxConnections = 3) => {
     if (!isReady) {
       setError('api-routes service not available');
       return;
@@ -579,7 +579,7 @@ export function useKiterunner(): UseKiterunnerReturn {
       const response = await fetch(`${KR_API_BASE}/api/scan`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ target, wordlist }),
+        body: JSON.stringify({ target, wordlist, speed, workers, maxConnections }),
       });
 
       if (!response.ok) {
