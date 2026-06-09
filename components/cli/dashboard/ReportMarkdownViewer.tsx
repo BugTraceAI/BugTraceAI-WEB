@@ -58,12 +58,15 @@ export const ReportMarkdownViewer: React.FC<ReportMarkdownViewerProps> = ({ repo
     return localStorage.getItem('hideZipNotice') !== 'true';
   });
   const [dontShowAgain, setDontShowAgain] = useState(false);
+  const [highlightDownload, setHighlightDownload] = useState(false);
 
   const handleContinue = () => {
     if (dontShowAgain) {
       localStorage.setItem('hideZipNotice', 'true');
     }
     setShowZipNotice(false);
+    setHighlightDownload(true);
+    setTimeout(() => setHighlightDownload(false), 2500);
   };
   const CLI_API_URL = import.meta.env.VITE_CLI_API_URL || '/cli-api';
   const WEB_API_URL = import.meta.env.VITE_API_URL || '/api';
@@ -381,7 +384,11 @@ export const ReportMarkdownViewer: React.FC<ReportMarkdownViewerProps> = ({ repo
             <button
               onClick={handleDownloadAll}
               disabled={zipping}
-              className="text-[10px] font-bold text-emerald-400 hover:text-emerald-300 uppercase tracking-widest transition-colors flex items-center gap-2 bg-emerald-500/10 px-3 py-1 rounded-lg border border-emerald-500/20 hover:border-emerald-500/40 disabled:opacity-40 disabled:cursor-not-allowed"
+              className={`text-[10px] font-bold uppercase tracking-widest transition-all flex items-center gap-2 px-3 py-1 rounded-lg border disabled:opacity-40 disabled:cursor-not-allowed ${
+                highlightDownload
+                  ? 'bg-emerald-500/30 text-white border-emerald-400 ring-2 ring-emerald-400/50 shadow-[0_0_15px_rgba(52,211,153,0.5)] animate-pulse'
+                  : 'text-emerald-400 hover:text-emerald-300 bg-emerald-500/10 border-emerald-500/20 hover:border-emerald-500/40'
+              }`}
             >
               {zipping ? (
                 <>
