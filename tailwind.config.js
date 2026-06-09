@@ -119,6 +119,7 @@ export default {
         'orbit': 'orbit 30s linear infinite',
         'scan-progress': 'scanProgress 2s ease-in-out infinite',
         'shimmer': 'shimmer 1.5s ease-in-out infinite',
+        'heartbeat': 'heartbeat 1.5s ease-in-out infinite',
       },
 
       keyframes: {
@@ -161,6 +162,13 @@ export default {
         'shimmer': {
           '0%': { backgroundPosition: '200% 0' },
           '100%': { backgroundPosition: '-200% 0' },
+        },
+        'heartbeat': {
+          '0%, 100%': { transform: 'scale(1)' },
+          '14%': { transform: 'scale(1.05)' },
+          '28%': { transform: 'scale(1)' },
+          '42%': { transform: 'scale(1.05)' },
+          '70%': { transform: 'scale(1)' },
         },
       },
 
