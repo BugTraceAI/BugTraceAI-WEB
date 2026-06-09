@@ -54,6 +54,7 @@ export const ReportMarkdownViewer: React.FC<ReportMarkdownViewerProps> = ({ repo
   const [sort, setSort] = useState<{ col: SortCol | null; dir: SortDir }>({ col: null, dir: 'desc' });
   const [detSort, setDetSort] = useState<{ col: DetSortCol | null; dir: SortDir }>({ col: null, dir: 'desc' });
   const [showMetrics, setShowMetrics] = useState(false);
+  const [showZipNotice, setShowZipNotice] = useState(true);
   const CLI_API_URL = import.meta.env.VITE_CLI_API_URL || '/cli-api';
   const WEB_API_URL = import.meta.env.VITE_API_URL || '/api';
 
@@ -368,6 +369,24 @@ export const ReportMarkdownViewer: React.FC<ReportMarkdownViewerProps> = ({ repo
             </button>
 
             <button
+              onClick={handleDownloadAll}
+              disabled={zipping}
+              className="text-[10px] font-bold text-emerald-400 hover:text-emerald-300 uppercase tracking-widest transition-colors flex items-center gap-2 bg-emerald-500/10 px-3 py-1 rounded-lg border border-emerald-500/20 hover:border-emerald-500/40 disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              {zipping ? (
+                <>
+                  <div className="h-3 w-3 rounded-full border-2 border-emerald-400/30 border-t-emerald-400 animate-spin" />
+                  Zipping...
+                </>
+              ) : (
+                <>
+                  <ArrowDownTrayIcon className="h-3 w-3" />
+                  Download ZIP
+                </>
+              )}
+            </button>
+
+            <button
               onClick={handleSendToChat}
               disabled={sendingToChat || (!markdown && findings.length === 0)}
               className="text-[10px] font-bold text-emerald-400 hover:text-emerald-300 uppercase tracking-widest transition-colors flex items-center gap-2 bg-emerald-500/10 px-3 py-1 rounded-lg border border-emerald-500/20 hover:border-emerald-500/40 disabled:opacity-40 disabled:cursor-not-allowed"
@@ -517,24 +536,6 @@ export const ReportMarkdownViewer: React.FC<ReportMarkdownViewerProps> = ({ repo
                     <span className="text-purple-gray font-mono text-[10px]">.{icon.toLowerCase()}</span>
                   </button>
                 ))}
-                <button
-                  onClick={handleDownloadAll}
-                  disabled={zipping}
-                  className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-bold uppercase tracking-wider transition-all flex items-center gap-2 disabled:opacity-50 hover:scale-105 ml-auto"
-                  title="Download all files as ZIP"
-                >
-                  {zipping ? (
-                    <>
-                      <div className="h-3.5 w-3.5 rounded-full border-2 border-white/30 border-t-white animate-spin" />
-                      Zipping...
-                    </>
-                  ) : (
-                    <>
-                      <ArrowDownTrayIcon className="h-4 w-4" />
-                      Download All (.zip)
-                    </>
-                  )}
-                </button>
               </div>
             </div>
           )}
@@ -542,6 +543,43 @@ export const ReportMarkdownViewer: React.FC<ReportMarkdownViewerProps> = ({ repo
       )
       }
 
+
+      {/* ZIP NOTICE MODAL */}
+      {showZipNotice && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+          <div className="bg-[#120F1A] border border-white/10 rounded-2xl shadow-2xl max-w-md w-full p-6 animate-in fade-in zoom-in duration-300">
+            <div className="flex items-start gap-4">
+              <div className="flex-shrink-0 w-10 h-10 rounded-full bg-emerald-500/20 flex items-center justify-center">
+                <ArrowDownTrayIcon className="w-5 h-5 text-emerald-400" />
+              </div>
+              <div className="flex-1">
+                <h3 className="text-lg font-bold text-white mb-2">Visual Summary</h3>
+                <p className="text-sm text-purple-gray mb-6">
+                  This dashboard provides a high-level visual summary of the findings. For the complete and detailed information, please download the full report archive (ZIP).
+                </p>
+                <div className="flex justify-end gap-3">
+                  <button
+                    onClick={() => setShowZipNotice(false)}
+                    className="px-4 py-2 text-sm font-semibold text-muted hover:text-white transition-colors"
+                  >
+                    Continue to Dashboard
+                  </button>
+                  <button
+                    onClick={() => {
+                      setShowZipNotice(false);
+                      handleDownloadAll();
+                    }}
+                    className="px-4 py-2 text-sm font-bold bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg transition-colors flex items-center gap-2"
+                  >
+                    <ArrowDownTrayIcon className="w-4 h-4" />
+                    Download ZIP
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ACTIVE FILTER BANNER */}
       {
