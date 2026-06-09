@@ -546,35 +546,33 @@ export const ReportMarkdownViewer: React.FC<ReportMarkdownViewerProps> = ({ repo
 
       {/* ZIP NOTICE MODAL */}
       {showZipNotice && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-          <div className="bg-[#120F1A] border border-white/10 rounded-2xl shadow-2xl max-w-md w-full p-6 animate-in fade-in zoom-in duration-300">
-            <div className="flex items-start gap-4">
-              <div className="flex-shrink-0 w-10 h-10 rounded-full bg-emerald-500/20 flex items-center justify-center">
-                <ArrowDownTrayIcon className="w-5 h-5 text-emerald-400" />
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-md p-4">
+          <div className="dashboard-card border border-white/10 shadow-[0_0_50px_-12px_rgba(0,0,0,0.5)] max-w-md w-full p-8 animate-in fade-in zoom-in-95 duration-300">
+            <div className="flex flex-col items-center text-center gap-4">
+              <div className="w-16 h-16 rounded-full bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center mb-2">
+                <ArrowDownTrayIcon className="w-8 h-8 text-emerald-400" />
               </div>
-              <div className="flex-1">
-                <h3 className="text-lg font-bold text-white mb-2">Visual Summary</h3>
-                <p className="text-sm text-purple-gray mb-6">
-                  This dashboard provides a high-level visual summary of the findings. For the complete and detailed information, please download the full report archive (ZIP).
-                </p>
-                <div className="flex justify-end gap-3">
-                  <button
-                    onClick={() => setShowZipNotice(false)}
-                    className="px-4 py-2 text-sm font-semibold text-muted hover:text-white transition-colors"
-                  >
-                    Continue to Dashboard
-                  </button>
-                  <button
-                    onClick={() => {
-                      setShowZipNotice(false);
-                      handleDownloadAll();
-                    }}
-                    className="px-4 py-2 text-sm font-bold bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg transition-colors flex items-center gap-2"
-                  >
-                    <ArrowDownTrayIcon className="w-4 h-4" />
-                    Download ZIP
-                  </button>
-                </div>
+              <h3 className="text-xl font-black text-white tracking-tight">Visual Summary</h3>
+              <p className="text-sm text-purple-gray leading-relaxed mb-4">
+                This dashboard provides a high-level visual summary of the findings. For the complete and detailed information, including exploits and raw data, please download the full report archive (ZIP).
+              </p>
+              <div className="flex flex-col sm:flex-row w-full justify-center gap-3 mt-2">
+                <button
+                  onClick={() => setShowZipNotice(false)}
+                  className="px-6 py-2.5 text-xs font-bold uppercase tracking-widest text-muted hover:text-white transition-colors border border-transparent hover:border-white/10 rounded-xl"
+                >
+                  Continue to Dashboard
+                </button>
+                <button
+                  onClick={() => {
+                    setShowZipNotice(false);
+                    handleDownloadAll();
+                  }}
+                  className="px-6 py-2.5 text-xs font-bold uppercase tracking-widest bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-400 rounded-xl transition-all flex items-center justify-center gap-2 border border-emerald-500/30 hover:shadow-[0_0_20px_-5px_rgba(52,211,153,0.4)] whitespace-nowrap"
+                >
+                  <ArrowDownTrayIcon className="w-4 h-4" />
+                  Download ZIP
+                </button>
               </div>
             </div>
           </div>
