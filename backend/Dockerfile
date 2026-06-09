@@ -20,7 +20,7 @@ RUN npm ci
 
 # Copy Prisma schema and generate client
 COPY backend/prisma ./prisma
-RUN npx prisma generate
+RUN DATABASE_URL="postgresql://dummy:dummy@localhost:5432/dummy" npx prisma generate
 
 # Copy source files and build
 COPY backend/src ./src
@@ -49,7 +49,7 @@ COPY backend/prisma ./prisma
 COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
 
 # Regenerate Prisma client in production stage (ensures correct binary)
-RUN npx prisma generate
+RUN DATABASE_URL="postgresql://dummy:dummy@localhost:5432/dummy" npx prisma generate
 
 # Copy built application
 COPY --from=builder /app/dist ./dist
