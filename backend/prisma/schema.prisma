@@ -114,3 +114,30 @@ model AppSettings {
 
   @@map("app_settings")
 }
+
+// ============================================================================
+// API DISCOVERY SCANS
+// ============================================================================
+
+/// Stores completed Kiterunner / API discovery scan results
+/// Replaces localStorage (bugtraceai.api-discovery.saved-scans.v1)
+model ApiDiscoveryScan {
+  id          String   @id @default(uuid()) @db.Uuid
+  scanId      Int      @map("scan_id")                 // Kiterunner scan_id
+  target      String   @db.Text                         // Target URL
+  wordlist    String   @db.VarChar(100)                 // Wordlist name used
+  status      String   @db.VarChar(20)                  // completed | failed | stopped
+  routesFound Int      @default(0) @map("routes_found")
+  routes      Json                                       // KrRoute[] array
+  urlList     Json     @map("url_list")                 // string[] of discovered URLs
+  startedAt   DateTime? @map("started_at")
+  finishedAt  DateTime? @map("finished_at")
+  warning     String?  @db.VarChar(100)
+  warningDetail String? @map("warning_detail") @db.Text
+  error       String?  @db.Text
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  @@index([target], name: "idx_apidiscovery_target")
+  @@index([createdAt], name: "idx_apidiscovery_created")
+  @@map("api_discovery_scans")
+}

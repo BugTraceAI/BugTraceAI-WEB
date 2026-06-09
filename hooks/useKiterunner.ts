@@ -85,9 +85,10 @@ interface PersistedCurrentScan {
 }
 
 const KR_API_BASE = (import.meta.env.VITE_KR_API_URL as string | undefined) ?? '/kr-api';
+const BACKEND_API_BASE = (import.meta.env.VITE_API_URL as string | undefined) ?? '/api';
 const SAVED_SCANS_KEY = 'bugtraceai.api-discovery.saved-scans.v1';
 const CURRENT_SCAN_KEY = 'bugtraceai.api-discovery.current-scan.v1';
-const MAX_SAVED_SCANS = 25;
+const MAX_SAVED_SCANS = 50;  // increased from 25 — backend has no hard limit
 
 function hasBrowserStorage() {
   return typeof window !== 'undefined' && typeof window.localStorage !== 'undefined';
@@ -141,6 +142,81 @@ function toSavedScanStatus(status: string): KrSavedScanStatus {
   if (status === 'failed') return 'failed';
   if (status === 'stopped') return 'stopped';
   return 'completed';
+}
+
+// ── Backend persistence helpers (with localStorage fallback) ─────────────────
+
+async function backendSaveScan(scan: KrSavedScan): Promise<boolean> {
+  try {
+    const res = await fetch(`${BACKEND_API_BASE}/api-discovery/scans`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        scan_id:       scan.scanId,
+        target:        scan.target,
+        wordlist:      scan.wordlist,
+        status:        scan.status,
+        routes_found:  scan.routesFound,
+        routes:        scan.routes,
+        url_list:      scan.urlList,
+        started_at:    scan.startedAt,
+        finished_at:   scan.finishedAt,
+        warning:       scan.warning,
+        warning_detail: scan.warningDetail,
+        error:         scan.error,
+      }),
+    });
+    return res.ok;
+  } catch {
+    return false;
+  }
+}
+
+function backendToKrSavedScan(d: Record<string, unknown>): KrSavedScan {
+  return {
+    id:            d.id as string,
+    scanId:        d.scanId as number,
+    target:        d.target as string,
+    wordlist:      d.wordlist as string,
+    status:        d.status as KrSavedScanStatus,
+    startedAt:     (d.startedAt as string | null) ?? null,
+    finishedAt:    (d.finishedAt as string | null) ?? null,
+    routesFound:   d.routesFound as number,
+    routes:        (d.routes as KrRoute[]) ?? [],
+    urlList:       (d.urlList as string[]) ?? [],
+    warning:       (d.warning as string | null) ?? null,
+    warningDetail: (d.warningDetail as string | null) ?? null,
+    error:         (d.error as string | null) ?? null,
+  };
+}
+
+async function backendLoadScans(): Promise<KrSavedScan[] | null> {
+  try {
+    const res = await fetch(`${BACKEND_API_BASE}/api-discovery/scans?limit=50`);
+    if (!res.ok) return null;
+    const data = await res.json() as { items: Record<string, unknown>[] };
+    return (data.items ?? []).map(backendToKrSavedScan);
+  } catch {
+    return null;
+  }
+}
+
+async function backendDeleteScan(id: string): Promise<boolean> {
+  try {
+    const res = await fetch(`${BACKEND_API_BASE}/api-discovery/scans/${id}`, { method: 'DELETE' });
+    return res.ok;
+  } catch {
+    return false;
+  }
+}
+
+async function backendClearScans(): Promise<boolean> {
+  try {
+    const res = await fetch(`${BACKEND_API_BASE}/api-discovery/scans`, { method: 'DELETE' });
+    return res.ok;
+  } catch {
+    return false;
+  }
 }
 
 export function useKiterunner(): UseKiterunnerReturn {
@@ -210,6 +286,8 @@ export function useKiterunner(): UseKiterunnerReturn {
   }, [clearActiveTracking, stopPolling]);
 
   const saveScanHistory = useCallback((scan: KrSavedScan) => {
+    // Write to backend (fire and forget) + localStorage fallback
+    backendSaveScan(scan);
     setScanHistory(prev => {
       const next = [scan, ...prev.filter(item => item.id !== scan.id)].slice(0, MAX_SAVED_SCANS);
       writeSavedScans(next);
@@ -218,6 +296,7 @@ export function useKiterunner(): UseKiterunnerReturn {
   }, []);
 
   const removeSavedScan = useCallback((scanId: string) => {
+    backendDeleteScan(scanId);
     setScanHistory(prev => {
       const next = prev.filter(scan => scan.id !== scanId);
       writeSavedScans(next);
@@ -226,6 +305,7 @@ export function useKiterunner(): UseKiterunnerReturn {
   }, []);
 
   const clearSavedScans = useCallback(() => {
+    backendClearScans();
     setScanHistory([]);
     writeSavedScans([]);
   }, []);
@@ -426,6 +506,15 @@ export function useKiterunner(): UseKiterunnerReturn {
 
         const recovered = await recoverPreviousScan();
         if (recovered && mounted) return;
+
+        // Load history from backend (replaces localStorage on first load)
+        const backendScans = await backendLoadScans();
+        if (backendScans && backendScans.length > 0 && mounted) {
+          setScanHistory(backendScans);
+          writeSavedScans(backendScans); // sync to localStorage as offline cache
+          applySavedSnapshot(backendScans[0]);
+          return;
+        }
 
         if (mounted) {
           if (scanHistoryRef.current.length > 0) {
