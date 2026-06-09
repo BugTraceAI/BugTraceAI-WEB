@@ -262,6 +262,13 @@ echo ""
 read -p "CLI API URL (default: /cli-api): " cli_api_url
 cli_api_url=${cli_api_url:-/cli-api}
 
+# Detect SELinux
+SELINUX_SUFFIX=""
+if command -v getenforce &> /dev/null && [ "$(getenforce)" != "Disabled" ]; then
+    echo -e "${YELLOW}ℹ SELinux detected. Configuring Docker mounts with :Z label${NC}"
+    SELINUX_SUFFIX=":Z"
+fi
+
 # Create or update .env file
 section_header "Step 6: Creating Configuration File"
 cat > .env << EOF
@@ -276,6 +283,9 @@ POSTGRES_PASSWORD=$db_password
 
 # CLI Backend Configuration
 VITE_CLI_API_URL=$cli_api_url
+
+# SELinux Configuration
+SELINUX_SUFFIX=$SELINUX_SUFFIX
 EOF
 
 echo -e "${GREEN}✓ Configuration file (.env) created${NC}"

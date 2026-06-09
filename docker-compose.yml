@@ -9,7 +9,7 @@ services:
       POSTGRES_DB: ${POSTGRES_DB:-bugtraceai_web}
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./backend/init-scripts:/docker-entrypoint-initdb.d
+      - ./backend/init-scripts:/docker-entrypoint-initdb.d${SELINUX_SUFFIX:-}
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-bugtraceai}"]
       interval: 10s
