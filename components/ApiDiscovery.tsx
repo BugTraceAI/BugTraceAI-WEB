@@ -1,11 +1,90 @@
 // @author: Albert C | @yz9yt | github.com/yz9yt
 // components/ApiDiscovery.tsx
-// version 0.1 Beta
-import React, { useState, useCallback, useEffect } from 'react';
+// version 0.2 — improved results table, tags, filters, sort, history breakdown
+import React, { useState, useCallback, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ToolLayout } from './ToolLayout.tsx';
 import { ScanIcon, ApiRouteIcon, StopIcon, ArrowDownTrayIcon, HistoryIcon, TrashIcon, ArrowPathIcon } from './Icons.tsx';
 import { useKiterunner, KrRoute, KrSavedScan, KrScanStatus } from '../hooks/useKiterunner.ts';
+
+// ── Route tag detection ───────────────────────────────────────────────────────
+type RouteTag = 'AUTH' | 'ADMIN' | 'FILE' | 'INTERNAL' | 'DATA' | 'INTERESTING';
+
+const TAG_STYLES: Record<RouteTag, string> = {
+  AUTH:        'bg-blue-900/60 text-blue-300 border-blue-700/50',
+  ADMIN:       'bg-red-900/60 text-red-300 border-red-700/50',
+  FILE:        'bg-yellow-900/60 text-yellow-300 border-yellow-700/50',
+  INTERNAL:    'bg-purple-900/60 text-purple-300 border-purple-700/50',
+  DATA:        'bg-emerald-900/60 text-emerald-300 border-emerald-700/50',
+  INTERESTING: 'bg-coral/20 text-coral border-coral/40',
+};
+
+function getRouteTags(route: KrRoute): RouteTag[] {
+  const tags: RouteTag[] = [];
+  const path = route.url.toLowerCase();
+  const method = route.method.toUpperCase();
+
+  if (/\/(login|logout|auth|token|oauth|session|password|register|signup|signin|2fa|mfa|totp)/.test(path))
+    tags.push('AUTH');
+  if (/\/(admin|manage|dashboard|console|panel|staff|superuser|root|system|internal)/.test(path))
+    tags.push('ADMIN');
+  if (/\/(upload|file|files|attachment|import|export|download|media|static|asset)/.test(path))
+    tags.push('FILE');
+  if (/\/(debug|test|dev|staging|internal|health|metrics|status|ping|actuator|swagger|openapi|docs)/.test(path))
+    tags.push('INTERNAL');
+  if (/\/(api|v\d|graphql|rest|data|query)/.test(path) && ['POST','PUT','PATCH','DELETE'].includes(method))
+    tags.push('DATA');
+  // Interesting: writable methods with success codes, or any 500
+  if (route.status >= 500) tags.push('INTERESTING');
+  if (['POST','PUT','PATCH','DELETE'].includes(method) && route.status >= 200 && route.status < 300)
+    tags.push('INTERESTING');
+  return [...new Set(tags)];
+}
+
+function isInterestingRow(route: KrRoute): boolean {
+  const tags = getRouteTags(route);
+  return tags.includes('INTERESTING') || tags.includes('ADMIN') || tags.includes('AUTH');
+}
+
+function formatBytes(n?: number): string {
+  if (n == null) return '—';
+  if (n < 1024) return `${n}B`;
+  if (n < 1024 * 1024) return `${(n / 1024).toFixed(1)}KB`;
+  return `${(n / 1024 / 1024).toFixed(1)}MB`;
+}
+
+// ── Sort types ────────────────────────────────────────────────────────────────
+type SortKey = 'method' | 'status' | 'url' | 'chars' | 'words';
+type SortDir = 'asc' | 'desc';
+
+function sortRoutes(routes: KrRoute[], key: SortKey, dir: SortDir): KrRoute[] {
+  return [...routes].sort((a, b) => {
+    let av: string | number = key === 'url' ? a.url : key === 'method' ? a.method : (a[key] ?? 0);
+    let bv: string | number = key === 'url' ? b.url : key === 'method' ? b.method : (b[key] ?? 0);
+    if (typeof av === 'string') av = av.toLowerCase();
+    if (typeof bv === 'string') bv = bv.toLowerCase();
+    if (av < bv) return dir === 'asc' ? -1 : 1;
+    if (av > bv) return dir === 'asc' ? 1 : -1;
+    return 0;
+  });
+}
+
+// ── History breakdown ─────────────────────────────────────────────────────────
+function computeBreakdown(routes: KrRoute[]) {
+  const methods: Record<string, number> = {};
+  const statusGroups: Record<string, number> = { '2xx': 0, '3xx': 0, '4xx': 0, '5xx': 0 };
+  const tagCounts: Partial<Record<RouteTag, number>> = {};
+
+  for (const r of routes) {
+    methods[r.method] = (methods[r.method] ?? 0) + 1;
+    const g = `${Math.floor(r.status / 100)}xx`;
+    if (g in statusGroups) statusGroups[g]++;
+    for (const tag of getRouteTags(r)) {
+      tagCounts[tag] = (tagCounts[tag] ?? 0) + 1;
+    }
+  }
+  return { methods, statusGroups, tagCounts };
+}
 
 // ── Method badge colours ──────────────────────────────────────────────────────
 const METHOD_COLORS: Record<string, string> = {
@@ -99,6 +178,11 @@ export const ApiDiscovery: React.FC = () => {
   const [target, setTarget] = useState('');
   const [wordlist, setWordlist] = useState('api');
   const [filterStatus, setFilterStatus] = useState('');
+  const [filterMethod, setFilterMethod] = useState('');
+  const [filterPath, setFilterPath] = useState('');
+  const [filterTag, setFilterTag] = useState<RouteTag | ''>('');
+  const [sortKey, setSortKey] = useState<SortKey>('status');
+  const [sortDir, setSortDir] = useState<SortDir>('asc');
 
   const {
     startScan,
@@ -171,10 +255,26 @@ export const ApiDiscovery: React.FC = () => {
     setActiveTab('current');
   }, [showSavedScan]);
 
-  // Filter routes by status prefix
-  const filteredRoutes = filterStatus
-    ? routes.filter((r) => String(r.status).startsWith(filterStatus))
-    : routes;
+  // Filter + sort routes
+  const filteredRoutes = useMemo(() => {
+    let result = routes;
+    if (filterStatus) result = result.filter(r => String(r.status).startsWith(filterStatus));
+    if (filterMethod) result = result.filter(r => r.method.toUpperCase() === filterMethod.toUpperCase());
+    if (filterPath) result = result.filter(r => r.url.toLowerCase().includes(filterPath.toLowerCase()));
+    if (filterTag) result = result.filter(r => getRouteTags(r).includes(filterTag as RouteTag));
+    return sortRoutes(result, sortKey, sortDir);
+  }, [routes, filterStatus, filterMethod, filterPath, filterTag, sortKey, sortDir]);
+
+  const handleSort = (key: SortKey) => {
+    if (sortKey === key) setSortDir(d => d === 'asc' ? 'desc' : 'asc');
+    else { setSortKey(key); setSortDir('asc'); }
+  };
+
+  const SortIcon = ({ k }: { k: SortKey }) => (
+    <span className="ml-1 opacity-40 text-[9px]">
+      {sortKey === k ? (sortDir === 'asc' ? '▲' : '▼') : '⇅'}
+    </span>
+  );
 
   return (
     <ToolLayout
@@ -324,79 +424,153 @@ export const ApiDiscovery: React.FC = () => {
           {/* ── Results ─────────────────────────────────────────────────────── */}
           {showCurrentResults && (
             <div className="mt-6 flex flex-col gap-4">
-              <div className="flex flex-wrap items-center gap-3">
+              {/* ── Toolbar ── */}
+              <div className="flex flex-wrap items-center gap-2">
                 <span className="text-sm text-purple-gray">
-                  <span className="text-white font-semibold">{routes.length}</span>{' '}
+                  <span className="text-white font-semibold">{filteredRoutes.length}</span>
+                  {filteredRoutes.length !== routes.length && (
+                    <span className="text-purple-gray"> / {routes.length}</span>
+                  )}{' '}
                   {isRunning ? 'routes discovered so far' : 'routes discovered'}
                 </span>
                 <div className="flex-1" />
+
+                {/* Method filter */}
+                <select
+                  value={filterMethod}
+                  onChange={e => setFilterMethod(e.target.value)}
+                  className="input-premium !py-1.5 px-3 !rounded-lg !text-xs !bg-ui-bg cursor-pointer"
+                >
+                  <option value="">All methods</option>
+                  {['GET','POST','PUT','PATCH','DELETE','HEAD','OPTIONS'].map(m => (
+                    <option key={m} value={m}>{m}</option>
+                  ))}
+                </select>
+
+                {/* Status filter */}
                 <input
                   type="text"
                   value={filterStatus}
-                  onChange={(e) => setFilterStatus(e.target.value)}
-                  placeholder="Filter by status (e.g. 2)"
-                  className="input-premium !py-2 px-4 !rounded-lg !text-xs w-48"
+                  onChange={e => setFilterStatus(e.target.value)}
+                  placeholder="Status (e.g. 2)"
+                  className="input-premium !py-1.5 px-3 !rounded-lg !text-xs w-32"
                 />
+
+                {/* Path search */}
+                <input
+                  type="text"
+                  value={filterPath}
+                  onChange={e => setFilterPath(e.target.value)}
+                  placeholder="Search path…"
+                  className="input-premium !py-1.5 px-3 !rounded-lg !text-xs w-40"
+                />
+
+                {/* Tag filter */}
+                <select
+                  value={filterTag}
+                  onChange={e => setFilterTag(e.target.value as RouteTag | '')}
+                  className="input-premium !py-1.5 px-3 !rounded-lg !text-xs !bg-ui-bg cursor-pointer"
+                >
+                  <option value="">All tags</option>
+                  {(['AUTH','ADMIN','FILE','INTERNAL','DATA','INTERESTING'] as RouteTag[]).map(t => (
+                    <option key={t} value={t}>{t}</option>
+                  ))}
+                </select>
+
                 <button
                   onClick={() => handleDownload(routes, activeTarget ?? target, activeScanId ?? undefined)}
-                  className="btn-mini !py-2 px-5 !rounded-lg !text-xs flex items-center gap-1.5 border border-white/10 hover:border-coral/40 transition-colors"
+                  className="btn-mini !py-1.5 px-4 !rounded-lg !text-xs flex items-center gap-1.5 border border-white/10 hover:border-coral/40 transition-colors"
                 >
                   <ArrowDownTrayIcon className="h-3.5 w-3.5" />
-                  Download JSON
+                  JSON
                 </button>
                 <button
                   onClick={() => handleLoadIntoScan(urlList, activeTarget ?? target.trim())}
                   disabled={urlList.length === 0}
-                  className="btn-mini btn-mini-primary !py-2 px-5 !rounded-lg !text-xs flex items-center gap-1.5"
+                  className="btn-mini btn-mini-primary !py-1.5 px-4 !rounded-lg !text-xs flex items-center gap-1.5"
                 >
                   <ScanIcon className="h-3.5 w-3.5" />
-                  Load into Scan
+                  Load into Scan {urlList.length > 0 && <span className="opacity-70">({urlList.length})</span>}
                 </button>
               </div>
 
+              {/* ── Table ── */}
               <div className="overflow-x-auto rounded-xl border border-white/5">
                 <table className="w-full text-xs text-left">
                   <thead>
                     <tr className="border-b border-white/5 bg-white/3">
-                      <th className="px-4 py-2.5 text-purple-gray font-medium w-20">Method</th>
-                      <th className="px-4 py-2.5 text-purple-gray font-medium w-16">Status</th>
-                      <th className="px-4 py-2.5 text-purple-gray font-medium">URL</th>
-                      <th className="px-4 py-2.5 text-purple-gray font-medium w-20 text-right">Words</th>
-                      <th className="px-4 py-2.5 text-purple-gray font-medium w-20 text-right">Lines</th>
+                      <th className="px-3 py-2.5 text-purple-gray font-medium w-20 cursor-pointer select-none hover:text-white/70" onClick={() => handleSort('method')}>
+                        Method<SortIcon k="method" />
+                      </th>
+                      <th className="px-3 py-2.5 text-purple-gray font-medium w-14 cursor-pointer select-none hover:text-white/70" onClick={() => handleSort('status')}>
+                        Status<SortIcon k="status" />
+                      </th>
+                      <th className="px-3 py-2.5 text-purple-gray font-medium cursor-pointer select-none hover:text-white/70" onClick={() => handleSort('url')}>
+                        URL<SortIcon k="url" />
+                      </th>
+                      <th className="px-3 py-2.5 text-purple-gray font-medium">Tags</th>
+                      <th className="px-3 py-2.5 text-purple-gray font-medium w-16 text-right cursor-pointer select-none hover:text-white/70" onClick={() => handleSort('chars')}>
+                        Size<SortIcon k="chars" />
+                      </th>
+                      <th className="px-3 py-2.5 text-purple-gray font-medium w-14 text-right cursor-pointer select-none hover:text-white/70" onClick={() => handleSort('words')}>
+                        Words<SortIcon k="words" />
+                      </th>
                     </tr>
                   </thead>
                   <tbody>
-                    {filteredRoutes.map((route: KrRoute, i: number) => (
-                      <tr
-                        key={`${route.method}-${route.url}-${i}`}
-                        className="border-b border-white/3 hover:bg-white/3 transition-colors"
-                      >
-                        <td className="px-4 py-2">
-                          <span className={`inline-block px-2 py-0.5 rounded text-[10px] font-bold border ${methodBadge(route.method)}`}>
-                            {route.method}
-                          </span>
-                        </td>
-                        <td className={`px-4 py-2 font-mono font-semibold ${statusColor(route.status)}`}>
-                          {route.status}
-                        </td>
-                        <td className="px-4 py-2 font-mono text-white/80 break-all">
-                          <a
-                            href={route.url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="hover:text-coral transition-colors"
-                          >
-                            {route.url}
-                          </a>
-                        </td>
-                        <td className="px-4 py-2 text-right text-white/50">{route.words}</td>
-                        <td className="px-4 py-2 text-right text-white/50">{route.lines}</td>
-                      </tr>
-                    ))}
+                    {filteredRoutes.map((route: KrRoute, i: number) => {
+                      const tags = getRouteTags(route);
+                      const highlight = isInterestingRow(route);
+                      return (
+                        <tr
+                          key={`${route.method}-${route.url}-${i}`}
+                          className={`border-b border-white/3 transition-colors ${
+                            highlight ? 'bg-coral/5 hover:bg-coral/10' : 'hover:bg-white/3'
+                          }`}
+                        >
+                          <td className="px-3 py-2">
+                            <span className={`inline-block px-2 py-0.5 rounded text-[10px] font-bold border ${methodBadge(route.method)}`}>
+                              {route.method}
+                            </span>
+                          </td>
+                          <td className={`px-3 py-2 font-mono font-semibold ${statusColor(route.status)}`}>
+                            {route.status}
+                          </td>
+                          <td className="px-3 py-2 font-mono text-white/80 break-all">
+                            <a
+                              href={route.url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="hover:text-coral transition-colors"
+                            >
+                              {route.url}
+                            </a>
+                          </td>
+                          <td className="px-3 py-2">
+                            <div className="flex flex-wrap gap-1">
+                              {tags.map(tag => (
+                                <span
+                                  key={tag}
+                                  className={`inline-block px-1.5 py-0.5 rounded text-[9px] font-bold border cursor-pointer ${TAG_STYLES[tag]}`}
+                                  onClick={() => setFilterTag(tag === filterTag ? '' : tag)}
+                                  title={`Filter by ${tag}`}
+                                >
+                                  {tag}
+                                </span>
+                              ))}
+                            </div>
+                          </td>
+                          <td className="px-3 py-2 text-right text-white/50 font-mono text-[10px]">
+                            {formatBytes(route.chars)}
+                          </td>
+                          <td className="px-3 py-2 text-right text-white/50">{route.words}</td>
+                        </tr>
+                      );
+                    })}
                     {filteredRoutes.length === 0 && (
                       <tr>
-                        <td colSpan={5} className="px-4 py-8 text-center text-purple-gray text-xs">
-                          No routes match the current filter.
+                        <td colSpan={6} className="px-4 py-8 text-center text-purple-gray text-xs">
+                          No routes match the current filters.
                         </td>
                       </tr>
                     )}
@@ -419,64 +593,111 @@ export const ApiDiscovery: React.FC = () => {
               No saved scans yet. Completed, stopped, and recovered scans will appear here.
             </div>
           ) : (
-            scanHistory.map((scan) => (
-              <div key={scan.id} className="rounded-2xl border border-white/5 bg-white/[0.02] p-4 sm:p-5">
-                <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
-                  <div className="min-w-0">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-bold border ${SAVED_STATUS_STYLES[scan.status]}`}>
-                        {scan.status.toUpperCase()}
-                      </span>
-                      <span className="text-[11px] px-2 py-1 rounded-full bg-white/5 text-white/70 border border-white/5">
-                        {labelForWordlist(scan.wordlist)}
-                      </span>
-                      <span className="text-[11px] text-white/40">Scan #{scan.scanId}</span>
-                    </div>
-                    <div className="mt-2 font-mono text-sm text-white break-all">{scan.target}</div>
-                    <div className="mt-2 flex flex-wrap gap-x-5 gap-y-1 text-xs text-purple-gray">
-                      <span>Started: {formatTimestamp(scan.startedAt)}</span>
-                      <span>Finished: {formatTimestamp(scan.finishedAt)}</span>
-                      <span>{scan.routesFound} routes saved</span>
-                    </div>
-                    {scan.error && (
-                      <div className="mt-2 text-xs text-red-300 font-mono">{scan.error}</div>
-                    )}
-                  </div>
+            scanHistory.map((scan) => {
+              const bd = computeBreakdown(scan.routes);
+              const interestingCount = scan.routes.filter(isInterestingRow).length;
+              return (
+                <div key={scan.id} className="rounded-2xl border border-white/5 bg-white/[0.02] p-4 sm:p-5">
+                  <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                    <div className="min-w-0 flex-1">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-bold border ${SAVED_STATUS_STYLES[scan.status]}`}>
+                          {scan.status.toUpperCase()}
+                        </span>
+                        <span className="text-[11px] px-2 py-1 rounded-full bg-white/5 text-white/70 border border-white/5">
+                          {labelForWordlist(scan.wordlist)}
+                        </span>
+                        <span className="text-[11px] text-white/40">Scan #{scan.scanId}</span>
+                        {interestingCount > 0 && (
+                          <span className="text-[10px] px-2 py-0.5 rounded-full bg-coral/20 text-coral border border-coral/40 font-bold">
+                            ⚡ {interestingCount} interesting
+                          </span>
+                        )}
+                      </div>
+                      <div className="mt-2 font-mono text-sm text-white break-all">{scan.target}</div>
+                      <div className="mt-2 flex flex-wrap gap-x-5 gap-y-1 text-xs text-purple-gray">
+                        <span>Started: {formatTimestamp(scan.startedAt)}</span>
+                        <span>Finished: {formatTimestamp(scan.finishedAt)}</span>
+                        <span>{scan.routesFound} routes saved</span>
+                      </div>
 
-                  <div className="flex flex-wrap gap-2 lg:justify-end">
-                    <button
-                      onClick={() => handleOpenSavedScan(scan)}
-                      className="btn-mini !py-2 px-4 !rounded-lg !text-xs flex items-center gap-1.5 border border-white/10 hover:border-ui-accent/30 transition-colors"
-                    >
-                      <ArrowPathIcon className="h-3.5 w-3.5" />
-                      Open
-                    </button>
-                    <button
-                      onClick={() => handleDownload(scan.routes, scan.target, scan.scanId)}
-                      className="btn-mini !py-2 px-4 !rounded-lg !text-xs flex items-center gap-1.5 border border-white/10 hover:border-coral/40 transition-colors"
-                    >
-                      <ArrowDownTrayIcon className="h-3.5 w-3.5" />
-                      Download
-                    </button>
-                    <button
-                      onClick={() => handleLoadIntoScan(scan.urlList, scan.target)}
-                      disabled={scan.urlList.length === 0}
-                      className="btn-mini btn-mini-primary !py-2 px-4 !rounded-lg !text-xs flex items-center gap-1.5"
-                    >
-                      <ScanIcon className="h-3.5 w-3.5" />
-                      Load into Scan
-                    </button>
-                    <button
-                      onClick={() => removeSavedScan(scan.id)}
-                      className="btn-mini !py-2 px-4 !rounded-lg !text-xs flex items-center gap-1.5 border border-red-700/40 text-red-300 hover:bg-red-900/30 transition-colors"
-                    >
-                      <TrashIcon className="h-3.5 w-3.5" />
-                      Delete
-                    </button>
+                      {/* ── Breakdown ── */}
+                      {scan.routes.length > 0 && (
+                        <div className="mt-3 flex flex-wrap gap-3 text-[10px]">
+                          {/* Methods */}
+                          <div className="flex items-center gap-1.5">
+                            {Object.entries(bd.methods).map(([m, c]) => (
+                              <span key={m} className={`px-1.5 py-0.5 rounded border font-bold ${methodBadge(m)}`}>
+                                {m}:{c}
+                              </span>
+                            ))}
+                          </div>
+                          {/* Status groups */}
+                          <div className="flex items-center gap-1.5">
+                            {Object.entries(bd.statusGroups)
+                              .filter(([, c]) => c > 0)
+                              .map(([g, c]) => (
+                                <span key={g} className={`px-1.5 py-0.5 rounded border font-mono font-bold ${
+                                  g === '2xx' ? 'bg-emerald-900/50 text-emerald-300 border-emerald-700/50' :
+                                  g === '3xx' ? 'bg-yellow-900/50 text-yellow-300 border-yellow-700/50' :
+                                  g === '4xx' ? 'bg-orange-900/50 text-orange-300 border-orange-700/50' :
+                                  'bg-red-900/50 text-red-300 border-red-700/50'
+                                }`}>
+                                  {g}:{c}
+                                </span>
+                              ))}
+                          </div>
+                          {/* Tags */}
+                          {Object.entries(bd.tagCounts)
+                            .filter(([, c]) => (c ?? 0) > 0)
+                            .map(([tag, c]) => (
+                              <span key={tag} className={`px-1.5 py-0.5 rounded border font-bold ${TAG_STYLES[tag as RouteTag]}`}>
+                                {tag}:{c}
+                              </span>
+                            ))}
+                        </div>
+                      )}
+
+                      {scan.error && (
+                        <div className="mt-2 text-xs text-red-300 font-mono">{scan.error}</div>
+                      )}
+                    </div>
+
+                    <div className="flex flex-wrap gap-2 lg:justify-end lg:pl-4">
+                      <button
+                        onClick={() => handleOpenSavedScan(scan)}
+                        className="btn-mini !py-2 px-4 !rounded-lg !text-xs flex items-center gap-1.5 border border-white/10 hover:border-ui-accent/30 transition-colors"
+                      >
+                        <ArrowPathIcon className="h-3.5 w-3.5" />
+                        Open
+                      </button>
+                      <button
+                        onClick={() => handleDownload(scan.routes, scan.target, scan.scanId)}
+                        className="btn-mini !py-2 px-4 !rounded-lg !text-xs flex items-center gap-1.5 border border-white/10 hover:border-coral/40 transition-colors"
+                      >
+                        <ArrowDownTrayIcon className="h-3.5 w-3.5" />
+                        JSON
+                      </button>
+                      <button
+                        onClick={() => handleLoadIntoScan(scan.urlList, scan.target)}
+                        disabled={scan.urlList.length === 0}
+                        className="btn-mini btn-mini-primary !py-2 px-4 !rounded-lg !text-xs flex items-center gap-1.5"
+                      >
+                        <ScanIcon className="h-3.5 w-3.5" />
+                        Load into Scan {scan.urlList.length > 0 && <span className="opacity-70">({scan.urlList.length})</span>}
+                      </button>
+                      <button
+                        onClick={() => removeSavedScan(scan.id)}
+                        className="btn-mini !py-2 px-4 !rounded-lg !text-xs flex items-center gap-1.5 border border-red-700/40 text-red-300 hover:bg-red-900/30 transition-colors"
+                      >
+                        <TrashIcon className="h-3.5 w-3.5" />
+                        Delete
+                      </button>
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))
+              );
+            })
           )}
         </div>
       )}

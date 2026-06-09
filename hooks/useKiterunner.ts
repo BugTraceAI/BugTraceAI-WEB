@@ -14,6 +14,7 @@ export interface KrRoute {
   status: number;
   words: number;
   lines: number;
+  chars?: number;
 }
 
 export interface KrSavedScan {
