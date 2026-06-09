@@ -4,7 +4,7 @@ import React, { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
 import { MarkdownRenderer } from '../../MarkdownRenderer.tsx';
-import { ArrowPathIcon, ArrowDownTrayIcon, DocumentTextIcon } from '../../Icons.tsx';
+import { ArrowPathIcon, ArrowDownTrayIcon, DocumentTextIcon, InformationCircleIcon } from '../../Icons.tsx';
 import { useReportViewer, Finding } from '../../../hooks/useReportViewer.ts';
 import type { FindingItem } from '../../../lib/cliApi.ts';
 import {
@@ -54,7 +54,17 @@ export const ReportMarkdownViewer: React.FC<ReportMarkdownViewerProps> = ({ repo
   const [sort, setSort] = useState<{ col: SortCol | null; dir: SortDir }>({ col: null, dir: 'desc' });
   const [detSort, setDetSort] = useState<{ col: DetSortCol | null; dir: SortDir }>({ col: null, dir: 'desc' });
   const [showMetrics, setShowMetrics] = useState(false);
-  const [showZipNotice, setShowZipNotice] = useState(true);
+  const [showZipNotice, setShowZipNotice] = useState(() => {
+    return localStorage.getItem('hideZipNotice') !== 'true';
+  });
+  const [dontShowAgain, setDontShowAgain] = useState(false);
+
+  const handleContinue = () => {
+    if (dontShowAgain) {
+      localStorage.setItem('hideZipNotice', 'true');
+    }
+    setShowZipNotice(false);
+  };
   const CLI_API_URL = import.meta.env.VITE_CLI_API_URL || '/cli-api';
   const WEB_API_URL = import.meta.env.VITE_API_URL || '/api';
 
@@ -546,24 +556,37 @@ export const ReportMarkdownViewer: React.FC<ReportMarkdownViewerProps> = ({ repo
 
       {/* ZIP NOTICE MODAL */}
       {showZipNotice && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-md p-4">
-          <div className="dashboard-card border border-white/10 shadow-[0_0_50px_-12px_rgba(0,0,0,0.5)] max-w-md w-full p-8 animate-in fade-in zoom-in-95 duration-300">
-            <div className="flex flex-col items-center text-center gap-4">
-              <div className="w-16 h-16 rounded-full bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center mb-2">
-                <ArrowDownTrayIcon className="w-8 h-8 text-emerald-400" />
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
+          <div className="dashboard-card border border-white/5 shadow-2xl max-w-sm w-full p-6 animate-in fade-in zoom-in-95 duration-200">
+            <div className="flex flex-col items-center text-center gap-3">
+              <div className="w-12 h-12 rounded-full bg-blue-500/10 border border-blue-500/20 flex items-center justify-center mb-1">
+                <InformationCircleIcon className="w-6 h-6 text-blue-400" />
               </div>
-              <h3 className="text-xl font-black text-white tracking-tight">Visual Summary</h3>
-              <p className="text-sm text-purple-gray leading-relaxed mb-4">
-                This dashboard provides a high-level visual summary of the findings. For the complete and detailed information, including exploits and raw data, please download the full report archive (ZIP).
+              <h3 className="text-lg font-bold text-white tracking-tight">Visual Summary</h3>
+              <p className="text-xs text-purple-gray leading-relaxed mb-2 px-2">
+                This is a high-level overview. For exploits, raw data, and full context, please download the ZIP archive.
               </p>
+              
               <div className="flex w-full justify-center mt-2">
                 <button
-                  onClick={() => setShowZipNotice(false)}
-                  className="px-8 py-3 text-xs font-bold uppercase tracking-widest bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-400 transition-all border border-emerald-500/30 hover:border-emerald-500/50 hover:shadow-[0_0_20px_-5px_rgba(52,211,153,0.4)] rounded-xl whitespace-nowrap"
+                  onClick={handleContinue}
+                  className="w-full py-2.5 text-xs font-bold uppercase tracking-widest bg-coral/10 hover:bg-coral/20 text-coral transition-colors border border-coral/20 hover:border-coral/40 rounded-xl"
                 >
-                  Continue to Dashboard
+                  Continue
                 </button>
               </div>
+
+              <label className="flex items-center gap-2 mt-3 cursor-pointer group">
+                <input
+                  type="checkbox"
+                  checked={dontShowAgain}
+                  onChange={(e) => setDontShowAgain(e.target.checked)}
+                  className="w-3.5 h-3.5 rounded border-white/20 bg-black/20 text-coral focus:ring-coral focus:ring-offset-0 transition-all cursor-pointer"
+                />
+                <span className="text-[10px] text-muted group-hover:text-purple-gray transition-colors select-none uppercase tracking-wider font-semibold">
+                  Don't show again
+                </span>
+              </label>
             </div>
           </div>
         </div>
