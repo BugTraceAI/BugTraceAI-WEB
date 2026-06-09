@@ -541,6 +541,28 @@ export function useKiterunner(): UseKiterunnerReturn {
       return;
     }
 
+    // Block if a scan is already running
+    try {
+      if (scanIdRef.current) {
+        setError('A scan is already running. Please stop it before starting a new one.');
+        return;
+      } else {
+        const activeRes = await fetch(`${KR_API_BASE}/api/scans/active`);
+        if (activeRes.ok) {
+          const activeScan = await activeRes.json();
+          if (activeScan && activeScan.scan_id) {
+            setError('Another scan is currently running on the server. Please stop it before starting a new one.');
+            return;
+          }
+        }
+      }
+    } catch {
+      // Ignore network errors here and attempt to proceed
+    }
+
+    stopPolling();
+    clearActiveTracking();
+
     const startedAt = new Date().toISOString();
     setError(null);
     setWarning(null);
