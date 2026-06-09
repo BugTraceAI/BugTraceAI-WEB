@@ -556,22 +556,12 @@ export const ReportMarkdownViewer: React.FC<ReportMarkdownViewerProps> = ({ repo
               <p className="text-sm text-purple-gray leading-relaxed mb-4">
                 This dashboard provides a high-level visual summary of the findings. For the complete and detailed information, including exploits and raw data, please download the full report archive (ZIP).
               </p>
-              <div className="flex flex-col sm:flex-row w-full justify-center gap-3 mt-2">
+              <div className="flex w-full justify-center mt-2">
                 <button
                   onClick={() => setShowZipNotice(false)}
-                  className="px-6 py-2.5 text-xs font-bold uppercase tracking-widest text-muted hover:text-white transition-colors border border-transparent hover:border-white/10 rounded-xl"
+                  className="px-8 py-3 text-xs font-bold uppercase tracking-widest bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-400 transition-all border border-emerald-500/30 hover:border-emerald-500/50 hover:shadow-[0_0_20px_-5px_rgba(52,211,153,0.4)] rounded-xl whitespace-nowrap"
                 >
                   Continue to Dashboard
-                </button>
-                <button
-                  onClick={() => {
-                    setShowZipNotice(false);
-                    handleDownloadAll();
-                  }}
-                  className="px-6 py-2.5 text-xs font-bold uppercase tracking-widest bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-400 rounded-xl transition-all flex items-center justify-center gap-2 border border-emerald-500/30 hover:shadow-[0_0_20px_-5px_rgba(52,211,153,0.4)] whitespace-nowrap"
-                >
-                  <ArrowDownTrayIcon className="w-4 h-4" />
-                  Download ZIP
                 </button>
               </div>
             </div>
