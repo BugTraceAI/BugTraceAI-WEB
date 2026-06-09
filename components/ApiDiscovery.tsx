@@ -283,7 +283,7 @@ export const ApiDiscovery: React.FC = () => {
     <ToolLayout
       icon={<ApiRouteIcon className="h-8 w-8 text-coral" />}
       title="API Discovery"
-      description="Brute-force API routes using Kiterunner — human-in-the-loop by design."
+      description="Brute-force API routes"
     >
       <div className="flex flex-wrap items-center gap-2 border-b border-white/5 pb-5">
         <button
