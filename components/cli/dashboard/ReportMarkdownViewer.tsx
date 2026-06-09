@@ -1,6 +1,6 @@
 // components/cli/dashboard/ReportMarkdownViewer.tsx
 // v3.1 - Refactored: pure functions extracted to lib/
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
 import { MarkdownRenderer } from '../../MarkdownRenderer.tsx';
