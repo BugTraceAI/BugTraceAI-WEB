@@ -60,6 +60,15 @@ export const ReportMarkdownViewer: React.FC<ReportMarkdownViewerProps> = ({ repo
   const [dontShowAgain, setDontShowAgain] = useState(false);
   const [highlightDownload, setHighlightDownload] = useState(false);
 
+  useEffect(() => {
+    // If the modal is hidden by default, flash the download button on mount
+    if (!showZipNotice) {
+      setHighlightDownload(true);
+      const timer = setTimeout(() => setHighlightDownload(false), 2500);
+      return () => clearTimeout(timer);
+    }
+  }, []); // Run only once on mount
+
   const handleContinue = () => {
     if (dontShowAgain) {
       localStorage.setItem('hideZipNotice', 'true');
