@@ -6,6 +6,7 @@
  * Complex state orchestration for real-time agent interaction - splitting would break chat coherence.
  */
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import { enrichMessageWithWebContent } from '../utils/webBrowsing.ts';
 import { useNavigate, useParams } from 'react-router-dom';
 import { ChatMessage as LegacyChatMessage, AgentType } from '../types.ts';
 import { useChatOperations } from '../hooks/useChatOperations';
@@ -37,6 +38,8 @@ export const WebSecAgent: React.FC<WebSecAgentProps> = ({
 }) => {
   const [userInput, setUserInput] = useState('');
   const [isToolsMenuOpen, setIsToolsMenuOpen] = useState(false);
+  const [webBrowsing, setWebBrowsing] = useState(true);
+  const [isFetching, setIsFetching] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const navigate = useNavigate();
@@ -158,23 +161,37 @@ export const WebSecAgent: React.FC<WebSecAgentProps> = ({
   const handleSendMessage = useCallback(async () => {
     if (!userInput.trim() || isLoading || !currentSession) return;
 
-    const messageContent = userInput;
+    const rawMessage = userInput;
     setUserInput('');
 
     // Mark streaming as belonging to this session
     streamingSessionRef.current = currentSession.id;
 
+    let messageContent = rawMessage;
+
+    // Enrich with web content if browsing is enabled
+    if (webBrowsing) {
+      setIsFetching(true);
+      try {
+        const apiBase = (import.meta.env.VITE_API_URL || 'http://localhost:3001').replace(/\/$/, '');
+        messageContent = await enrichMessageWithWebContent(rawMessage, apiBase);
+      } catch {
+        // If fetch fails, use raw message
+      } finally {
+        setIsFetching(false);
+      }
+    }
+
     try {
-      // 1. Persist to DB
-      await persistMessage(messageContent, 'user');
-      // 2. Send to AI agent (useWebSecAgent will add user msg + trigger response)
+      // 1. Persist raw message to DB (user sees clean version)
+      await persistMessage(rawMessage, 'user');
+      // 2. Send enriched message to AI agent
       onSendMessage(messageContent);
     } catch (err) {
       console.error('Failed to send message:', err);
-      // Still try to send to AI
       onSendMessage(messageContent);
     }
-  }, [userInput, isLoading, currentSession, persistMessage, onSendMessage]);
+  }, [userInput, isLoading, currentSession, persistMessage, onSendMessage, webBrowsing]);
 
   const handleFormSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -278,7 +295,7 @@ export const WebSecAgent: React.FC<WebSecAgentProps> = ({
 
         <div className="flex justify-between items-center w-full px-3 pb-3">
           {/* Tools Area (Left) */}
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-3">
             <span className={`text-[10px] font-bold uppercase tracking-thicker ${
               activeAgent === 'kali' ? 'text-cyan-400' :
               activeAgent === 'recon' ? 'text-purple-400' :
@@ -290,6 +307,27 @@ export const WebSecAgent: React.FC<WebSecAgentProps> = ({
                activeAgent === 'bugtrace' ? 'BUGTRACE MODE' :
                'STANDARD'}
             </span>
+
+            {/* Web Browsing Toggle */}
+            <button
+              type="button"
+              onClick={() => setWebBrowsing((v) => !v)}
+              title={webBrowsing ? 'Web browsing ON – click to disable' : 'Web browsing OFF – click to enable'}
+              className={`flex items-center gap-1.5 px-2 py-0.5 rounded-full border text-[10px] font-semibold uppercase tracking-wide transition-all ${
+                isFetching
+                  ? 'border-blue-400/50 text-blue-400 bg-blue-500/10 animate-pulse'
+                  : webBrowsing
+                  ? 'border-emerald-400/40 text-emerald-400 bg-emerald-500/10 hover:bg-emerald-500/20'
+                  : 'border-white/10 text-ui-text-dim/40 hover:text-ui-text-dim hover:border-white/20'
+              }`}
+            >
+              {/* Globe icon */}
+              <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <circle cx="12" cy="12" r="10" />
+                <path strokeLinecap="round" d="M2 12h20M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z" />
+              </svg>
+              {isFetching ? 'Browsing…' : 'Web'}
+            </button>
           </div>
 
           {/* Action Area (Right) */}

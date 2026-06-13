@@ -33,6 +33,7 @@ import kaliRoutes from './routes/kaliRoutes.js';
 import reconRoutes from './routes/reconRoutes.js';
 import bugtraceRoutes from './routes/bugtraceRoutes.js';
 import apiDiscoveryRoutes from './routes/apiDiscoveryRoutes.js';
+import toolsRoutes from './routes/toolsRoutes.js';
 
 // Create Express application
 const app: Express = express();
@@ -242,6 +243,7 @@ app.use('/api/kali', kaliRoutes);
 app.use('/api/recon', reconRoutes);
 app.use('/api/bugtrace', bugtraceRoutes);
 app.use('/api/api-discovery', apiDiscoveryRoutes);
+app.use('/api/tools', toolsRoutes);
 
 // ============================================================================
 // Error Handling (must be last)

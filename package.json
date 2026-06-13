@@ -1,7 +1,7 @@
 {
   "name": "bugtraceai",
   "private": true,
-  "version": "0.8.5-beta",
+  "version": "0.8.6-beta",
   "type": "module",
   "scripts": {
     "dev": "vite",
