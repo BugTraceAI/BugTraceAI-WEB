@@ -12,7 +12,7 @@
   <a href="https://bugtraceai.com"><img src="https://img.shields.io/badge/Website-bugtraceai.com-blue?logo=google-chrome&logoColor=white" alt="Website"/></a>
   <a href="https://deepwiki.com/BugTraceAI/BugTraceAI-WEB"><img src="https://img.shields.io/badge/Wiki-Documentation-000?logo=wikipedia&logoColor=white" alt="Wiki"/></a>
   <img src="https://img.shields.io/badge/License-AGPL--3.0-blue.svg" alt="License"/>
-  <img src="https://img.shields.io/badge/Version-0.3.3_Beta-orange" alt="Version"/>
+  <img src="https://img.shields.io/badge/Version-0.8.6-beta-orange" alt="Version"/>
 </p>
 
 <p align="center">
@@ -43,6 +43,15 @@
 - [Tech Stack](#tech-stack)
 - [License](#license)
 
+## What's New in v0.8.6
+
+- 🔍 **API Discovery** — Kiterunner-powered active API endpoint discovery with multi-filter, sort, speed selector, and PostgreSQL persistence
+- 🔐 **Authenticated Scanning (YAML + TOTP/2FA)** — YAML-based auth config with automatic 2FA token generation for authenticated scans
+- 🌐 **Web Browsing Toggle** — Enable/disable real-time web browsing in WebSec Agent chat
+- ⚡ **Aggressive System Prompt Profile** — Alternative high-authority prompt mode for deeper offensive analysis
+- 💾 **Improved CLI Configuration Tab** — Enhanced remote CLI configuration editor with better UX
+- 📦 **Download ZIP Enhancements** — Animated heartbeat download button with scan summary modal
+
 ## Disclaimer
 
 This application is provided for **educational and authorized security testing purposes only**.
@@ -70,19 +79,22 @@ Each role works independently. You can use the web tools without the CLI, or con
 When connected to BugTraceAI-CLI (optional):
 
 - **Live Dashboard** — Real-time metrics, findings count, scan progress
-- **Scan Launcher** — Configure and launch CLI scans from the browser
+- **Scan Launcher** — Configure and launch CLI scans from the browser with support for **YAML-based authenticated scanning** (TOTP/2FA included)
 - **Report Viewer** — Browse, search, and view past scan reports (Markdown rendering)
 - **Configuration Editor** — Modify CLI settings remotely
 - **Severity Charts** — Visual breakdown of findings by severity
 - **Report Comparison** — Side-by-side diff of two scan reports
+- **API Discovery** — Active API endpoint discovery via Kiterunner with multi-filter, sort, speed control, and persistent history
 
 ### AI Assistants
 
-- **WebSec Agent** — Integrated chat for security questions and **unified control for Kali MCP and ReconFTW agents**.
+- **WebSec Agent** — Integrated chat for security questions and **unified control for Kali MCP and ReconFTW agents**. Supports optional **web browsing** toggle for real-time research during analysis.
 - **Kali Expert Agent (MCP)** — Real-time terminal access to the full Kali Linux toolset (Nmap, SQLMap, etc.) via the WebSec Chat.
 - **ReconFTW Agent (MCP)** — Fully automated reconnaissance pipelines managed directly from the browser.
 - **XSS Exploitation Assistant** — Given a confirmed XSS: cookie theft, keyloggers, phishing overlays, session hijacking
 - **SQL Exploitation Assistant** — Given a confirmed SQLi: data extraction, auth bypass, privilege escalation, DB enumeration
+
+> **Prompt Profiles**: WebSec Agent supports two system prompt profiles — **Standard** (balanced) and **Aggressive** (high-authority mode for deeper offensive research). Switch between them in Settings.
 
 ### Analysis Tools
 
@@ -99,6 +111,7 @@ When connected to BugTraceAI-CLI (optional):
 - **JS Reconnaissance** — Hardcoded API endpoints, internal URLs, API keys, cloud credentials (AWS, GCP)
 - **URL List Finder** — Wayback Machine historical URL discovery
 - **Subdomain Finder** — Certificate Transparency search via crt.sh
+- **API Discovery** — Active Kiterunner-powered endpoint discovery with wordlists, speed selector (slow/medium/fast), multi-filter, tag-based sorting, and backend persistence across sessions
 
 ### Payload Generation
 
@@ -171,6 +184,22 @@ chmod +x install.sh
 
 The wizard guides you through port selection, database configuration, and CLI backend URL.
 
+### Authenticated Scanning (YAML + TOTP)
+
+For targets that require login, BugTraceAI-WEB can configure authenticated scan sessions. Create an `auth_config.yaml` file:
+
+```yaml
+login_url: https://target.com/login
+username: your_user
+password: your_password
+totp_secret: YOUR_TOTP_SECRET    # optional, for 2FA targets
+success_condition: "dashboard"   # string to confirm successful login
+```
+
+Upload it in the Scan Launcher → **Auth Config** tab before starting the scan. The CLI will handle TOTP token generation automatically.
+
+See the [CLI documentation](https://github.com/BugTraceAI/BugTraceAI-CLI) for the full `auth_config.yaml` reference.
+
 **Quick start:**
 
 ```bash
@@ -192,9 +221,9 @@ Access at **http://localhost:6869**
 ### Stop / Restart
 
 ```bash
-docker-compose down          # Stop
-docker-compose up -d         # Start again
-docker-compose logs -f       # View logs
+docker compose down          # Stop
+docker compose up -d         # Start again
+docker compose logs -f       # View logs
 ```
 
 ## Development Setup
