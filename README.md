@@ -43,12 +43,12 @@
 - [Tech Stack](#tech-stack)
 - [License](#license)
 
-## What's New in v0.8.6
+## What's New in v0.8.6.1-beta
 
 - 🔍 **API Discovery** — Kiterunner-powered active API endpoint discovery with multi-filter, sort, speed selector, and PostgreSQL persistence
 - 🔐 **Authenticated Scanning (YAML + TOTP/2FA)** — YAML-based auth config with automatic 2FA token generation for authenticated scans
 - 🌐 **Web Browsing Toggle** — Enable/disable real-time web browsing in WebSec Agent chat
-- ⚡ **Aggressive System Prompt Profile** — Alternative high-authority prompt mode for deeper offensive analysis
+- 🔁 **Scan Resume Controls** — Resume recoverable scans from the dashboard through the CLI API
 - 💾 **Improved CLI Configuration Tab** — Enhanced remote CLI configuration editor with better UX
 - 📦 **Download ZIP Enhancements** — Animated heartbeat download button with scan summary modal
 
@@ -80,6 +80,7 @@ When connected to BugTraceAI-CLI (optional):
 
 - **Live Dashboard** — Real-time metrics, findings count, scan progress
 - **Scan Launcher** — Configure and launch CLI scans from the browser with support for **YAML-based authenticated scanning** (TOTP/2FA included)
+- **Scan Resume** — Resume recoverable scans from previous state without restarting the full workflow
 - **Report Viewer** — Browse, search, and view past scan reports (Markdown rendering)
 - **Configuration Editor** — Modify CLI settings remotely
 - **Severity Charts** — Visual breakdown of findings by severity
@@ -93,8 +94,6 @@ When connected to BugTraceAI-CLI (optional):
 - **ReconFTW Agent (MCP)** — Fully automated reconnaissance pipelines managed directly from the browser.
 - **XSS Exploitation Assistant** — Given a confirmed XSS: cookie theft, keyloggers, phishing overlays, session hijacking
 - **SQL Exploitation Assistant** — Given a confirmed SQLi: data extraction, auth bypass, privilege escalation, DB enumeration
-
-> **Prompt Profiles**: WebSec Agent supports two system prompt profiles — **Standard** (balanced) and **Aggressive** (high-authority mode for deeper offensive research). Switch between them in Settings.
 
 ### Analysis Tools
 
