@@ -19,3 +19,4 @@ backend/.env*
 *.pcap
 session.json
 credentials.json
+devinfo/
