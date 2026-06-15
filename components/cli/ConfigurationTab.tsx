@@ -908,6 +908,9 @@ export function ConfigurationTab() {
 
       {/* Sections */}
       <div className="flex-1 overflow-y-auto p-4 space-y-3">
+        {/* Auth Config - Web-only setting */}
+        <AuthConfigSection />
+
         {CONFIG_SECTIONS.map((section, i) =>
           section.id === 'skeptical_thresholds' ? (
             <ThresholdsSection key={section.id} config={config} defaultOpen={i < 5} />
@@ -932,9 +935,6 @@ export function ConfigurationTab() {
             defaultOpen={false}
           />
         )}
-
-        {/* Auth Config - Web-only setting */}
-        <AuthConfigSection />
       </div>
     </div>
   );
