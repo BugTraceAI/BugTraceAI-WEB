@@ -2,7 +2,7 @@
   "name": "bugtraceai",
   "private": true,
   "license": "AGPL-3.0",
-  "version": "0.8.6.1-beta",
+  "version": "0.8.7-beta",
   "type": "module",
   "scripts": {
     "dev": "vite",
