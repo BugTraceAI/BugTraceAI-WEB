@@ -8,6 +8,11 @@ import { Router, Request, Response } from 'express';
 import { asyncHandler } from '../middleware/errorHandler.js';
 import { sendSuccess } from '../utils/responses.js';
 import { fetchWebPage } from '../services/webFetchService.js';
+import { executeCurl } from '../controllers/curlController.js';
+import { exec } from 'child_process';
+import { promisify } from 'util';
+
+const execAsync = promisify(exec);
 
 const router = Router();
 
@@ -33,6 +38,43 @@ router.post(
       content,
       chars: content.length,
     });
+  })
+);
+
+/**
+ * POST /api/tools/curl
+ * Body: { url: string, method?: string, headers?: object, data?: string, follow_redirects?: boolean, insecure?: boolean }
+ * Returns: { success, result }
+ */
+router.post('/curl', executeCurl);
+
+/**
+ * GET /api/tools/health
+ * Returns container availability: { kali: bool, recon: bool, bugtrace: bool }
+ */
+router.get(
+  '/health',
+  asyncHandler(async (_req: Request, res: Response) => {
+    const containers: [string, string][] = [
+      ['kali', 'kali-mcp-server'],
+      ['recon', 'reconftw-mcp'],
+      ['bugtrace', 'bugtrace-cli-mcp'],
+    ];
+    const checks: Record<string, boolean> = {};
+    await Promise.all(
+      containers.map(async ([name, container]) => {
+        try {
+          const { stdout } = await execAsync(
+            `docker inspect --format='{{.State.Running}}' ${container}`,
+            { timeout: 3000 }
+          );
+          checks[name] = stdout.trim() === 'true';
+        } catch {
+          checks[name] = false;
+        }
+      })
+    );
+    sendSuccess(res, checks);
   })
 );
 

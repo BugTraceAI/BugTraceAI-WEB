@@ -25,6 +25,8 @@ interface WebSecAgentProps {
   activeAgent: AgentType;
   setActiveAgent: (agent: AgentType) => void;
   onSyncHistory: (dbMessages: Array<{ role: string; content: string }>) => void;
+  curlEnabled: boolean;
+  setCurlEnabled: (enabled: boolean) => void;
 }
 
 export const WebSecAgent: React.FC<WebSecAgentProps> = ({
@@ -35,11 +37,14 @@ export const WebSecAgent: React.FC<WebSecAgentProps> = ({
   activeAgent,
   setActiveAgent,
   onSyncHistory,
+  curlEnabled,
+  setCurlEnabled,
 }) => {
   const [userInput, setUserInput] = useState('');
   const [isToolsMenuOpen, setIsToolsMenuOpen] = useState(false);
   const [webBrowsing, setWebBrowsing] = useState(true);
   const [isFetching, setIsFetching] = useState(false);
+  const [containerStatus, setContainerStatus] = useState<Record<string, boolean>>({});
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const navigate = useNavigate();
@@ -328,6 +333,26 @@ export const WebSecAgent: React.FC<WebSecAgentProps> = ({
               </svg>
               {isFetching ? 'Browsing…' : 'Web'}
             </button>
+
+            {/* cURL Tool Toggle — only in BugTrace/Recon modes */}
+            {(activeAgent === 'bugtrace' || activeAgent === 'recon') && (
+              <button
+                type="button"
+                onClick={() => setCurlEnabled(!curlEnabled)}
+                title={curlEnabled ? 'cURL tool ON – LLM can make HTTP requests' : 'cURL tool OFF – click to enable'}
+                className={`flex items-center gap-1.5 px-2 py-0.5 rounded-full border text-[10px] font-semibold uppercase tracking-wide transition-all ${
+                  curlEnabled
+                    ? 'border-amber-400/40 text-amber-400 bg-amber-500/10 hover:bg-amber-500/20'
+                    : 'border-white/10 text-ui-text-dim/40 hover:text-ui-text-dim hover:border-white/20'
+                }`}
+              >
+                {/* Terminal icon */}
+                <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                </svg>
+                cURL
+              </button>
+            )}
           </div>
 
           {/* Action Area (Right) */}
@@ -336,7 +361,16 @@ export const WebSecAgent: React.FC<WebSecAgentProps> = ({
             <div className="relative">
               <button
                 type="button"
-                onClick={() => setIsToolsMenuOpen(!isToolsMenuOpen)}
+                onClick={() => {
+                  const opening = !isToolsMenuOpen;
+                  setIsToolsMenuOpen(opening);
+                  if (opening) {
+                    const apiBase = (import.meta.env.VITE_API_URL || 'http://localhost:3001').replace(/\/$/, '');
+                    fetch(`${apiBase}/api/tools/health`).then(r => r.json()).then(d => {
+                      if (d?.data) setContainerStatus(d.data);
+                    }).catch(() => {});
+                  }
+                }}
                 className={`flex items-center justify-center w-9 h-9 rounded-full transition-all ${
                   isToolsMenuOpen ? 'bg-white/10 text-white' : 'text-ui-text-dim hover:text-white hover:bg-white/5'
                 }`}
@@ -375,7 +409,10 @@ export const WebSecAgent: React.FC<WebSecAgentProps> = ({
                     >
                       <div className="flex items-center gap-3">
                         <TerminalIcon className={`w-4 h-4 ${activeAgent === 'kali' ? 'text-cyan-400' : 'text-ui-text-dim group-hover:text-white'}`} />
-                        <span className={`${activeAgent === 'kali' ? 'text-cyan-400 font-medium' : 'text-ui-text-dim group-hover:text-white'}`}>Kali Expert Mode</span>
+                        <div>
+                          <span className={`${activeAgent === 'kali' ? 'text-cyan-400 font-medium' : 'text-ui-text-dim group-hover:text-white'}`}>Kali Expert Mode</span>
+                          {containerStatus.kali === false && <div className="text-[9px] text-red-400/70">container not running</div>}
+                        </div>
                       </div>
                       {activeAgent === 'kali' && <div className="w-1.5 h-1.5 rounded-full bg-cyan-400 shadow-[0_0_8px_rgba(6,182,212,0.6)]"></div>}
                     </button>
@@ -388,7 +425,10 @@ export const WebSecAgent: React.FC<WebSecAgentProps> = ({
                     >
                       <div className="flex items-center gap-3">
                         <ScanIcon className={`w-4 h-4 ${activeAgent === 'recon' ? 'text-purple-400' : 'text-ui-text-dim group-hover:text-white'}`} />
-                        <span className={`${activeAgent === 'recon' ? 'text-purple-400 font-medium' : 'text-ui-text-dim group-hover:text-white'}`}>ReconFTW Automation</span>
+                        <div>
+                          <span className={`${activeAgent === 'recon' ? 'text-purple-400 font-medium' : 'text-ui-text-dim group-hover:text-white'}`}>ReconFTW Automation</span>
+                          {containerStatus.recon === false && <div className="text-[9px] text-red-400/70">container not running</div>}
+                        </div>
                       </div>
                       {activeAgent === 'recon' && <div className="w-1.5 h-1.5 rounded-full bg-purple-400 shadow-[0_0_8px_rgba(168,85,247,0.6)]"></div>}
                     </button>
@@ -401,7 +441,10 @@ export const WebSecAgent: React.FC<WebSecAgentProps> = ({
                     >
                       <div className="flex items-center gap-3">
                         <BugTraceAILogo className={`w-4 h-4 ${activeAgent === 'bugtrace' ? 'text-emerald-400' : 'text-ui-text-dim group-hover:text-white'}`} />
-                        <span className={`${activeAgent === 'bugtrace' ? 'text-emerald-400 font-medium' : 'text-ui-text-dim group-hover:text-white'}`}>BugTrace Scanner</span>
+                        <div>
+                          <span className={`${activeAgent === 'bugtrace' ? 'text-emerald-400 font-medium' : 'text-ui-text-dim group-hover:text-white'}`}>BugTrace Scanner</span>
+                          {containerStatus.bugtrace === false && <div className="text-[9px] text-red-400/70">container not running</div>}
+                        </div>
                       </div>
                       {activeAgent === 'bugtrace' && <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(16,185,129,0.6)]"></div>}
                     </button>

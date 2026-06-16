@@ -109,6 +109,7 @@ const App: React.FC = () => {
   };
 
   const [activeAgent, setActiveAgent] = useState<AgentType>('web');
+  const [curlEnabled, setCurlEnabled] = useState(true);
 
   // Use the new custom hook for all WebSec Agent logic
   const {
@@ -119,7 +120,7 @@ const App: React.FC = () => {
     startAnalysisWithAgent,
     startReportAnalysisWithAgent,
     syncHistory: syncAgentHistory
-  } = useWebSecAgent(handleShowApiKeyWarning, activeAgent);
+  } = useWebSecAgent(handleShowApiKeyWarning, activeAgent, curlEnabled);
 
   const { loadSession } = useChatContext();
 
@@ -472,6 +473,8 @@ const App: React.FC = () => {
             activeAgent={activeAgent}
             setActiveAgent={setActiveAgent}
             onSyncHistory={syncAgentHistory}
+            curlEnabled={curlEnabled}
+            setCurlEnabled={setCurlEnabled}
           />
         );
       case View.XSS_EXPLOIT_ASSISTANT:

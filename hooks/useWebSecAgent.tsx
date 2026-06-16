@@ -28,7 +28,7 @@ const getAgentConfig = (agent: AgentType) => {
         default: return { prompt: KALI_SYSTEM_PROMPT, tools: KALI_TOOLS, endpoint: `${baseUrl}/kali/execute`, label: 'Kali' };
     }
 };
-export const useWebSecAgent = (onShowApiKeyWarning: () => void, activeAgent: AgentType = 'web') => {
+export const useWebSecAgent = (onShowApiKeyWarning: () => void, activeAgent: AgentType = 'web', curlEnabled: boolean = true) => {
     const [messages, setMessages] = useState<ChatMessage[]>([]);
     const [apiHistory, setApiHistory] = useState<ApiHistoryItem[]>([]);
     const [isLoading, setIsLoading] = useState(false);
@@ -41,7 +41,7 @@ export const useWebSecAgent = (onShowApiKeyWarning: () => void, activeAgent: Age
                 isResponding.current = true;
                 setIsLoading(true);
                 if (!isApiKeySet) {
-                    setMessages(prev => [...prev, { role: 'model', content: "Error: API Key is not configured. Please set it in the settings." }]);
+                    setMessages(prev => prev.slice(0, -1)); // revert user message so they can retry after setting key
                     setIsLoading(false);
                     isResponding.current = false;
                     onShowApiKeyWarning();
@@ -49,17 +49,21 @@ export const useWebSecAgent = (onShowApiKeyWarning: () => void, activeAgent: Age
                 }
                 try {
                     if (activeAgent !== 'web') {
-                        const { prompt: systemPrompt, tools, endpoint: apiEndpoint, label: agentLabel } = getAgentConfig(activeAgent);
+                        const { prompt: systemPrompt, tools: rawTools, endpoint: apiEndpoint, label: agentLabel } = getAgentConfig(activeAgent);
+                        const tools = curlEnabled ? rawTools : rawTools.filter((t: any) => t.function?.name !== 'run_curl');
 
                         let currentHistory: ApiHistoryItem[] = [
                             { role: 'system' as const, content: systemPrompt },
                             ...apiHistory,
                             { role: 'user' as const, content: lastMessage.content }
                         ];
+                        if (!apiOptions) {
+                            throw new Error('API key was removed. Please configure it in Settings.');
+                        }
                         let keepPrompting = true;
                         let toolCallCount = 0;
                         while (keepPrompting) {
-                            const messageObj = await callOpenRouterChatWithTools(currentHistory, tools, apiOptions!);
+                            const messageObj = await callOpenRouterChatWithTools(currentHistory, tools, apiOptions);
                             
                             if (messageObj.tool_calls && messageObj.tool_calls.length > 0) {
                                 currentHistory.push({
@@ -96,24 +100,49 @@ export const useWebSecAgent = (onShowApiKeyWarning: () => void, activeAgent: Age
                                     });
                                     
                                     try {
+                                        let targetUrl: string;
                                         let payload: Record<string, unknown>;
-                                        if (activeAgent === 'kali') {
+
+                                        if (toolName === 'run_curl') {
+                                            const baseUrl = import.meta.env.VITE_API_URL || '/api';
+                                            targetUrl = `${baseUrl}/tools/curl`;
+                                            payload = args;
+                                        } else if (activeAgent === 'kali') {
+                                            targetUrl = apiEndpoint;
                                             payload = { command: args.command };
                                         } else {
+                                            targetUrl = apiEndpoint;
                                             payload = { tool: toolName, args: args };
                                         }
 
-                                        const res = await fetch(apiEndpoint, {
+                                        const res = await fetch(targetUrl, {
                                             method: 'POST',
                                             headers: { 'Content-Type': 'application/json' },
                                             body: JSON.stringify(payload)
                                         });
-                                        const data = await res.json();
-                                        
-                                        const toolOutput = typeof data.result === 'object' 
-                                            ? JSON.stringify(data.result, null, 2) 
-                                            : (data.result || "Action completed.");
-                                        
+                                        if (!res.ok) {
+                                            throw new Error(`HTTP ${res.status}: Tool endpoint returned an error`);
+                                        }
+                                        let data: any;
+                                        try {
+                                            data = await res.json();
+                                        } catch {
+                                            throw new Error('Invalid response from tool endpoint (not JSON)');
+                                        }
+
+                                        // Extract result from sendSuccess wrapper: { data: { success, result } }
+                                        const result = data?.data?.result ?? data?.result;
+                                        const success = data?.data?.success ?? data?.success ?? true;
+
+                                        let toolOutput: string;
+                                        if (!success) {
+                                            toolOutput = `[TOOL_ERROR] ${toolName} failed:\n${typeof result === 'object' ? JSON.stringify(result, null, 2) : (result || 'Unknown error')}`;
+                                        } else {
+                                            toolOutput = typeof result === 'object'
+                                                ? JSON.stringify(result, null, 2)
+                                                : (result || '(No output)');
+                                        }
+
                                         currentHistory.push({
                                             role: 'tool',
                                             name: toolName,
@@ -155,10 +184,13 @@ export const useWebSecAgent = (onShowApiKeyWarning: () => void, activeAgent: Age
                         setApiHistory(currentHistory.slice(1));
                     } else {
                         // Web agent - uses simpler chat API without tools
+                        if (!apiOptions) {
+                            throw new Error('API key was removed. Please configure it in Settings.');
+                        }
                         const historyForApi = messages.slice(0, -1);
                         const responseText = historyForApi.length === 0
-                            ? await startGeneralChat(getWebSecAgentSystemPrompt(), lastMessage.content, apiOptions!)
-                            : await continueGeneralChat(getWebSecAgentSystemPrompt(), historyForApi, lastMessage.content, apiOptions!);
+                            ? await startGeneralChat(getWebSecAgentSystemPrompt(), lastMessage.content, apiOptions)
+                            : await continueGeneralChat(getWebSecAgentSystemPrompt(), historyForApi, lastMessage.content, apiOptions);
                         
                         setMessages(prev => {
                             const last = prev[prev.length - 1];
@@ -197,7 +229,7 @@ export const useWebSecAgent = (onShowApiKeyWarning: () => void, activeAgent: Age
         };
         processMessageQueue();
 
-    }, [messages, apiOptions, isApiKeySet, onShowApiKeyWarning, activeAgent, apiHistory]);
+    }, [messages, apiOptions, isApiKeySet, onShowApiKeyWarning, activeAgent, apiHistory, curlEnabled]);
     
     const sendMessage = useCallback((message: string) => {
         if (isLoading || !message.trim()) return;

@@ -1,5 +1,30 @@
 // hooks/useWebSecAgentConfig.ts
 
+// Shared tool: HTTP requests via curl (available in BugTrace and Recon modes)
+export const CURL_TOOL = {
+  type: "function",
+  function: {
+    name: "run_curl",
+    description: "Execute an HTTP request using curl. Use this to probe endpoints, test APIs, check response headers, send payloads, or verify vulnerability PoCs. Returns full response headers and body.",
+    parameters: {
+      type: "object",
+      properties: {
+        url: { type: "string", description: "The target URL (http or https)" },
+        method: { type: "string", enum: ["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"], description: "HTTP method. Defaults to GET." },
+        headers: {
+          type: "object",
+          description: "Custom HTTP headers as key-value pairs, e.g. {\"Authorization\": \"Bearer token\", \"Content-Type\": \"application/json\"}",
+          additionalProperties: { type: "string" }
+        },
+        data: { type: "string", description: "Request body data (for POST/PUT/PATCH)" },
+        follow_redirects: { type: "boolean", description: "Follow HTTP redirects. Defaults to true." },
+        insecure: { type: "boolean", description: "Allow insecure SSL connections (self-signed certs). Defaults to false." }
+      },
+      required: ["url"]
+    }
+  }
+};
+
 // Agent Configurations
 export const KALI_SYSTEM_PROMPT = `You are a Kali Linux Expert Security Agent operating via BugTraceAI. 
 You have access to a fully containerized Kali Linux environment through the \`run_kali_command\` tool.
@@ -96,7 +121,8 @@ export const RECON_TOOLS = [
         required: ["scan_id"]
       }
     }
-  }
+  },
+  CURL_TOOL
 ];
 
 export const BUGTRACE_SYSTEM_PROMPT = `You are a BugTraceAI Security Expert Agent with access to advanced vulnerability scanning.
@@ -164,5 +190,6 @@ export const BUGTRACE_TOOLS = [
         required: ["scan_id"]
       }
     }
-  }
+  },
+  CURL_TOOL
 ];
