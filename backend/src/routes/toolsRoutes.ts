@@ -9,10 +9,10 @@ import { asyncHandler } from '../middleware/errorHandler.js';
 import { sendSuccess } from '../utils/responses.js';
 import { fetchWebPage } from '../services/webFetchService.js';
 import { executeCurl } from '../controllers/curlController.js';
-import { exec } from 'child_process';
+import { execFile } from 'child_process';
 import { promisify } from 'util';
 
-const execAsync = promisify(exec);
+const execFileAsync = promisify(execFile);
 
 const router = Router();
 
@@ -64,8 +64,8 @@ router.get(
     await Promise.all(
       containers.map(async ([name, container]) => {
         try {
-          const { stdout } = await execAsync(
-            `docker inspect --format='{{.State.Running}}' ${container}`,
+          const { stdout } = await execFileAsync(
+            'docker', ['inspect', '--format={{.State.Running}}', container],
             { timeout: 3000 }
           );
           checks[name] = stdout.trim() === 'true';

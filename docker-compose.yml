@@ -89,6 +89,9 @@ services:
       retries: 3
       start_period: 15s
     restart: unless-stopped
+    expose:
+      - "8003"
+      - "8004"
     networks:
       - bugtraceai-network
 
