@@ -140,6 +140,9 @@ export const WebSecAgent: React.FC<WebSecAgentProps> = ({
     // Only persist if streaming belongs to THIS session
     if (streamingSessionRef.current !== currentSession.id) return;
 
+    // Only persist when the LLM has fully finished responding (not during tool execution)
+    if (isLoading) return;
+
     const last = legacyMessages[legacyMessages.length - 1];
     if (last.role !== 'model' || last.isLoading) return;
 
@@ -152,7 +155,7 @@ export const WebSecAgent: React.FC<WebSecAgentProps> = ({
     persistMessage(last.content, 'assistant').catch((err) =>
       console.error('Failed to persist assistant message:', err)
     );
-  }, [legacyMessages, currentSession, persistMessage, persistedMessages]);
+  }, [legacyMessages, currentSession, persistMessage, persistedMessages, isLoading]);
 
   // ── TEXTAREA AUTO-RESIZE ───────────────────────────────────────────────────
   useEffect(() => {
