@@ -334,25 +334,23 @@ export const WebSecAgent: React.FC<WebSecAgentProps> = ({
               {isFetching ? 'Browsing…' : 'Web'}
             </button>
 
-            {/* cURL Tool Toggle — only in BugTrace/Recon modes */}
-            {(activeAgent === 'bugtrace' || activeAgent === 'recon') && (
-              <button
-                type="button"
-                onClick={() => setCurlEnabled(!curlEnabled)}
-                title={curlEnabled ? 'cURL tool ON – LLM can make HTTP requests' : 'cURL tool OFF – click to enable'}
-                className={`flex items-center gap-1.5 px-2 py-0.5 rounded-full border text-[10px] font-semibold uppercase tracking-wide transition-all ${
-                  curlEnabled
-                    ? 'border-amber-400/40 text-amber-400 bg-amber-500/10 hover:bg-amber-500/20'
-                    : 'border-white/10 text-ui-text-dim/40 hover:text-ui-text-dim hover:border-white/20'
-                }`}
-              >
-                {/* Terminal icon */}
-                <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                </svg>
-                cURL
-              </button>
-            )}
+            {/* cURL Tool Toggle */}
+            <button
+              type="button"
+              onClick={() => setCurlEnabled(!curlEnabled)}
+              title={curlEnabled ? 'cURL tool ON – LLM can make HTTP requests' : 'cURL tool OFF – click to enable'}
+              className={`flex items-center gap-1.5 px-2 py-0.5 rounded-full border text-[10px] font-semibold uppercase tracking-wide transition-all ${
+                curlEnabled
+                  ? 'border-amber-400/40 text-amber-400 bg-amber-500/10 hover:bg-amber-500/20'
+                  : 'border-white/10 text-ui-text-dim/40 hover:text-ui-text-dim hover:border-white/20'
+              }`}
+            >
+              {/* Terminal icon */}
+              <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+              </svg>
+              cURL
+            </button>
           </div>
 
           {/* Action Area (Right) */}

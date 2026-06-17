@@ -45,7 +45,8 @@ export const KALI_TOOLS = [
         required: ["command"]
       }
     }
-  }
+  },
+  CURL_TOOL
 ];
 
 export const RECON_SYSTEM_PROMPT = `You are a ReconFTW Automation Agent operating via BugTraceAI.
