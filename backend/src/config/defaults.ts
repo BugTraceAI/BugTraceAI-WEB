@@ -59,6 +59,11 @@ export const RATE_LIMITS = {
     max: 50,
     message: 'Too many authentication attempts from this IP, please try again later',
   },
+  execute: {
+    windowMs: RATE_LIMIT_WINDOW_MS,
+    max: 30,
+    message: 'Too many execute requests from this IP. Container operations are resource-intensive.',
+  },
 } as const;
 
 // ============================================================================

@@ -41,3 +41,8 @@ export const messageLimiter = buildLimiter(RATE_LIMITS.message);
  * Strictest rate limiter for authentication/sensitive endpoints
  */
 export const authLimiter = buildLimiter(RATE_LIMITS.auth);
+
+/**
+ * Rate limiter for container execute endpoints (kali, recon, bugtrace, curl)
+ */
+export const executeLimiter = buildLimiter(RATE_LIMITS.execute);

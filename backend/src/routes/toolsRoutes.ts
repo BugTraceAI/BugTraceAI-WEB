@@ -46,7 +46,9 @@ router.post(
  * Body: { url: string, method?: string, headers?: object, data?: string, follow_redirects?: boolean, insecure?: boolean }
  * Returns: { success, result }
  */
-router.post('/curl', executeCurl);
+import { executeLimiter } from '../middleware/rateLimiter.js';
+
+router.post('/curl', executeLimiter, executeCurl);
 
 /**
  * GET /api/tools/health

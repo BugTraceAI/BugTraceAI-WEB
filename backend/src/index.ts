@@ -54,19 +54,34 @@ app.use(
     contentSecurityPolicy: {
       directives: {
         defaultSrc: ["'self'"],
-        styleSrc: ["'self'", "'unsafe-inline'"],
+        styleSrc: ["'self'", "'unsafe-inline'"], // Required for inline styles from React/Tailwind
         scriptSrc: ["'self'"],
         imgSrc: ["'self'", 'data:', 'https:'],
+        connectSrc: ["'self'", 'https://openrouter.ai', 'https://api.z.ai', 'wss:', 'ws:'],
+        fontSrc: ["'self'"],
+        objectSrc: ["'none'"],
+        frameAncestors: ["'none'"],
       },
     },
+    referrerPolicy: { policy: 'strict-origin-when-cross-origin' },
+    frameguard: { action: 'deny' },
   })
 );
 
-// CORS configuration
+// CORS configuration — allow localhost, LAN IPs, and configured frontend URL
 app.use(
   cors({
-    // Reflect the request origin to allow access from any network interface (Local, LAN IP, etc.)
-    origin: true,
+    origin: (origin, callback) => {
+      // Allow requests with no origin (curl, mobile apps, same-origin)
+      if (!origin) return callback(null, true);
+      // Allow localhost, private IPs, and configured frontend
+      const allowed = !origin
+        || origin.includes('localhost')
+        || origin.includes('127.0.0.1')
+        || /^https?:\/\/(10\.|172\.(1[6-9]|2\d|3[01])\.|192\.168\.)/.test(origin)
+        || origin === (process.env.FRONTEND_URL || 'http://localhost:5173');
+      callback(null, allowed);
+    },
     credentials: true,
     methods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
   })

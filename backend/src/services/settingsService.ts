@@ -95,6 +95,12 @@ export async function updateSetting(key: string, value: unknown): Promise<Settin
     throw new ApiError(400, 'Value is required in request body');
   }
 
+  // Validate key against known settings to prevent arbitrary data storage
+  const validKeys = DEFAULT_SETTINGS.map(s => s.key);
+  if (!validKeys.includes(key)) {
+    throw new ApiError(400, `Unknown setting key: ${key}`);
+  }
+
   const setting = await prisma.appSettings.upsert({
     where: { key },
     update: { value: value as any },
