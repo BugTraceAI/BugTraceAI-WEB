@@ -54,7 +54,10 @@ export const ReportViewer: React.FC<ReportViewerProps> = ({ report, onRescan }) 
       }
 
       if (!response.ok) {
-        throw new Error('No findings data available for this scan yet');
+        const isCliDown = response.status === 0 || response.status >= 502;
+        throw new Error(isCliDown
+          ? 'Cannot connect to CLI API. Make sure BugTraceAI-CLI is running.'
+          : 'No findings data available for this scan yet');
       }
 
       const data = await response.json();

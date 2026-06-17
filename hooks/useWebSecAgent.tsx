@@ -170,14 +170,16 @@ export const useWebSecAgent = (onShowApiKeyWarning: () => void, activeAgent: Age
                                         });
                                     }
                                 }
+                                // Count tool rounds for circuit breaker
+                                toolCallCount++;
                             } else {
                                 currentHistory.push({ role: 'assistant', content: messageObj.content });
                                 setMessages(prev => [...prev, { role: 'model', content: messageObj.content }]);
                                 keepPrompting = false;
                             }
-                            
+
                             // Safety circuit breaker (allow max 5 consecutive tool hops to prevent infinite loops)
-                            if (++toolCallCount >= 5) {
+                            if (toolCallCount >= 5) {
                                 const circuitBreakerMsg = "--- Circuit Breaker: Max tool execution depth reached. Stopped to prevent recursive loop. ---";
                                 currentHistory.push({ role: 'assistant', content: circuitBreakerMsg });
                                 setMessages(prev => {

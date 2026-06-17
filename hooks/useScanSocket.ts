@@ -85,17 +85,21 @@ export function useScanSocket(): UseScanSocketReturn {
       wsRef.current = null;
     }
 
+    const isReconnect = currentScanIdRef.current === scanId && lastSeqRef.current > 0;
     currentScanIdRef.current = scanId;
     scanFinishedRef.current = false;
-    lastSeqRef.current = 0; // Reset sequence for fresh scan (only non-zero on reconnect)
-    // Reset dashboard state for new scan
-    setPipeline(INITIAL_PIPELINE);
-    setAgents([]);
-    setMetrics(INITIAL_METRICS);
-    setFindings([]);
 
-    // Build WebSocket URL with reconnection support
-    const wsUrl = lastSeqRef.current > 0
+    // Only reset dashboard state for a NEW scan, not a reconnect
+    if (!isReconnect) {
+      lastSeqRef.current = 0;
+      setPipeline(INITIAL_PIPELINE);
+      setAgents([]);
+      setMetrics(INITIAL_METRICS);
+      setFindings([]);
+    }
+
+    // Build WebSocket URL — use last_seq on reconnect to recover missed events
+    const wsUrl = isReconnect
       ? `${CLI_WS_URL}/ws/scans/${scanId}?last_seq=${lastSeqRef.current}`
       : `${CLI_WS_URL}/ws/scans/${scanId}`;
 
