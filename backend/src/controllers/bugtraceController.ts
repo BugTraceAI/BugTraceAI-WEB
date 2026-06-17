@@ -1,13 +1,29 @@
 import { Request, Response } from 'express';
 import { sendSuccess } from '../utils/responses.js';
 import { asyncHandler } from '../middleware/errorHandler.js';
-import { exec } from 'child_process';
+import { execFile } from 'child_process';
 import { promisify } from 'util';
 
-const execAsync = promisify(exec);
+const execFileAsync = promisify(execFile);
+
+/** Shell-escape a string for use inside single-quoted bash -c arguments */
+function shellEscape(s: string): string {
+  return s.replace(/'/g, "'\\''");
+}
+
+/** Validate a URL is safe for command use (no shell metacharacters) */
+function validateSafeUrl(url: string): boolean {
+  return /^https?:\/\/[^\s;|&`$(){}]+$/.test(url);
+}
+
+/** Run a command inside a Docker container safely via execFile */
+async function dockerExec(container: string, cmd: string, timeout = 60000): Promise<{ stdout: string; stderr: string }> {
+  return execFileAsync('docker', ['exec', '-i', container, 'bash', '-c', cmd], { timeout });
+}
 
 // Scan tracking for async operations
 const activeScans: Map<number, any> = new Map();
+const SCAN_TTL_MS = 3600000; // 1 hour — auto-cleanup completed scans
 let scanCounter = 0;
 
 /**
@@ -71,19 +87,27 @@ async function handleStartScan(args: {
   if (!target_url) {
     return { error: 'target_url is required' };
   }
-  
-  // Validate URL format
+
+  // Validate URL format and safety
   try {
     new URL(target_url);
   } catch {
     return { error: 'Invalid URL format. Must be a valid HTTP/HTTPS URL.' };
   }
-  
+  if (!validateSafeUrl(target_url)) {
+    return { error: 'URL contains invalid characters.' };
+  }
+
+  // Validate numeric params
+  const safeDepth = Math.max(1, Math.min(10, Number(max_depth) || 2));
+  const safeMaxUrls = Math.max(1, Math.min(500, Number(max_urls) || 20));
+  const safeType = ['full', 'hunter', 'manager'].includes(scan_type) ? scan_type : 'full';
+
   scanCounter++;
   const scanId = scanCounter;
-  
-  // Build bugtrace CLI command
-  const cmd = `bugtrace scan ${target_url} --type ${scan_type} --depth ${max_depth} --max-urls ${max_urls} --json`;
+
+  // Build bugtrace CLI command with escaped inputs
+  const cmd = `bugtrace scan '${shellEscape(target_url)}' --type ${safeType} --depth ${safeDepth} --max-urls ${safeMaxUrls} --json`;
   
   // Track the scan
   activeScans.set(scanId, {
@@ -157,9 +181,8 @@ async function handleQueryFindings(args: {
   
   try {
     // Shell command to read findings.json
-    const cmd = `cat ${scan.output_dir}/findings.json 2>/dev/null || echo "[]"`;
-    const dockerCmd = `docker exec -i bugtrace-cli-mcp bash -c '${cmd}'`;
-    const { stdout } = await execAsync(dockerCmd, { timeout: 30000 });
+    const cmd = `cat '${shellEscape(scan.output_dir)}/findings.json' 2>/dev/null || echo "[]"`;
+    const { stdout } = await dockerExec('bugtrace-cli-mcp', cmd, 30000);
     
     let findings = JSON.parse(stdout);
     
@@ -187,9 +210,8 @@ async function handleStopScan(args: { scan_id: number }) {
   
   if (!scan) return { error: `Scan ${scan_id} not found` };
   
-  const killCmd = `pkill -f "bugtrace scan.*${scan.target_url}" 2>/dev/null || true`;
-  const dockerCmd = `docker exec -i bugtrace-cli-mcp bash -c '${killCmd}'`;
-  await execAsync(dockerCmd, { timeout: 5000 });
+  const killCmd = `pkill -f 'bugtrace scan' 2>/dev/null || true`;
+  await dockerExec('bugtrace-cli-mcp', killCmd, 5000);
   
   scan.status = 'stopped';
   return { scan_id, status: 'stopped' };
@@ -204,11 +226,8 @@ async function handleExportReport(args: { scan_id: number; section?: string }) {
   
   if (!scan) return { error: `Scan ${scan_id} not found` };
   
-  const reportPath = `${scan.output_dir}/final_report.md`;
-  const cmd = `cat ${reportPath} 2>/dev/null || echo "Report not found"`;
-  const dockerCmd = `docker exec -i bugtrace-cli-mcp bash -c '${cmd}'`;
-  
-  const { stdout } = await execAsync(dockerCmd, { timeout: 30000 });
+  const cmd = `cat '${shellEscape(scan.output_dir)}/final_report.md' 2>/dev/null || echo "Report not found"`;
+  const { stdout } = await dockerExec('bugtrace-cli-mcp', cmd, 30000);
   return { scan_id, section, report: stdout.substring(0, 5000) };
 }
 
@@ -225,15 +244,16 @@ async function executeBackgroundScan(scanId: number, cmd: string) {
     const outputDir = `/app/scans/scan_${scanId}_${timestamp}`;
     scan.output_dir = outputDir;
     
-    const fullCmd = `mkdir -p ${outputDir} && ${cmd} --output ${outputDir}`;
-    const dockerCmd = `docker exec -i bugtrace-cli-mcp bash -c '${fullCmd.replace(/'/g, "'\\''")}'`;
-    
-    await execAsync(dockerCmd, { timeout: 600000 });
+    const fullCmd = `mkdir -p '${shellEscape(outputDir)}' && ${cmd} --output '${shellEscape(outputDir)}'`;
+    await dockerExec('bugtrace-cli-mcp', fullCmd, 600000);
     scan.status = 'completed';
     scan.completedAt = new Date().toISOString();
+    // Auto-cleanup after TTL to prevent memory leak
+    setTimeout(() => activeScans.delete(scanId), SCAN_TTL_MS);
   } catch (error: any) {
     scan.status = 'failed';
     scan.error = error.message;
     scan.completedAt = new Date().toISOString();
+    setTimeout(() => activeScans.delete(scanId), SCAN_TTL_MS);
   }
 }

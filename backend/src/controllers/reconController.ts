@@ -1,10 +1,22 @@
 import { Request, Response } from 'express';
 import { sendSuccess } from '../utils/responses.js';
 import { asyncHandler } from '../middleware/errorHandler.js';
-import { exec } from 'child_process';
+import { execFile } from 'child_process';
 import { promisify } from 'util';
 
-const execAsync = promisify(exec);
+const execFileAsync = promisify(execFile);
+
+function shellEscape(s: string): string {
+  return s.replace(/'/g, "'\\''");
+}
+
+function validateSafeDomain(domain: string): boolean {
+  return /^[a-zA-Z0-9][a-zA-Z0-9._-]*\.[a-zA-Z]{2,}$/.test(domain);
+}
+
+async function dockerExec(container: string, cmd: string, timeout = 60000): Promise<{ stdout: string; stderr: string }> {
+  return execFileAsync('docker', ['exec', '-i', container, 'bash', '-c', cmd], { timeout });
+}
 
 // Scan tracking for async operations
 const activeScans: Map<number, any> = new Map();
@@ -80,7 +92,8 @@ async function handleStartRecon(args: { target: string; mode?: string; deep_scan
   const scanId = scanCounter;
   
   const flags = deep_scan ? '-a' : '-r';
-  const cmd = `./reconftw.sh -d ${target} ${flags}`;
+  if (!validateSafeDomain(target)) return { error: 'Invalid target domain format' };
+  const cmd = `./reconftw.sh -d '${shellEscape(target)}' ${flags}`;
   
   activeScans.set(scanId, {
     id: scanId,
@@ -108,10 +121,11 @@ async function handleQuickRecon(args: { target: string }) {
   const { target } = args;
   if (!target) return { error: 'target is required' };
   
-  const cmd = `./reconftw.sh -d ${target} -r -p`; // passive
-  const dockerCmd = `docker exec -i reconftw-mcp bash -c '${cmd}'`;
+  if (!validateSafeDomain(target)) return { error: 'Invalid target domain format' };
+  const cmd = `./reconftw.sh -d '${shellEscape(target)}' -r -p`; // passive
+  // Command executed via dockerExec (execFile, no shell injection)
   
-  const { stdout } = await execAsync(dockerCmd, { timeout: 60000 });
+  const { stdout } = await dockerExec('reconftw-mcp', cmd, 60000);
   return { result: stdout };
 }
 
@@ -122,10 +136,11 @@ async function handleSubdomainEnum(args: { target: string }) {
   const { target } = args;
   if (!target) return { error: 'target is required' };
   
-  const cmd = `./reconftw.sh -d ${target} -s`;
-  const dockerCmd = `docker exec -i reconftw-mcp bash -c '${cmd}'`;
+  if (!validateSafeDomain(target)) return { error: 'Invalid target domain format' };
+  const cmd = `./reconftw.sh -d '${shellEscape(target)}' -s`;
+  // Command executed via dockerExec (execFile, no shell injection)
   
-  const { stdout } = await execAsync(dockerCmd, { timeout: 120000 });
+  const { stdout } = await dockerExec('reconftw-mcp', cmd, 120000);
   return { result: stdout };
 }
 
@@ -136,10 +151,11 @@ async function handleVulnerabilityScan(args: { target: string }) {
   const { target } = args;
   if (!target) return { error: 'target is required' };
   
-  const cmd = `./reconftw.sh -d ${target} -v`;
-  const dockerCmd = `docker exec -i reconftw-mcp bash -c '${cmd}'`;
+  if (!validateSafeDomain(target)) return { error: 'Invalid target domain format' };
+  const cmd = `./reconftw.sh -d '${shellEscape(target)}' -v`;
+  // Command executed via dockerExec (execFile, no shell injection)
   
-  const { stdout } = await execAsync(dockerCmd, { timeout: 300000 });
+  const { stdout } = await dockerExec('reconftw-mcp', cmd, 300000);
   return { result: stdout };
 }
 
@@ -150,10 +166,11 @@ async function handleOsintScan(args: { target: string }) {
   const { target } = args;
   if (!target) return { error: 'target is required' };
   
-  const cmd = `./reconftw.sh -d ${target} -o`;
-  const dockerCmd = `docker exec -i reconftw-mcp bash -c '${cmd}'`;
+  if (!validateSafeDomain(target)) return { error: 'Invalid target domain format' };
+  const cmd = `./reconftw.sh -d '${shellEscape(target)}' -o`;
+  // Command executed via dockerExec (execFile, no shell injection)
   
-  const { stdout } = await execAsync(dockerCmd, { timeout: 120000 });
+  const { stdout } = await dockerExec('reconftw-mcp', cmd, 120000);
   return { result: stdout };
 }
 
@@ -174,11 +191,11 @@ async function handleGetScanStatus(args: { scan_id: number }) {
  */
 async function handleListResults(args: { target?: string }) {
   const { target } = args;
-  const filter = target ? `| grep ${target}` : '';
+  const filter = target ? `| grep '${shellEscape(target)}'` : '';
   const cmd = `ls -R /opt/reconftw/output ${filter} || echo "No results found"`;
-  const dockerCmd = `docker exec -i reconftw-mcp bash -c '${cmd}'`;
+  // Command executed via dockerExec (execFile, no shell injection)
   
-  const { stdout } = await execAsync(dockerCmd, { timeout: 10000 });
+  const { stdout } = await dockerExec('reconftw-mcp', cmd, 10000);
   return { result: stdout };
 }
 
@@ -194,7 +211,7 @@ async function handleGetFindings(args: { scan_id: number; finding_type?: string;
   // Logic to read files from reconftw-mcp output directory
   // Example: cat /opt/reconftw/output/domain.com/subdomains.txt
   const target = scan.target;
-  let filePath = `/opt/reconftw/output/${target}/`;
+  let filePath = `/opt/reconftw/output/${shellEscape(target)}/`;
   
   switch (finding_type) {
     case 'subdomains': filePath += 'subdomains/subdomains.txt'; break;
@@ -204,9 +221,9 @@ async function handleGetFindings(args: { scan_id: number; finding_type?: string;
   }
   
   const cmd = `cat ${filePath} 2>/dev/null | head -n ${limit} || echo "No findings found for ${finding_type}"`;
-  const dockerCmd = `docker exec -i reconftw-mcp bash -c '${cmd}'`;
+  // Command executed via dockerExec (execFile, no shell injection)
   
-  const { stdout } = await execAsync(dockerCmd, { timeout: 30000 });
+  const { stdout } = await dockerExec('reconftw-mcp', cmd, 30000);
   return {
     scan_id,
     target,
@@ -224,8 +241,8 @@ async function executeBackgroundRecon(scanId: number, cmd: string) {
   
   try {
     scan.status = 'running';
-    const dockerCmd = `docker exec -i reconftw-mcp bash -c '${cmd}'`;
-    await execAsync(dockerCmd, { timeout: 3600000 }); // 1 hour timeout
+    // Command executed via dockerExec (execFile, no shell injection)
+    await dockerExec('reconftw-mcp', cmd, 3600000); // 1 hour timeout
     scan.status = 'completed';
     scan.completedAt = new Date().toISOString();
   } catch (error: any) {
