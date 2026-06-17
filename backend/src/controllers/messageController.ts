@@ -18,10 +18,10 @@ import * as messageService from '../services/messageService.js';
 export const listMessages = asyncHandler(async (req: Request, res: Response) => {
   const sessionId = req.params.sessionId;
   const limit = Math.min(
-    parseInt((req.query.limit as string) || String(PAGINATION.messageDefaultLimit)),
+    parseInt((req.query.limit as string) || String(PAGINATION.messageDefaultLimit)) || PAGINATION.messageDefaultLimit,
     PAGINATION.messageMaxLimit
   );
-  const offset = parseInt((req.query.offset as string) || '0');
+  const offset = parseInt((req.query.offset as string) || '0') || 0;
 
   const { messages, total } = await messageService.listMessages(String(sessionId), limit, offset);
 

@@ -42,10 +42,10 @@ export const createAnalysisReport = asyncHandler(async (req: Request, res: Respo
  */
 export const listAnalysisReports = asyncHandler(async (req: Request, res: Response) => {
   const limit = Math.min(
-    parseInt((req.query.limit as string) || String(PAGINATION.defaultLimit)),
+    parseInt((req.query.limit as string) || String(PAGINATION.defaultLimit)) || PAGINATION.defaultLimit,
     PAGINATION.maxLimit
   );
-  const offset = parseInt((req.query.offset as string) || '0');
+  const offset = parseInt((req.query.offset as string) || '0') || 0;
   const analysisTypeParam = req.query.analysis_type;
   const analysisType = (Array.isArray(analysisTypeParam)
     ? analysisTypeParam[0]

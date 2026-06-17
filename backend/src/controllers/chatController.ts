@@ -28,8 +28,8 @@ export const createChatSession = asyncHandler(async (req: Request, res: Response
  */
 export const listChatSessions = asyncHandler(async (req: Request, res: Response) => {
   const includeArchived = req.query.include_archived === 'true';
-  const limit = Math.min(parseInt((req.query.limit as string) || String(PAGINATION.defaultLimit)), PAGINATION.maxLimit);
-  const offset = parseInt((req.query.offset as string) || '0');
+  const limit = Math.min(parseInt((req.query.limit as string) || String(PAGINATION.defaultLimit)) || PAGINATION.defaultLimit, PAGINATION.maxLimit);
+  const offset = parseInt((req.query.offset as string) || '0') || 0;
   const sessionType = Array.isArray(req.query.session_type)
     ? (req.query.session_type[0] as string)
     : (req.query.session_type as string | undefined);

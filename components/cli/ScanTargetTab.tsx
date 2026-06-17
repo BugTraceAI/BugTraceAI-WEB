@@ -46,7 +46,7 @@ export const ScanTargetTab: React.FC<ScanTargetTabProps> = ({ onScanStart }) => 
   const startingRef = useRef(false);
   const location = useLocation();
   const navigate = useNavigate();
-  const { logs, isConnected, isScanning, subscribe, clearLogs, pipeline, agents, metrics, findings } = useScanSocket();
+  const { logs, isConnected, isScanning, subscribe, unsubscribe, clearLogs, pipeline, agents, metrics, findings } = useScanSocket();
 
   // Hydrate config from router state (e.g. "Load into Scan" from API Discovery)
   useEffect(() => {
@@ -165,12 +165,12 @@ export const ScanTargetTab: React.FC<ScanTargetTabProps> = ({ onScanStart }) => 
   };
 
   const handleClearView = () => {
+    unsubscribe();
     clearLogs();
     setHasFinished(false);
     setRunningScan(null);
-    // Note: useScanSocket state should ideally clear here too
-    // For now we rely on the parent/hook to handle the reset if possible
-    window.location.reload(); // Quickest way to clear all hook-based scan state
+    setScanError(null);
+    setConfig(DEFAULT_CONFIG);
   };
 
   const isValidUrl = (): boolean => {
