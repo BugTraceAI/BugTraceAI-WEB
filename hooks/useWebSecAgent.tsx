@@ -91,20 +91,24 @@ export const useWebSecAgent = (onShowApiKeyWarning: () => void, activeAgent: Age
                                     });
                                 }
 
+                                // Show a single "Executing" status for all tool calls in this batch
+                                const toolNames = messageObj.tool_calls.map((tc: any) => tc.function.name);
+                                const statusMsg = toolNames.length === 1
+                                    ? `\n\n> Executing ${agentLabel} Action: ${toolNames[0]}...`
+                                    : `\n\n> Executing ${agentLabel} Actions: ${toolNames.join(', ')}...`;
+                                setMessages(prev => {
+                                    const last = prev[prev.length - 1];
+                                    if (last && last.role === 'model') {
+                                        const updated = [...prev];
+                                        updated[updated.length - 1] = { ...last, content: last.content + statusMsg };
+                                        return updated;
+                                    }
+                                    return [...prev, { role: 'model', content: statusMsg }];
+                                });
+
                                 for (const toolCall of messageObj.tool_calls) {
                                     const toolName = toolCall.function.name;
                                     const args = JSON.parse(toolCall.function.arguments);
-                                    
-                                    setMessages(prev => {
-                                        const last = prev[prev.length - 1];
-                                        const statusMsg = `\n\n> Executing ${agentLabel} Action: ${toolName}...`;
-                                        if (last && last.role === 'model') {
-                                            const updated = [...prev];
-                                            updated[updated.length - 1] = { ...last, content: last.content + statusMsg };
-                                            return updated;
-                                        }
-                                        return [...prev, { role: 'model', content: statusMsg }];
-                                    });
                                     
                                     try {
                                         let targetUrl: string;
