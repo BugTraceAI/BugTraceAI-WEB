@@ -96,14 +96,14 @@ export const executeCurl = asyncHandler(async (req: Request, res: Response) => {
 
     let result = '';
     if (stdout.trim()) result += truncateOutput(stdout.trim(), MAX_OUTPUT_LENGTH);
-    if (stderr.trim()) result += `\n---- [stderr] ----\n${truncateOutput(stderr.trim(), 1000)}`;
+    if (stderr.trim()) result += `\n---- [stderr] ----\n${truncateOutput(stderr.trim(), 2000)}`;
     if (!result) result = '(curl completed with no output)';
 
     sendSuccess(res, { success: true, result });
   } catch (error: any) {
     let errorMsg = error.message || 'curl execution failed';
-    if (error.stdout) errorMsg += `\n[stdout]\n${truncateOutput(error.stdout, 2000)}`;
-    if (error.stderr) errorMsg += `\n[stderr]\n${truncateOutput(error.stderr, 1000)}`;
+    if (error.stdout) errorMsg += `\n[stdout]\n${truncateOutput(error.stdout, 3000)}`;
+    if (error.stderr) errorMsg += `\n[stderr]\n${truncateOutput(error.stderr, 2000)}`;
     if (error.killed) errorMsg += `\nProcess killed (timeout after ${TIMEOUT_MS / 1000}s)`;
 
     sendSuccess(res, {

@@ -243,7 +243,7 @@ export const useWebSecAgent = (onShowApiKeyWarning: () => void, activeAgent: Age
     }, [messages, apiOptions, isApiKeySet, onShowApiKeyWarning, activeAgent, apiHistory, curlEnabled]);
     
     const sendMessage = useCallback((message: string) => {
-        if (isLoading || !message.trim()) return;
+        if (isLoading || isResponding.current || !message.trim()) return;
         const newUserMessage: ChatMessage = { role: 'user', content: message };
         setMessages(prev => [...prev, newUserMessage]);
     }, [isLoading]);
@@ -273,7 +273,10 @@ export const useWebSecAgent = (onShowApiKeyWarning: () => void, activeAgent: Age
 
         const mappedApi = dbMessages.map(m => ({
             role: m.role,
-            content: m.content
+            content: m.content,
+            ...(m.name && { name: m.name }),
+            ...(m.tool_call_id && { tool_call_id: m.tool_call_id }),
+            ...(m.tool_calls && { tool_calls: m.tool_calls }),
         }));
         setApiHistory(mappedApi);
     }, []);
