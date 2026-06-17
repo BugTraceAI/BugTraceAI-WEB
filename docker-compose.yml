@@ -69,8 +69,31 @@ services:
     networks:
       - bugtraceai-network
 
+  # API Discovery (Kiterunner) — core WEB feature, always runs
+  api-routes:
+    build:
+      context: ./api-routes-mcp
+      dockerfile: Dockerfile
+      network: host
+    container_name: bugtraceai-api-routes
+    command: ["mcp", "--sse"]
+    environment:
+      - KR_BIN=/usr/local/bin/kr
+      - WORDLISTS_DIR=/opt/kiterunner/wordlists
+      - MCP_PORT=8003
+      - API_PORT=8004
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "--max-time", "2", "http://localhost:8004/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+    restart: unless-stopped
+    networks:
+      - bugtraceai-network
+
   # ============================================
-  # MCP Security Agents
+  # MCP Security Agents (optional, chat extras)
   # ============================================
   
   # Kali Linux MCP Server - Security tools container
