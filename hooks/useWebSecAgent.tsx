@@ -8,7 +8,8 @@ import { callOpenRouterChatWithTools } from '../services/apiClient.ts';
 import {
   KALI_SYSTEM_PROMPT, KALI_TOOLS,
   RECON_SYSTEM_PROMPT, RECON_TOOLS,
-  BUGTRACE_SYSTEM_PROMPT, BUGTRACE_TOOLS
+  BUGTRACE_SYSTEM_PROMPT, BUGTRACE_TOOLS,
+  CURL_TOOL
 } from './useWebSecAgentConfig.ts';
 
 interface ApiHistoryItem {
@@ -48,8 +49,14 @@ export const useWebSecAgent = (onShowApiKeyWarning: () => void, activeAgent: Age
                     return;
                 }
                 try {
-                    if (activeAgent !== 'web') {
-                        const { prompt: systemPrompt, tools: rawTools, endpoint: apiEndpoint, label: agentLabel } = getAgentConfig(activeAgent);
+                    // Use tool-calling path for non-web agents, OR for web agent when cURL is enabled
+                    const useToolPath = activeAgent !== 'web' || curlEnabled;
+
+                    if (useToolPath) {
+                        const agentLabel = activeAgent === 'web' ? 'WebSec' : getAgentConfig(activeAgent).label;
+                        const systemPrompt = activeAgent === 'web' ? getWebSecAgentSystemPrompt() : getAgentConfig(activeAgent).prompt;
+                        const apiEndpoint = activeAgent === 'web' ? '' : getAgentConfig(activeAgent).endpoint;
+                        const rawTools = activeAgent === 'web' ? [CURL_TOOL] : getAgentConfig(activeAgent).tools;
                         const tools = curlEnabled ? rawTools : rawTools.filter((t: any) => t.function?.name !== 'run_curl');
 
                         let currentHistory: ApiHistoryItem[] = [
@@ -183,7 +190,7 @@ export const useWebSecAgent = (onShowApiKeyWarning: () => void, activeAgent: Age
                         }
                         setApiHistory(currentHistory.slice(1));
                     } else {
-                        // Web agent - uses simpler chat API without tools
+                        // Web agent without cURL — uses simpler chat API without tools
                         if (!apiOptions) {
                             throw new Error('API key was removed. Please configure it in Settings.');
                         }
