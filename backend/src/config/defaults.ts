@@ -61,7 +61,7 @@ export const RATE_LIMITS = {
   },
   execute: {
     windowMs: RATE_LIMIT_WINDOW_MS,
-    max: 30,
+    max: 100,
     message: 'Too many execute requests from this IP. Container operations are resource-intensive.',
   },
 } as const;

@@ -541,7 +541,9 @@ export function useKiterunner(): UseKiterunnerReturn {
       return;
     }
 
-    // Block if a scan is already running
+    // Block if a scan is already running or starting (prevents double-click)
+    if (scanStatus === 'running' || scanStatus === 'connecting') return;
+
     try {
       if (scanIdRef.current) {
         setError('A scan is already running. Please stop it before starting a new one.');

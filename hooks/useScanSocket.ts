@@ -400,10 +400,9 @@ export function useScanSocket(): UseScanSocketReturn {
       console.log('[WebSocket] Unsubscribing from scan', currentScanIdRef.current);
       wsRef.current.close();
       wsRef.current = null;
-      currentScanIdRef.current = null;
+      // Preserve scanId and lastSeq so reconnecting to the same scan can resume
+      // (currentScanIdRef and lastSeqRef kept intact for reconnection)
       setIsScanning(false);
-      // Reset sequence counter on manual unsubscribe
-      lastSeqRef.current = 0;
     }
   }, []);
 

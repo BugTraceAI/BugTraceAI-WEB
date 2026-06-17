@@ -16,7 +16,7 @@ export const useApiOptions = (): {
         }
         return {
             apiKey: apiKeys[providerId],
-            model: openRouterModel,
+            model: openRouterModel || 'google/gemini-3-flash-preview', // fallback if model is empty/invalid
         };
     }, [isApiKeySet, apiKeys, providerId, openRouterModel]);
 
