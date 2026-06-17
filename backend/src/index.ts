@@ -124,27 +124,6 @@ app.get('/health', (_req: Request, res: Response) => {
   });
 });
 
-// Parse DATABASE_URL to extract connection info (without password)
-function getDatabaseConnectionInfo(): { host: string; port: string; database: string; user: string } | null {
-  const dbUrl = process.env.DATABASE_URL;
-  if (!dbUrl) return null;
-
-  try {
-    // postgresql://user:password@host:port/database?schema=public
-    const match = dbUrl.match(/postgresql:\/\/([^:]+):[^@]+@([^:]+):(\d+)\/([^?]+)/);
-    if (match) {
-      return {
-        user: match[1],
-        host: match[2],
-        port: match[3],
-        database: match[4],
-      };
-    }
-  } catch {
-    // Ignore parsing errors
-  }
-  return null;
-}
 
 // Detailed health check with database status
 app.get(
@@ -152,14 +131,9 @@ app.get(
   asyncHandler(async (_req: Request, res: Response) => {
     // Test database connection
     const dbConnected = await testConnection();
-    const connectionInfo = getDatabaseConnectionInfo();
 
     let databaseInfo: any = {
       connected: dbConnected,
-      host: connectionInfo?.host || 'unknown',
-      port: connectionInfo?.port || 'unknown',
-      database: connectionInfo?.database || 'unknown',
-      user: connectionInfo?.user || 'unknown',
     };
 
     // Get database stats if connected

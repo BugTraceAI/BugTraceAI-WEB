@@ -79,7 +79,18 @@ export async function fetchWebPage(rawUrl: string): Promise<string> {
           res.headers.location
         ) {
           req.destroy();
-          fetchWebPage(res.headers.location).then(resolve).catch(reject);
+          // Validate redirect target — block internal/metadata URLs (SSRF prevention)
+          try {
+            const redirectUrl = new URL(res.headers.location, rawUrl);
+            const host = redirectUrl.hostname;
+            if (host === 'localhost' || host === '127.0.0.1' || host.startsWith('169.254.') || host.startsWith('10.') || host.startsWith('192.168.') || host.endsWith('.internal')) {
+              reject(new Error(`Redirect to internal host blocked: ${host}`));
+              return;
+            }
+            fetchWebPage(redirectUrl.href).then(resolve).catch(reject);
+          } catch {
+            reject(new Error('Invalid redirect URL'));
+          }
           return;
         }
 

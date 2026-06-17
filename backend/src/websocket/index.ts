@@ -6,7 +6,14 @@ let io: Server | null = null;
 export function initializeWebSocket(httpServer: HTTPServer): Server {
   io = new Server(httpServer, {
     cors: {
-      origin: true,
+      origin: (origin, callback) => {
+        if (!origin) return callback(null, true);
+        const allowed = origin.includes('localhost')
+          || origin.includes('127.0.0.1')
+          || /^https?:\/\/(10\.|172\.(1[6-9]|2\d|3[01])\.|192\.168\.)/.test(origin)
+          || origin === (process.env.FRONTEND_URL || 'http://localhost:5173');
+        callback(null, allowed);
+      },
       methods: ['GET', 'POST'],
       credentials: true,
     },
