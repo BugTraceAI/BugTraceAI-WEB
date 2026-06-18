@@ -12,7 +12,7 @@
   <a href="https://bugtraceai.com"><img src="https://img.shields.io/badge/Website-bugtraceai.com-blue?logo=google-chrome&logoColor=white" alt="Website"/></a>
   <a href="https://deepwiki.com/BugTraceAI/BugTraceAI-WEB"><img src="https://img.shields.io/badge/Wiki-Documentation-000?logo=wikipedia&logoColor=white" alt="Wiki"/></a>
   <img src="https://img.shields.io/badge/License-AGPL--3.0-blue.svg" alt="License"/>
-  <img src="https://img.shields.io/badge/Version-0.8.6-beta-orange" alt="Version"/>
+  <img src="https://img.shields.io/badge/Version-1.0.0--beta-orange" alt="Version"/>
 </p>
 
 <p align="center">
@@ -43,7 +43,7 @@
 - [Tech Stack](#tech-stack)
 - [License](#license)
 
-## What's New in v0.8.6.1-beta
+## What's New in v1.0.0-beta
 
 - 🔍 **API Discovery** — Kiterunner-powered active API endpoint discovery with multi-filter, sort, speed selector, and PostgreSQL persistence
 - 🔐 **Authenticated Scanning (YAML + TOTP/2FA)** — YAML-based auth config with automatic 2FA token generation for authenticated scans
@@ -307,7 +307,7 @@ Multiple WEB instances can connect to the same CLI API server over the network.
 
 | Layer       | Technology                                          |
 | ----------- | --------------------------------------------------- |
-| Frontend    | React 18, TypeScript 5, Vite 4                      |
+| Frontend    | React 18, TypeScript 5, Vite 5                      |
 | Styling     | Tailwind CSS                                        |
 | State       | React Context + Custom Hooks                        |
 | Charts      | Recharts                                            |
@@ -316,7 +316,7 @@ Multiple WEB instances can connect to the same CLI API server over the network.
 | Database    | PostgreSQL 16                                       |
 | Real-time   | Socket.IO                                           |
 | Validation  | Zod                                                 |
-| AI Provider | OpenRouter (Gemini, Claude, GPT, DeepSeek, Mistral) |
+| AI Provider | OpenRouter (200+ models) + Z.ai (GLM family) |
 | Testing     | Vitest + Supertest                                  |
 | Deployment  | Docker Compose, Nginx reverse proxy                 |
 
