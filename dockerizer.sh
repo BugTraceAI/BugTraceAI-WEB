@@ -7,6 +7,13 @@ if [ $? -ne 0 ]; then
     echo "Warning: 'docker-compose down' failed. This might be the first run, which is okay. Continuing..."
 fi
 
+SELINUX_SUFFIX=""
+if command -v getenforce &> /dev/null && [ "$(getenforce)" != "Disabled" ]; then
+    echo "ℹ SELinux detected. Configuring Docker mounts with :Z label"
+    SELINUX_SUFFIX=":Z"
+fi
+export SELINUX_SUFFIX
+
 echo "--- Building and starting the application... ---"
 docker-compose -f docker-compose.yml up --build -d
 
