@@ -1,0 +1,364 @@
+import express, { Express, Request, Response } from 'express';
+import { createServer } from 'http';
+import dotenv from 'dotenv';
+import cors from 'cors';
+import helmet from 'helmet';
+import compression from 'compression';
+
+// Load environment variables
+dotenv.config();
+
+// Import utilities
+import {
+  disconnectPrisma,
+  testConnection,
+  getDatabaseStats,
+} from './utils/prisma.js';
+import { sendSuccess } from './utils/responses.js';
+import { initializeWebSocket } from './websocket/index.js';
+
+// Import middleware
+import { errorHandler, notFoundHandler, asyncHandler } from './middleware/errorHandler.js';
+import {
+  developmentLogger,
+  productionLogger,
+} from './middleware/requestLogger.js';
+import { apiLimiter } from './middleware/rateLimiter.js';
+
+// Import routes
+import chatRoutes from './routes/chatRoutes.js';
+import analysisRoutes from './routes/analysisRoutes.js';
+import settingsRoutes from './routes/settingsRoutes.js';
+import kaliRoutes from './routes/kaliRoutes.js';
+import reconRoutes from './routes/reconRoutes.js';
+import bugtraceRoutes from './routes/bugtraceRoutes.js';
+import apiDiscoveryRoutes from './routes/apiDiscoveryRoutes.js';
+import toolsRoutes from './routes/toolsRoutes.js';
+
+// Create Express application
+const app: Express = express();
+const port = process.env.PORT || 3001;
+const isDevelopment = process.env.NODE_ENV !== 'production';
+
+// Trust the reverse proxy (Docker network proxy, Nginx, etc.)
+// This ensures req.ip represents the client instead of the Docker gateway, preventing global rate limits.
+app.set('trust proxy', 1);
+
+// ============================================================================
+// Security Middleware
+// ============================================================================
+
+// Helmet for security headers
+app.use(
+  helmet({
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc: ["'self'"],
+        styleSrc: ["'self'", "'unsafe-inline'"], // Required for inline styles from React/Tailwind
+        scriptSrc: ["'self'"],
+        imgSrc: ["'self'", 'data:', 'https:'],
+        connectSrc: ["'self'", 'https://openrouter.ai', 'https://api.z.ai', 'https://api.anthropic.com', 'wss:', 'ws:'],
+        fontSrc: ["'self'"],
+        objectSrc: ["'none'"],
+        frameAncestors: ["'none'"],
+      },
+    },
+    referrerPolicy: { policy: 'strict-origin-when-cross-origin' },
+    frameguard: { action: 'deny' },
+  })
+);
+
+// CORS configuration — allow localhost, LAN IPs, and configured frontend URL
+app.use(
+  cors({
+    origin: (origin, callback) => {
+      // Allow requests with no origin (curl, mobile apps, same-origin)
+      if (!origin) return callback(null, true);
+      // Allow localhost, private IPs, and configured frontend
+      const allowed = !origin
+        || origin.includes('localhost')
+        || origin.includes('127.0.0.1')
+        || /^https?:\/\/(10\.|172\.(1[6-9]|2\d|3[01])\.|192\.168\.)/.test(origin)
+        || origin === (process.env.FRONTEND_URL || 'http://localhost:5173');
+      callback(null, allowed);
+    },
+    credentials: true,
+    methods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
+  })
+);
+
+// ============================================================================
+// General Middleware
+// ============================================================================
+
+// Compression
+app.use(compression());
+
+// Body parsing
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+
+// Request logging (morgan already tracks response time)
+if (isDevelopment) {
+  app.use(developmentLogger);
+} else {
+  app.use(productionLogger);
+}
+
+// Rate limiting (production only)
+if (!isDevelopment) {
+  app.use('/api', apiLimiter);
+}
+
+// ============================================================================
+// Health Check Endpoints
+// ============================================================================
+
+// Basic health check
+app.get('/health', (_req: Request, res: Response) => {
+  sendSuccess(res, {
+    status: 'ok',
+    timestamp: new Date().toISOString(),
+    environment: process.env.NODE_ENV || 'development',
+    uptime: process.uptime(),
+  });
+});
+
+
+// Detailed health check with database status
+app.get(
+  '/health/detailed',
+  asyncHandler(async (_req: Request, res: Response) => {
+    // Test database connection
+    const dbConnected = await testConnection();
+
+    let databaseInfo: any = {
+      connected: dbConnected,
+    };
+
+    // Get database stats if connected
+    if (dbConnected) {
+      try {
+        const stats = await getDatabaseStats();
+        databaseInfo.stats = stats;
+      } catch (error) {
+        databaseInfo.statsError = 'Failed to fetch database statistics';
+      }
+    }
+
+    // Memory usage
+    const memoryUsage = process.memoryUsage();
+
+    sendSuccess(res, {
+      status: 'ok',
+      timestamp: new Date().toISOString(),
+      environment: process.env.NODE_ENV || 'development',
+      uptime: process.uptime(),
+      database: databaseInfo,
+      memory: {
+        heapUsed: `${Math.round(memoryUsage.heapUsed / 1024 / 1024)}MB`,
+        heapTotal: `${Math.round(memoryUsage.heapTotal / 1024 / 1024)}MB`,
+      },
+    });
+  })
+);
+
+// API version endpoint (with update check)
+import { checkForUpdate } from './utils/versionCheck.js';
+import { readFileSync } from 'fs';
+import { fileURLToPath } from 'url';
+import { dirname, join } from 'path';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+
+function readAppVersion(): string {
+  const candidatePaths = [
+    join(__dirname, '..', 'VERSION'),
+    join(__dirname, '..', '..', 'VERSION'),
+  ];
+
+  for (const candidatePath of candidatePaths) {
+    try {
+      return readFileSync(candidatePath, 'utf-8').trim();
+    } catch {
+      // Try next location.
+    }
+  }
+
+  return '0.0.0';
+}
+
+const appVersion = readAppVersion();
+
+app.get('/api', asyncHandler(async (_req: Request, res: Response) => {
+  sendSuccess(res, {
+    name: 'BugTraceAI-WEB API',
+    version: appVersion,
+    apiVersion: 'v1',
+    status: 'ok',
+    endpoints: {
+      version: '/api/version',
+      chats: '/api/chats',
+      analyses: '/api/analyses',
+      settings: '/api/settings',
+      kali: '/api/kali',
+      recon: '/api/recon',
+      bugtrace: '/api/bugtrace',
+    },
+  });
+}));
+
+app.get('/api/version', asyncHandler(async (_req: Request, res: Response) => {
+  const update = await checkForUpdate(appVersion);
+  sendSuccess(res, {
+    version: appVersion,
+    apiVersion: 'v1',
+    name: 'BugTraceAI-WEB API',
+    updateAvailable: update?.updateAvailable ?? false,
+    latestVersion: update?.latestVersion ?? null,
+    releaseUrl: update?.releaseUrl ?? null,
+  });
+}));
+
+// ============================================================================
+// API Routes
+// ============================================================================
+
+app.use('/api/chats', chatRoutes);
+app.use('/api/analyses', analysisRoutes);
+app.use('/api/settings', settingsRoutes);
+app.use('/api/kali', kaliRoutes);
+app.use('/api/recon', reconRoutes);
+app.use('/api/bugtrace', bugtraceRoutes);
+app.use('/api/api-discovery', apiDiscoveryRoutes);
+app.use('/api/tools', toolsRoutes);
+
+// ============================================================================
+// Error Handling (must be last)
+// ============================================================================
+
+// 404 handler
+app.use(notFoundHandler);
+
+// Global error handler
+app.use(errorHandler);
+
+// ============================================================================
+// Database Initialization
+// ============================================================================
+
+async function initializeDatabase(): Promise<void> {
+  try {
+    console.log('🔌 Connecting to PostgreSQL database...');
+
+    // Test connection
+    const connected = await testConnection();
+
+    if (connected) {
+      console.log('✅ Database connection successful');
+
+      // Get and log database stats
+      try {
+        const stats = await getDatabaseStats();
+        console.log('📊 Database statistics:', stats);
+      } catch (error) {
+        console.warn('⚠️  Could not fetch database statistics:', error);
+      }
+    } else {
+      console.error('❌ Database connection failed');
+      console.warn('⚠️  Server will start but database operations will fail');
+    }
+  } catch (error) {
+    console.error('❌ Database initialization error:', error);
+    console.warn('⚠️  Server will start but database operations will fail');
+  }
+}
+
+// ============================================================================
+// Graceful Shutdown
+// ============================================================================
+
+async function gracefulShutdown(signal: string): Promise<void> {
+  console.log(`\n${signal} received. Starting graceful shutdown...`);
+
+  // Close HTTP server
+  if (server) {
+    server.close(() => {
+      console.log('✅ HTTP server closed');
+    });
+  }
+
+  // Disconnect Prisma
+  try {
+    await disconnectPrisma();
+    console.log('✅ Database disconnected');
+  } catch (error) {
+    console.error('❌ Error disconnecting database:', error);
+  }
+
+  process.exit(0);
+}
+
+// Handle shutdown signals
+process.on('SIGINT', () => gracefulShutdown('SIGINT'));
+process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+
+// ============================================================================
+// Uncaught Error Handling
+// ============================================================================
+
+process.on('uncaughtException', (error: Error) => {
+  console.error('❌ Uncaught Exception:', error);
+  gracefulShutdown('UNCAUGHT_EXCEPTION');
+});
+
+process.on('unhandledRejection', (reason: any) => {
+  console.error('❌ Unhandled Rejection:', reason);
+  gracefulShutdown('UNHANDLED_REJECTION');
+});
+
+// ============================================================================
+// Server Startup
+// ============================================================================
+
+let server: any;
+
+async function startServer(): Promise<void> {
+  try {
+    // Initialize database first
+    await initializeDatabase();
+
+    // Create HTTP server wrapping Express app
+    const httpServer = createServer(app);
+
+    // Initialize WebSocket server
+    initializeWebSocket(httpServer);
+
+    // Start HTTP server
+    server = httpServer.listen(port, () => {
+      console.log('\n' + '='.repeat(60));
+      console.log('🚀 BugTraceAI-WEB Backend Server');
+      console.log('='.repeat(60));
+      console.log(`📍 Server URL: http://localhost:${port}`);
+      console.log(`📊 Health Check: http://localhost:${port}/health`);
+      console.log(`📊 Detailed Health: http://localhost:${port}/health/detailed`);
+      console.log(`📦 API Version: http://localhost:${port}/api/version`);
+      console.log(`🔌 WebSocket: ws://localhost:${port}/socket.io/`);
+      console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
+      console.log(`🔐 CORS Origin: ${process.env.FRONTEND_URL || 'http://localhost:5173'}`);
+      console.log('='.repeat(60) + '\n');
+    });
+  } catch (error) {
+    console.error('❌ Failed to start server:', error);
+    process.exit(1);
+  }
+}
+
+// Start the server only if not in test environment
+if (process.env.NODE_ENV !== 'test') {
+  startServer();
+}
+
+// Export app for testing
+export { app };

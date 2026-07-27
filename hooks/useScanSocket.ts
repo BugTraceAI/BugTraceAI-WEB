@@ -1,0 +1,493 @@
+import { useEffect, useState, useCallback, useRef } from 'react';
+import { CLI_WS_URL } from '../lib/cliApi';
+import { formatVerboseEvent } from '../lib/verboseEventFormatter';
+
+export interface LogEntry {
+  level: 'DEBUG' | 'INFO' | 'WARNING' | 'ERROR' | 'CRITICAL';
+  message: string;
+  timestamp: string;
+}
+
+// Structured dashboard state from CLI events
+export interface PipelineState {
+  currentPhase: string;
+  progress: number; // 0-1
+  statusMsg: string;
+}
+
+export interface AgentState {
+  agent: string;
+  status: string; // idle, active, complete, error
+  queue: number;
+  processed: number;
+  vulns: number;
+}
+
+export interface MetricsState {
+  urlsDiscovered: number;
+  urlsAnalyzed: number;
+}
+
+export interface Finding {
+  type: string;
+  severity: string;
+  parameter: string;
+  url: string;
+  details: string;
+  timestamp: string;
+}
+
+interface UseScanSocketReturn {
+  logs: LogEntry[];
+  isConnected: boolean;
+  isScanning: boolean;
+  progress: number;
+  pipeline: PipelineState;
+  agents: AgentState[];
+  metrics: MetricsState;
+  findings: Finding[];
+  agentLevels: Record<string, { level: string; confirmed: boolean }>;
+  subscribe: (scanId: number) => void;
+  unsubscribe: () => void;
+  clearLogs: () => void;
+  clearDashboard: () => void;
+}
+
+const MAX_LOGS = 10000;
+
+/**
+ * Native WebSocket hook for real-time scan event streaming.
+ *
+ * Connects to CLI FastAPI WebSocket endpoint /ws/scans/{scan_id}.
+ * Maps CLI event types to LogEntry format for ScanConsole compatibility.
+ *
+ * Supports reconnection via last_seq parameter to receive missed events.
+ */
+const INITIAL_PIPELINE: PipelineState = { currentPhase: '', progress: 0, statusMsg: '' };
+const INITIAL_METRICS: MetricsState = { urlsDiscovered: 0, urlsAnalyzed: 0 };
+
+export function useScanSocket(): UseScanSocketReturn {
+  const [logs, setLogs] = useState<LogEntry[]>([]);
+  const [isConnected, setIsConnected] = useState(false);
+  const [isScanning, setIsScanning] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const [pipeline, setPipeline] = useState<PipelineState>(INITIAL_PIPELINE);
+  const [agents, setAgents] = useState<AgentState[]>([]);
+  const [metrics, setMetrics] = useState<MetricsState>(INITIAL_METRICS);
+  const [findings, setFindings] = useState<Finding[]>([]);
+  // Live per-vuln-type escalation level (from exploit.<type>.level.* events) — drives the SwarmGraph ladder.
+  const [agentLevels, setAgentLevels] = useState<Record<string, { level: string; confirmed: boolean }>>({});
+  const wsRef = useRef<WebSocket | null>(null);
+  const currentScanIdRef = useRef<number | null>(null);
+  const lastSeqRef = useRef<number>(0);
+  const scanFinishedRef = useRef<boolean>(false);
+
+  const resetDashboardState = useCallback(() => {
+    setPipeline(INITIAL_PIPELINE);
+    setAgents([]);
+    setMetrics(INITIAL_METRICS);
+    setFindings([]);
+    setAgentLevels({});
+    setProgress(0);
+  }, []);
+
+  const subscribe = useCallback((scanId: number) => {
+    // Close any existing connection
+    if (wsRef.current) {
+      wsRef.current.close();
+      wsRef.current = null;
+      setIsConnected(false);
+    }
+
+    const isReconnect = currentScanIdRef.current === scanId && lastSeqRef.current > 0;
+    currentScanIdRef.current = scanId;
+    scanFinishedRef.current = false;
+
+    // Only reset dashboard state for a NEW scan, not a reconnect
+    if (!isReconnect) {
+      lastSeqRef.current = 0;
+      resetDashboardState();
+    }
+
+    // Build WebSocket URL — use last_seq on reconnect to recover missed events
+    const wsUrl = isReconnect
+      ? `${CLI_WS_URL}/ws/scans/${scanId}?last_seq=${lastSeqRef.current}`
+      : `${CLI_WS_URL}/ws/scans/${scanId}`;
+
+    console.log('[WebSocket] Connecting to:', wsUrl);
+
+    try {
+      const ws = new WebSocket(wsUrl);
+      wsRef.current = ws;
+
+      ws.onopen = () => {
+        if (wsRef.current !== ws) return;
+        console.log('[WebSocket] Connected to scan', scanId);
+        setIsConnected(true);
+        setIsScanning(true);
+      };
+
+      ws.onmessage = (event) => {
+        if (wsRef.current !== ws) return;
+        try {
+          const data = JSON.parse(event.data);
+          const { event_type, seq, timestamp, data: eventData } = data;
+          const scan_id = eventData?.scan_id ?? data.scan_id;
+
+          // Live escalation-level tracking: exploit.<type>.level.started/completed → drives the SwarmGraph ladder.
+          const _lvlMatch = typeof event_type === 'string' && event_type.match(/^exploit\.([a-z0-9_]+)\.level\.(started|completed)$/);
+          if (_lvlMatch && eventData?.level) {
+            const _vtype = _lvlMatch[1];
+            const _completed = _lvlMatch[2] === 'completed';
+            setAgentLevels(prev => ({
+              ...prev,
+              [_vtype]: {
+                level: String(eventData.level),
+                confirmed: (prev[_vtype]?.confirmed || false) || (_completed && !!eventData?.confirmed),
+              },
+            }));
+          }
+
+          // Update last sequence number
+          if (seq) {
+            lastSeqRef.current = Math.max(lastSeqRef.current, seq);
+          }
+
+          // Map CLI event types to LogEntry format
+          const logTimestamp = timestamp || new Date().toISOString();
+          let logEntry: LogEntry | null = null;
+
+          switch (event_type) {
+            case 'scan_created':
+              // Scan created in DB - skip log, scan_started follows immediately
+              break;
+
+            case 'scan_started': {
+              const target = eventData?.target || eventData?.target_url || '';
+              logEntry = {
+                level: 'INFO',
+                message: `[SCAN STARTED] Scan ${scan_id} initialized on target host`,
+                timestamp: logTimestamp,
+              };
+              break;
+            }
+
+            case 'agent_active': {
+              const agentName = eventData?.agent || 'Agent';
+              const agentTarget = eventData?.url ? ` - ${eventData.url}` : '';
+              logEntry = {
+                level: 'INFO',
+                message: `[AGENT] ${agentName} active${agentTarget}`,
+                timestamp: logTimestamp,
+              };
+              break;
+            }
+
+            case 'log': {
+              // Bridge events (pipeline_started, url_analyzed, etc.) + direct log events
+              const rawEvent = data.event || '';
+              let msg = eventData?.message || '';
+              if (!msg) {
+                if (eventData?.phase) {
+                  const phaseDesc = eventData.description ? ` - ${eventData.description}` : '';
+                  msg = `[PIPELINE] Phase: ${eventData.phase}${phaseDesc}`;
+                } else if (eventData?.url) {
+                  msg = `[URL] Analyzed: ${eventData.url}`;
+                } else {
+                  msg = rawEvent;
+                }
+              }
+              if (msg) {
+                logEntry = {
+                  level: eventData?.level || 'INFO',
+                  message: msg,
+                  timestamp: logTimestamp,
+                };
+              }
+              break;
+            }
+
+            case 'phase_complete': {
+              // Core bus: event name is "phase_complete_reconnaissance" etc.
+              const phaseName = eventData?.phase || data.event?.replace('phase_complete_', '') || 'Phase';
+              const phaseLabel = phaseName.charAt(0).toUpperCase() + phaseName.slice(1);
+              const phaseStats = eventData?.stats || eventData?.summary || '';
+              const phaseSuffix = phaseStats ? `. ${typeof phaseStats === 'string' ? phaseStats : JSON.stringify(phaseStats)}` : '';
+              logEntry = {
+                level: 'INFO',
+                message: `[PHASE] ${phaseLabel} complete${phaseSuffix}`,
+                timestamp: logTimestamp,
+              };
+              break;
+            }
+
+            case 'finding_discovered': {
+              // The CLI emits the vuln EITHER flat (fields top-level) OR wrapped — some
+              // specialists emit `{ finding: {...} }` and api-security emits
+              // `{ vulnerability: {...} }`. Read from the nested object when present, else
+              // the event itself, so fields never collapse to "Unknown".
+              const v = (eventData?.finding && typeof eventData.finding === 'object') ? eventData.finding
+                : (eventData?.vulnerability && typeof eventData.vulnerability === 'object') ? eventData.vulnerability
+                : (eventData || {});
+              const vulnType = v.type || v.vuln_type || v.vulnerability_type || v.name || '';
+              const vulnParam = v.parameter ? ` on '${v.parameter}'` : '';
+              const vulnUrl = v.url ? ` - ${v.url}` : '';
+              const vulnDesc = v.description || v.details || '';
+              const vulnInfo = vulnDesc || vulnUrl;
+              logEntry = {
+                level: 'CRITICAL',
+                message: vulnType
+                  ? `[VULN FOUND] ${vulnType}${vulnParam}${vulnInfo ? `. ${vulnInfo}` : ''}`
+                  : `[FINDING] ${vulnDesc || 'Vulnerability detected'}${vulnUrl}`,
+                timestamp: logTimestamp,
+              };
+              // Also add to structured findings. The CLI may announce the same finding twice
+              // (flat emit_finding + a nested backward-compat wrapper) — dedup by
+              // type+parameter+url so the vuln count stays honest.
+              const newFinding = {
+                type: vulnType || 'Unknown',
+                severity: v.severity || 'high',
+                parameter: v.parameter || '',
+                url: v.url || '',
+                details: vulnDesc,
+                timestamp: logTimestamp,
+              };
+              setFindings(prev => prev.some(f =>
+                f.type === newFinding.type && f.parameter === newFinding.parameter && f.url === newFinding.url
+              ) ? prev : [...prev, newFinding]);
+              break;
+            }
+
+            // === Dashboard events (structured state for widgets) ===
+
+            case 'pipeline_progress': {
+              const phase = eventData?.phase || '';
+              const prog = eventData?.progress ?? 0;
+              const statusMsg = eventData?.status_msg || '';
+              setPipeline({ currentPhase: phase, progress: prog, statusMsg });
+              // Also update global progress %
+              setProgress(Math.round(prog * 100));
+              break;
+            }
+
+            case 'agent_update': {
+              const agentName = eventData?.agent || '';
+              const agentStatus = eventData?.status || 'idle';
+              const agentQueue = eventData?.queue ?? 0;
+              const agentProcessed = eventData?.processed ?? 0;
+              const agentVulns = eventData?.vulns ?? 0;
+              setAgents(prev => {
+                const existing = prev.findIndex(a => a.agent === agentName);
+                const updated: AgentState = {
+                  agent: agentName,
+                  status: agentStatus,
+                  queue: agentQueue,
+                  processed: agentProcessed,
+                  vulns: agentVulns,
+                };
+                if (existing >= 0) {
+                  const next = [...prev];
+                  next[existing] = updated;
+                  return next;
+                }
+                return [...prev, updated];
+              });
+              break;
+            }
+
+            case 'metrics_update': {
+              setMetrics({
+                urlsDiscovered: eventData?.urls_discovered ?? 0,
+                urlsAnalyzed: eventData?.urls_analyzed ?? 0,
+              });
+              break;
+            }
+
+            case 'scan_complete_summary': {
+              // Structured scan completion with totals
+              const totalFindings = eventData?.total_findings ?? 0;
+              const dur = eventData?.duration ?? 0;
+              const mins = Math.floor(dur / 60);
+              const secs = Math.round(dur % 60);
+              const durStr = mins > 0 ? `${mins}m ${secs}s` : `${secs}s`;
+              logEntry = {
+                level: 'INFO',
+                message: `[SCAN COMPLETE] ${totalFindings} findings in ${durStr}`,
+                timestamp: logTimestamp,
+              };
+              setPipeline({ currentPhase: 'complete', progress: 1, statusMsg: `${totalFindings} findings` });
+              scanFinishedRef.current = true;
+              setIsScanning(false);
+              setProgress(100);
+              break;
+            }
+
+            case 'scan_paused':
+              logEntry = {
+                level: 'WARNING',
+                message: `[SCAN PAUSED] Scan ${scan_id} paused`,
+                timestamp: logTimestamp,
+              };
+              break;
+
+            case 'scan_resumed':
+              logEntry = {
+                level: 'INFO',
+                message: `[SCAN RESUMED] Scan ${scan_id} resumed`,
+                timestamp: logTimestamp,
+              };
+              break;
+
+            case 'scan_complete': {
+              const elapsed = eventData?.elapsed_seconds || eventData?.duration || 0;
+              const mins = Math.floor(elapsed / 60);
+              const secs = elapsed % 60;
+              const duration = mins > 0 ? `${mins}m ${secs}s` : `${secs}s`;
+              const findings = eventData?.findings_count !== undefined ? `, ${eventData.findings_count} findings` : '';
+              logEntry = {
+                level: 'INFO',
+                message: `[SCAN COMPLETE] ${eventData?.status || 'Completed'} in ${duration}${findings}`,
+                timestamp: logTimestamp,
+              };
+              scanFinishedRef.current = true;
+              setIsScanning(false);
+              setProgress(100);
+              break;
+            }
+
+            case 'error':
+              logEntry = {
+                level: 'ERROR',
+                message: `[ERROR] ${eventData?.error || eventData?.message || 'Unknown error'}`,
+                timestamp: logTimestamp,
+              };
+              // If error is not recoverable, stop scanning state
+              if (eventData?.recoverable === false) {
+                scanFinishedRef.current = true;
+                setIsScanning(false);
+              }
+              break;
+
+            case 'progress':
+              // Update progress state
+              if (eventData?.progress !== undefined) {
+                setProgress(eventData.progress);
+                // Optionally add debug log
+                logEntry = {
+                  level: 'DEBUG',
+                  message: `[PROGRESS] ${eventData.progress}%`,
+                  timestamp: logTimestamp,
+                };
+              }
+              break;
+
+            default: {
+              // Verbose events (dotted names) → rich formatted messages
+              const formatted = formatVerboseEvent(event_type, eventData || {});
+              if (formatted) {
+                logEntry = { ...formatted, timestamp: logTimestamp };
+              } else {
+                logEntry = {
+                  level: 'INFO',
+                  message: eventData?.message || `[${event_type}]`,
+                  timestamp: logTimestamp,
+                };
+              }
+              break;
+            }
+          }
+
+          // Add log entry if created
+          if (logEntry) {
+            setLogs(prev => {
+              const updated = [...prev, logEntry];
+              // Keep only last MAX_LOGS entries
+              return updated.slice(-MAX_LOGS);
+            });
+          }
+        } catch (error) {
+          console.error('[WebSocket] Error parsing message:', error);
+        }
+      };
+
+      ws.onclose = (event) => {
+        if (wsRef.current !== ws) return;
+        console.log('[WebSocket] Connection closed', event.code, event.reason);
+        setIsConnected(false);
+        // If scan already finished (scan_complete/error received), scanFinishedRef is true — nothing to do.
+        // If WS closed abnormally WITHOUT a terminal event, the scan may still be running on backend
+        // but we have no way to receive updates. Clear isScanning so UI doesn't get stuck.
+        // Code 1000 = normal close (server sent scan_complete first, scanFinishedRef already set).
+        // Code 1005/1006 = abnormal close (network issue) — scan may still run, but WS is dead.
+        if (!scanFinishedRef.current) {
+          const closeLog: LogEntry = {
+            level: 'ERROR',
+            message: `[ERROR] Connection lost (code ${event.code || 'unknown'}); scan may still be running on the backend.`,
+            timestamp: new Date().toISOString(),
+          };
+          setLogs(prev => ([
+            ...prev,
+            closeLog,
+          ]).slice(-MAX_LOGS));
+          setIsScanning(false);
+        }
+      };
+
+
+      ws.onerror = (error) => {
+        if (wsRef.current !== ws) return;
+        console.error('[WebSocket] Error:', error);
+        setIsConnected(false);
+      };
+    } catch (error) {
+      console.error('[WebSocket] Failed to create connection:', error);
+      setIsConnected(false);
+    }
+  }, [resetDashboardState]);
+
+  const unsubscribe = useCallback(() => {
+    if (wsRef.current) {
+      console.log('[WebSocket] Unsubscribing from scan', currentScanIdRef.current);
+      wsRef.current.close();
+      wsRef.current = null;
+      // Preserve scanId and lastSeq so reconnecting to the same scan can resume
+      // (currentScanIdRef and lastSeqRef kept intact for reconnection)
+      setIsConnected(false);
+      setIsScanning(false);
+    }
+  }, []);
+
+  const clearLogs = useCallback(() => {
+    setLogs([]);
+  }, []);
+
+  const clearDashboard = useCallback(() => {
+    resetDashboardState();
+    setLogs([]);
+  }, [resetDashboardState]);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (wsRef.current) {
+        wsRef.current.close();
+      }
+    };
+  }, []);
+
+  return {
+    logs,
+    isConnected,
+    isScanning,
+    progress,
+    pipeline,
+    agents,
+    metrics,
+    findings,
+    agentLevels,
+    subscribe,
+    unsubscribe,
+    clearLogs,
+    clearDashboard,
+  };
+}

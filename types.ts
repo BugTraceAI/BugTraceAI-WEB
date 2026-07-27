@@ -1,0 +1,219 @@
+// @author: Albert C | @yz9yt | github.com/yz9yt
+// types.ts
+// version 0.1 Beta
+export enum View {
+  URL_ANALYSIS = 'URL_ANALYSIS',
+  CODE_ANALYSIS = 'CODE_ANALYSIS',
+  PAYLOAD_TOOLS = 'PAYLOAD_TOOLS',
+  DISCOVERY_TOOLS = 'DISCOVERY_TOOLS',
+  JWT_ANALYZER = 'JWT_ANALYZER',
+  EXPLOIT_TOOLS = 'EXPLOIT_TOOLS',
+  FILE_UPLOAD_AUDITOR = 'FILE_UPLOAD_AUDITOR',
+  WEB_SEC_AGENT = 'WEB_SEC_AGENT',
+  XSS_EXPLOIT_ASSISTANT = 'XSS_EXPLOIT_ASSISTANT', // This is a special view, not in the main navigator
+  SQL_EXPLOIT_ASSISTANT = 'SQL_EXPLOIT_ASSISTANT', // Special view for SQLi
+  FINISHER = 'FINISHER', // AI Repeater / "The Finisher" — resume exploiting unconfirmed findings
+  CLI_FRAMEWORK = 'CLI_FRAMEWORK',
+  MODEL_LAB = 'MODEL_LAB', // Standalone sidebar module (route /modellab) — OpenRouter benchmark
+  HISTORY = 'HISTORY',
+}
+
+export enum Tool {
+  SAST = 'SAST',
+  DAST = 'DAST',
+  SECURITY_HEADERS_ANALYZER = 'SECURITY_HEADERS_ANALYZER',
+  JS_RECON = 'JS_RECON',
+  DOM_XSS_PATHFINDER = 'DOM_XSS_PATHFINDER',
+  PAYLOAD_FORGE = 'PAYLOAD_FORGE',
+  SSTI_FORGE = 'SSTI_FORGE',
+  PRIVESC_PATHFINDER = 'PRIVESC_PATHFINDER',
+  OOB_INTERACTION_HELPER = 'OOB_INTERACTION_HELPER',
+  URL_LIST_FINDER = 'URL_LIST_FINDER',
+  SUBDOMAIN_FINDER = 'SUBDOMAIN_FINDER',
+  API_DISCOVERY = 'API_DISCOVERY',
+}
+
+export type AgentType = 'web' | 'kali' | 'recon' | 'bugtrace';
+
+export enum Severity {
+  CRITICAL = 'Critical',
+  HIGH = 'High',
+  MEDIUM = 'Medium',
+  LOW = 'Low',
+  INFO = 'Info',
+  UNKNOWN = 'Unknown'
+}
+
+export type DastScanType = 'recon' | 'active' | 'greybox';
+
+export interface InjectionPoint {
+  type: 'URL_PARAM' | 'POST_PARAM' | 'PATH';
+  parameter: string; // e.g., 'q', 'name', 'id'
+  method?: 'GET' | 'POST';
+}
+
+export interface Vulnerability {
+  vulnerability: string;
+  severity: Severity;
+  description: string;
+  impact: string;
+  recommendation: string;
+  vulnerableCode: string; // The vulnerable pattern or example payload
+  injectionPoint?: InjectionPoint; // Where the injection occurs
+}
+
+export interface VulnerabilityReport {
+  id?: string;
+  analyzedTarget: string;
+  vulnerabilities: Vulnerability[];
+}
+
+export interface XssPayload {
+    payload: string;
+    description: string;
+    mechanism: string;
+    encoding: string;
+}
+
+export interface XssPayloadResult {
+    payloads: XssPayload[];
+    explanation: string;
+}
+
+export interface SqlmapCommandResult {
+  command: string;
+  explanation: string;
+}
+
+export interface ForgedPayload {
+    technique: string;
+    description: string;
+    payload: string;
+}
+
+export interface ForgedPayloadResult {
+    payloads: ForgedPayload[];
+}
+
+export interface FormInput {
+    name: string;
+    type: string;
+    value?: string;
+    isVulnerable: boolean;
+}
+
+export interface ExploitPath {
+    exploitUrl: string;
+    formMethod: 'GET' | 'POST';
+    formInputs: FormInput[];
+    reproductionGuide: string;
+}
+
+export interface ChatMessage {
+  role: 'user' | 'model' | 'system';
+  content: string;
+  isLoading?: boolean;
+}
+
+export interface ExploitContext {
+    vulnerability: Vulnerability;
+    targetUrl?: string;
+}
+
+/**
+ * ExploitSeed — everything the scanner already learned about an UNCONFIRMED finding,
+ * used to seed "The Finisher" (AI Repeater) so the agent resumes where the scan stopped
+ * instead of starting cold. All fields optional except url; built from CLI raw_findings.json
+ * (parseRawFindingToSeed) or from the manual form in FinisherAssistant.
+ */
+/** A captured HTTP request (from the CLI `repro` envelope) the repeater can replay verbatim. */
+export interface RepeaterRequestDict {
+    method: string;
+    url: string;
+    headers?: Record<string, string>;
+    body?: string | null;
+    bodyContentType?: string | null;
+}
+
+export interface ExploitSeed {
+    scanId?: number;                   // scan id this finding belongs to
+    findingId?: number;                // finding id from the scan's findings list
+    vulnType: string;                 // 'XSS' | 'SQLi' | 'CSTI' | ...
+    url: string;                      // the target URL the scanner tested
+    parameter?: string;               // the injection parameter (e.g. 'searchTerm')
+    method?: 'GET' | 'POST';
+    reflectingPayloads?: string[];    // payloads that reflected but did NOT confirm
+    reflectionContext?: string;       // e.g. 'js_string_single', 'html_attribute', 'script_block'
+    survivingChars?: string;          // characters that survived filtering, e.g. "<>\"'"
+    serverEscaping?: string;          // observed escaping behavior, free text
+    baselineRequest?: string;         // closest-miss raw request, if available
+    baselineResponse?: string;        // closest-miss response snippet, if available
+    whyStalled?: string;              // human-readable reason the scanner couldn't confirm
+    confidence?: number;              // 0..1 scanner confidence, if available
+    needsCdp?: boolean;               // flagged NEEDS_CDP_VALIDATION (DOM execution required)
+    status?: string;                  // scanner status: 'Confirmed' | 'PENDING_VALIDATION' | ... (drives the agent framing)
+    // Seed enrichment — the REAL request the scanner used to confirm (CLI `repro` envelope).
+    confirmingRequest?: RepeaterRequestDict;   // replay this verbatim (auth masked)
+    confirmingResponse?: { status?: number; excerpt?: string };
+    readbackRequest?: RepeaterRequestDict;     // stored vulns: the GET that proved persistence
+    authUsed?: boolean;
+    authScheme?: string;                       // 'Bearer' | 'Cookie' | ...
+    jwtSecret?: string;                        // HS256 secret cracked by the scan (from a "Weak JWT Secret" finding) — lets the Repeater forge admin tokens
+    reproduction?: string;                     // curl command or reproduction string from specialist
+    curlCommand?: string;                      // alternative curl command field
+}
+
+export interface HeaderFinding {
+    name: string;
+    value: string | null;
+    status: 'Present - Good' | 'Present - Misconfigured' | 'Missing';
+    recommendation: string;
+    severity: 'High' | 'Medium' | 'Low' | 'Info';
+}
+
+export interface HeadersReport {
+    analyzedUrl: string;
+    overallScore: 'A+' | 'A' | 'B' | 'C' | 'D' | 'F';
+    summary: string;
+    findings: HeaderFinding[];
+}
+
+// Types for DOM XSS Pathfinder
+export interface DomXssConnectedPath {
+    source: string;
+    sink: string;
+    code_snippet: string;
+    explanation: string;
+}
+
+export interface DomXssUnconnectedFinding {
+    type: 'source' | 'sink';
+    value: string;
+}
+
+export interface DomXssAnalysisResult {
+    connected_paths: DomXssConnectedPath[];
+    unconnected_findings: DomXssUnconnectedFinding[];
+}
+
+export interface FileUploadAnalysisResult {
+    found: boolean;
+    description: string;
+    manualTestingGuide: string;
+}
+
+export interface ApiKeys {
+    openrouter: string;
+    [key: string]: string;  // Support any provider key (e.g. 'zai')
+}
+
+export type ApiOptions = {
+    apiKey: string;
+    model: string;
+};
+
+// New interface for vulnerability validation result
+export interface ValidationResult {
+    is_valid: boolean;
+    reasoning: string;
+}

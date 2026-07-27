@@ -1,0 +1,120 @@
+// components/cli/CLIFramework.tsx
+import React, { useState, useEffect } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { TerminalIcon, DocumentTextIcon, CogIcon, SignalIcon } from '../Icons.tsx';
+import { ScanTargetTab } from './ScanTargetTab.tsx';
+import { PastReportsTab } from './PastReportsTab.tsx';
+import { ConfigurationTab } from './ConfigurationTab.tsx';
+import { ProviderTab } from './ProviderTab.tsx';
+import type { ExploitSeed } from '../../types.ts';
+
+interface CLIFrameworkProps {
+  onClose: () => void;
+  onSendToRepeater?: (seed: ExploitSeed) => void;
+}
+
+// Model Lab moved to its own sidebar module at /modellab (no longer a BugTraceAI sub-tab).
+type TabType = 'scan' | 'reports' | 'config' | 'provider';
+
+const tabToPath: Record<TabType, string> = {
+  scan: '/bugtraceai/scan',
+  reports: '/bugtraceai/reports',
+  config: '/bugtraceai/config',
+  provider: '/bugtraceai/provider',
+};
+
+const pathToTab: Record<string, TabType> = {
+  '/bugtraceai/scan': 'scan',
+  '/bugtraceai/reports': 'reports',
+  '/bugtraceai/config': 'config',
+  '/bugtraceai/provider': 'provider',
+  '/bugtraceai': 'scan', // Default
+};
+
+export const CLIFramework: React.FC<CLIFrameworkProps> = ({ onClose, onSendToRepeater }) => {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const [activeTab, setActiveTab] = useState<TabType>('scan');
+
+  // Sync URL to tab on mount and location change
+  useEffect(() => {
+    let tab = pathToTab[location.pathname];
+    // Handle /bugtraceai/reports/:reportId deep links
+    if (!tab && location.pathname.startsWith('/bugtraceai/reports/')) {
+      tab = 'reports';
+    }
+    if (tab && tab !== activeTab) {
+      setActiveTab(tab);
+    }
+  }, [location.pathname]);
+
+  // Sync tab to URL when tab changes
+  const handleTabChange = (tab: TabType) => {
+    setActiveTab(tab);
+    navigate(tabToPath[tab]);
+  };
+
+  const tabs = [
+    { id: 'scan' as TabType, name: 'Scan Target', icon: <TerminalIcon className="h-4 w-4 transition-transform duration-300 group-hover:scale-110" /> },
+    { id: 'reports' as TabType, name: 'Reports', icon: <DocumentTextIcon className="h-4 w-4 transition-transform duration-300 group-hover:-rotate-6 group-hover:scale-110" /> },
+    { id: 'config' as TabType, name: 'Configuration', icon: <CogIcon className="h-4 w-4 transition-transform duration-500 group-hover:rotate-90" /> },
+    { id: 'provider' as TabType, name: 'Provider', icon: <SignalIcon className="h-4 w-4 transition-transform duration-300 group-hover:scale-110" /> },
+  ];
+
+  const handleRescan = (targetUrl: string) => {
+    // Switch to scan tab and prefill URL
+    setActiveTab('scan');
+    // Note: The prefilling will be handled by passing config via prop in future iteration
+    // For now, user will need to manually enter the URL
+    console.log('Re-scan requested for:', targetUrl);
+  };
+
+  const handleViewScan = () => {
+    setActiveTab('scan');
+    navigate(tabToPath.scan);
+  };
+
+  const renderTabContent = () => {
+    switch (activeTab) {
+      case 'scan':
+        return <ScanTargetTab />;
+      case 'reports':
+        return <PastReportsTab onRescan={handleRescan} onViewScan={handleViewScan} onSendToRepeater={onSendToRepeater} />;
+      case 'config':
+        return <ConfigurationTab />;
+      case 'provider':
+        return <ProviderTab />;
+    }
+  };
+
+  return (
+    <div className="h-full flex flex-col card-premium !bg-black/20 rounded-[2rem] overflow-hidden" data-testid="cli-framework">
+      {/* Tab Navigation */}
+      <div className="flex items-center gap-1 px-5 pt-3 bg-black/40 border-b border-ui-border">
+        {tabs.map((tab) => (
+          <button
+            key={tab.id}
+            onClick={() => handleTabChange(tab.id)}
+            className={`
+              group py-3 px-6 label-mini rounded-t-xl transition-all duration-300 flex items-center gap-2.5 border-b-2 -mb-px
+              ${activeTab === tab.id
+                ? 'border-b-ui-accent text-ui-accent bg-ui-accent/5 opacity-100'
+                : 'border-b-transparent text-ui-text-dim hover:text-white hover:bg-white/5 opacity-80 hover:opacity-100'
+              }
+            `}
+            aria-current={activeTab === tab.id ? 'page' : undefined}
+            data-testid={`cli-tab-${tab.id}`}
+          >
+            {tab.icon}
+            {tab.name}
+          </button>
+        ))}
+      </div>
+
+      {/* Tab Content */}
+      <div className="flex-1 min-h-0 flex flex-col">
+        {renderTabContent()}
+      </div>
+    </div>
+  );
+};
