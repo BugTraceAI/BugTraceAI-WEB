@@ -2,7 +2,7 @@
 import { marked } from 'marked';
 import DOMPurify from 'dompurify';
 import React, { useMemo } from 'react';
-import { normalizeMarkdownDocument } from '../lib/markdownTransformers';
+import { normalizeMarkdownDocument, protectQuotedValues } from '../lib/markdownTransformers';
 
 // Configure marked options once
 marked.setOptions({
@@ -13,6 +13,8 @@ marked.setOptions({
 
 interface MarkdownRendererProps {
   content: string;
+  /** Finding data quoted inside `content`; fenced before render so it survives marked. */
+  protectValues?: Array<string | null | undefined>;
 }
 
 // Inlined styles to replace Tailwind's @tailwindcss/typography (prose) plugin,
@@ -128,10 +130,16 @@ const markdownStyles = `
 }
 `;
 
-export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content }) => {
+export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content, protectValues }) => {
     const parsedHtml = useMemo(() => {
         if (!content) return '';
-        const rawHtml = marked.parse(normalizeMarkdownDocument(content)) as string;
+        // Fence any finding data the prose quotes inline BEFORE marked parses it: the
+        // payload's own backticks would otherwise be read as code-span delimiters and
+        // deleted, handing the reader a payload that no longer fires.
+        const safe = protectValues?.length
+            ? protectQuotedValues(content, protectValues)
+            : content;
+        const rawHtml = marked.parse(normalizeMarkdownDocument(safe)) as string;
         const clean = DOMPurify.sanitize(rawHtml, {
             ALLOWED_TAGS: [
                 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'p', 'br', 'hr',
@@ -145,7 +153,7 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content }) =
         });
         // Open all links in new tab
         return clean.replace(/<a /g, '<a target="_blank" rel="noopener noreferrer" ');
-    }, [content]);
+    }, [content, protectValues]);
 
     return (
         <>

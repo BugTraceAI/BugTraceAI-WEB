@@ -45,6 +45,81 @@ export const normalizeMarkdownDocument = (content: string): string => {
   return [...lines.slice(1, closingIndex), ...lines.slice(closingIndex + 1)].join('\n').trim();
 };
 
+// CommonMark 0.31 §6 lists every construct a literal string can accidentally OPEN inside
+// prose. A string containing none of them renders as its own bytes; one containing any of
+// them may not, so it goes in a fenced block instead. Mirrors poc_format.markdown_inert
+// in the CLI so both ends agree on what is safe to leave inline.
+const MD_INLINE_STARTERS = /[`*_[\]<>&\\~!|]/;
+
+const markdownInert = (value: string): boolean => {
+  if (!value || value !== value.trim()) return false;
+  if (/[\n\r\t]/.test(value)) return false;
+  if (value.includes('  ')) return false;
+  return !MD_INLINE_STARTERS.test(value);
+};
+
+// Fence one backtick longer than the longest run inside the value, so a payload that
+// itself contains fences still round-trips byte-exact.
+const fencedBlock = (text: string): string => {
+  const runs: string[] = text.match(/`+/g) ?? [];
+  const longest = runs.reduce((n, run) => Math.max(n, run.length), 0);
+  const fence = '`'.repeat(Math.max(3, longest + 1));
+  return `${fence}text\n${text}\n${fence}`;
+};
+
+/**
+ * Lift finding data that the enrichment model quoted inline out of the prose and into
+ * fenced blocks, BEFORE marked sees it.
+ *
+ * The model writes the payload straight into its sentence. marked then reads the
+ * payload's own backticks as code-span delimiters and deletes them, so
+ * `d.setAttribute(\`style\`,…)` reaches the reader as `d.setAttribute( style ,…)` — a
+ * payload nobody can copy — while the identical bytes sit correct in raw_findings.json
+ * and in final_report.md. Nothing is lost on disk: the loss is entirely at render time,
+ * and it lands on the one field the report exists to deliver.
+ *
+ * The CLI now fences these at generation time too, but that only helps NEW reports; this
+ * repairs every report already on disk. Values are matched longest-first so a short one
+ * cannot split a longer one containing it. A backtick still left in the prose is the
+ * model's own: an ODD count means an unpaired delimiter that swallows the rest of the
+ * paragraph, so those are escaped; an even count is left alone as probably-deliberate
+ * inline code.
+ */
+export const protectQuotedValues = (
+  content: string,
+  values: Array<string | null | undefined>,
+): string => {
+  if (!content) return content;
+
+  let text = content;
+  const blocks: Array<[string, string]> = [];
+  const seen = new Set<string>();
+
+  const candidates = values
+    .filter((v): v is string => typeof v === 'string' && v.length > 0)
+    .sort((a, b) => b.length - a.length);
+
+  for (const value of candidates) {
+    if (seen.has(value) || markdownInert(value) || !text.includes(value)) continue;
+    seen.add(value);
+    // NUL cannot occur in report prose or in a payload field, so the placeholder can
+    // never collide with the text it is protecting.
+    const token = `\u0000${blocks.length}\u0000`;
+    text = text.replace(value, token);
+    blocks.push([token, value]);
+  }
+
+  if ((text.match(/`/g) || []).length % 2) text = text.replace(/`/g, '\\`');
+
+  for (const [token, value] of blocks) {
+    // Function form: a literal replacement would let `$&`/`$1` inside a payload be
+    // interpreted as a capture-group reference and silently corrupt the bytes.
+    text = text.replace(token, () => `\n\n${fencedBlock(value)}\n\n`);
+  }
+
+  return text.trim();
+};
+
 const isPrevalidatedDetection = (detection: FindingItem): boolean => {
   const status = detection.status?.toUpperCase();
   if (status) return status === 'VALIDATED_CONFIRMED' || status === 'VALIDATED';

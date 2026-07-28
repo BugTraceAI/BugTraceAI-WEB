@@ -977,11 +977,17 @@ export const ReportMarkdownViewer: React.FC<ReportMarkdownViewerProps> = ({ repo
                                             </div>
                                           );
                                         } catch (e) {
-                                          return <MarkdownRenderer content={finding.exploitation_details} />;
+                                          return <MarkdownRenderer
+                                          content={finding.exploitation_details}
+                                          protectValues={[finding.payload, finding.url]}
+                                        />;
                                         }
                                       })()
                                     ) : (
-                                      <MarkdownRenderer content={finding.exploitation_details} />
+                                      <MarkdownRenderer
+                                          content={finding.exploitation_details}
+                                          protectValues={[finding.payload, finding.url]}
+                                        />
                                     )}
                                   </div>
                                 )}
