@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="logo.png" alt="BugTraceAI" width="200"/>
+  <img src="BTAI_Logo_GitHub.png" alt="BugTraceAI" width="180"/>
 </p>
 
 <h1 align="center">BugTraceAI-WEB</h1>
