@@ -5,7 +5,7 @@ services:
     container_name: bugtraceai-web-db
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-bugtraceai}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-bugtraceai_dev_2026}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
       POSTGRES_DB: ${POSTGRES_DB:-bugtraceai_web}
     volumes:
       - postgres_data:/var/lib/postgresql/data
@@ -31,7 +31,7 @@ services:
     environment:
       NODE_ENV: production
       PORT: 3001
-      DATABASE_URL: postgresql://${POSTGRES_USER:-bugtraceai}:${POSTGRES_PASSWORD:-bugtraceai_dev_2026}@postgres:5432/${POSTGRES_DB:-bugtraceai_web}?schema=public
+      DATABASE_URL: postgresql://${POSTGRES_USER:-bugtraceai}:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}@postgres:5432/${POSTGRES_DB:-bugtraceai_web}?schema=public
       FRONTEND_URL: http://localhost:${FRONTEND_PORT:-6869}
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
@@ -125,12 +125,11 @@ services:
     networks:
       - bugtraceai-network
 
-  # reconFTW MCP Server - Automated reconnaissance container
-  # Start manually: docker-compose up -d reconftw-mcp
+  # reconFTW MCP Server - optional external image.
+  # Build or obtain the image separately, then set RECONFTW_MCP_IMAGE in .env.
+  # Start manually: docker compose --profile recon up -d reconftw-mcp
   reconftw-mcp:
-    build:
-      context: ../reconftw-mcp
-      dockerfile: Dockerfile
+    image: ${RECONFTW_MCP_IMAGE:-reconftw-mcp:local}
     container_name: reconftw-mcp
     profiles:
       - recon
@@ -166,12 +165,12 @@ services:
     networks:
       - bugtraceai-network
 
-  # BugTraceAI-CLI MCP Server - Local scanner integration
-  # Start manually: docker-compose up -d bugtrace-cli-mcp
+  # BugTraceAI-CLI MCP Server - optional external image.
+  # Build the CLI image from the public BugTraceAI-CLI repository separately,
+  # then set BUGTRACEAI_CLI_MCP_IMAGE in .env.
+  # Start manually: docker compose --profile cli up -d bugtrace-cli-mcp
   bugtrace-cli-mcp:
-    build:
-      context: ../BugTraceAI-CLI
-      dockerfile: Dockerfile.mcp
+    image: ${BUGTRACEAI_CLI_MCP_IMAGE:-bugtraceai-cli-mcp:local}
     container_name: bugtrace-cli-mcp
     profiles:
       - cli

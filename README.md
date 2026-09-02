@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="BTAI_Logo_GitHub.png" alt="BugTraceAI" width="180"/>
+  <img src="logo.png" alt="BugTraceAI" width="200"/>
 </p>
 
 <h1 align="center">BugTraceAI-WEB</h1>
@@ -12,9 +12,8 @@
   <a href="https://bugtraceai.com"><img src="https://img.shields.io/badge/Website-bugtraceai.com-blue?logo=google-chrome&logoColor=white" alt="Website"/></a>
   <a href="https://deepwiki.com/BugTraceAI/BugTraceAI-WEB"><img src="https://img.shields.io/badge/Wiki-Documentation-000?logo=wikipedia&logoColor=white" alt="Wiki"/></a>
   <a href="https://deepwiki.com/BugTraceAI/BugTraceAI-WEB"><img src="https://deepwiki.com/badge.svg" alt="Ask DeepWiki"/></a>
-  <a href="https://discord.gg/5HjujkScC"><img src="https://img.shields.io/badge/Join_the_Community-Discord-5865F2?style=for-the-badge&logo=discord&logoColor=white" alt="Join the Community on Discord"/></a>
-  <img src="https://img.shields.io/badge/License-AGPL--3.0-blue.svg" alt="License"/>
-  <img src="https://img.shields.io/badge/Version-1.5.40--beta-orange" alt="Version"/>
+  <img src="https://img.shields.io/badge/License-Apache--2.0-blue.svg" alt="License"/>
+  <img src="https://img.shields.io/badge/Version-2.0.0--rc1-orange" alt="Version"/>
 </p>
 
 <p align="center">
@@ -45,7 +44,14 @@
 - [Tech Stack](#tech-stack)
 - [License](#license)
 
-## What's New in v1.5.40-beta
+## What's New in v2.0.0-rc1
+
+- **Refactor standard release candidate** — this WEB snapshot is aligned with
+  the BugTraceAI-CLI 4.0 release candidate and keeps the CLI dashboard
+  integration explicit.
+- **License transition** — BugTraceAI-owned portions of this snapshot are
+  released under Apache-2.0. Earlier AGPL-3.0 releases retain their original
+  terms; see `LICENSE-HISTORY.md` and `THIRD_PARTY_NOTICES.md`.
 
 - **Anthropic provider (Claude Messages API)** — Select Anthropic alongside OpenRouter and Z.ai. Enter an `sk-ant-...` key, pick a Claude model, and chat, analysis, and the AIrepeater all run on the native Messages API (`x-api-key`).
 - **Curated model pack + Thinking control** — The OpenRouter model picker loads a hand-picked, verified set from a single file, with **Thinking / High / xHigh** entries that enable OpenRouter's `reasoning` parameter for deeper responses.
@@ -167,6 +173,10 @@ Each analysis runs through multiple AI passes with different perspectives (Bug H
 - **SQLite** (CLI) — Source of truth for all scan data. Accessed via CLI API on port 8000.
 
 They work **autonomously or together** — the WEB app doesn't need the CLI to function, and vice versa.
+
+The default Compose stack is self-contained. Kali, reconFTW and CLI-MCP are
+optional profiles and use externally supplied images; no private sibling
+repository is required to build or run the default WEB stack.
 
 ## Getting Started
 
@@ -356,7 +366,10 @@ BugTraceAI-WEB/
 
 ## License
 
-AGPL-3.0 License. See [LICENSE](LICENSE) for details.
+Apache-2.0 License. See [LICENSE](LICENSE) for details. The `api-routes-mcp`
+service downloads and runs third-party Kiterunner and ffuf binaries; their
+licenses and notices remain applicable and are listed in
+`THIRD_PARTY_NOTICES.md`.
 
 ---
 

@@ -14,6 +14,22 @@
 import { ExploitSeed, RepeaterRequestDict } from '../types.ts';
 import { DEFAULT_CLI_URL } from './cliConnector.ts';
 
+/**
+ * A fenced code block whose fence is one backtick longer than the longest backtick run
+ * in `text` (CommonMark 4.5) — the only markdown shape that round-trips a payload
+ * BYTE-EXACT. An inline `code span` deletes every backtick inside it and collapses runs
+ * of spaces when the rendered block is read back, so a seed built with code spans hands
+ * the agent (and the user's clipboard) a payload that no longer works. Mirrors
+ * bugtrace/reporting/poc_format.md_code_block on the CLI side.
+ */
+export function mdCodeBlock(text: string | null | undefined, lang = 'text'): string {
+  const body = text === null || text === undefined ? '' : String(text);
+  const runs: string[] = body.match(/`+/g) ?? [];
+  const longest = runs.reduce((m: number, r: string) => Math.max(m, r.length), 0);
+  const fence = '`'.repeat(Math.max(3, longest + 1));
+  return `${fence}${lang}\n${body}\n${fence}`;
+}
+
 /** Map a CLI repro request object (snake_case) → RepeaterRequestDict. */
 function mapReproRequest(r: any): RepeaterRequestDict | undefined {
   if (!r || !r.url) return undefined;
@@ -159,9 +175,9 @@ export function buildFinisherUserMessage(seed: ExploitSeed): string {
   lines.push('');
   lines.push('## What the scanner already learned');
   lines.push(`- Target URL: ${seed.url}`);
-  if (seed.parameter) lines.push(`- Injection parameter: \`${seed.parameter}\`${seed.method ? ` (${seed.method})` : ''}`);
+  if (seed.parameter) lines.push(`- Injection parameter:${seed.method ? ` (${seed.method})` : ''}\n\n${mdCodeBlock(seed.parameter)}`);
   if (seed.reflectionContext) lines.push(`- Reflection context: ${seed.reflectionContext}`);
-  if (seed.survivingChars) lines.push(`- Characters that survived filtering: \`${seed.survivingChars}\``);
+  if (seed.survivingChars) lines.push(`- Characters that survived filtering:\n\n${mdCodeBlock(seed.survivingChars)}`);
   if (seed.serverEscaping) lines.push(`- Server escaping observed: ${seed.serverEscaping}`);
   if (seed.whyStalled) lines.push(`- ${confirmed ? 'Scanner notes' : 'Why the scanner stalled'}: ${seed.whyStalled}`);
   if (typeof seed.confidence === 'number') lines.push(`- Scanner confidence: ${seed.confidence}`);
@@ -173,19 +189,15 @@ export function buildFinisherUserMessage(seed: ExploitSeed): string {
   if (seed.reflectingPayloads && seed.reflectingPayloads.length) {
     lines.push('');
     lines.push(confirmed ? '### Confirming payload(s)' : '### Payloads that reflected but did NOT fire');
-    for (const p of seed.reflectingPayloads.slice(0, 15)) lines.push(`- \`${p}\``);
+    for (const p of seed.reflectingPayloads.slice(0, 15)) lines.push(mdCodeBlock(p));
   }
   if (seed.confirmingRequest) {
     lines.push('');
     lines.push('### The exact request the scanner used to CONFIRM this — replay & refine it');
-    lines.push('```http');
-    lines.push(serializeRequestDict(seed.confirmingRequest).slice(0, 2500));
-    lines.push('```');
+    lines.push(mdCodeBlock(serializeRequestDict(seed.confirmingRequest).slice(0, 2500), 'http'));
     if (seed.readbackRequest) {
       lines.push('Then read the stored payload back with:');
-      lines.push('```http');
-      lines.push(serializeRequestDict(seed.readbackRequest).slice(0, 1500));
-      lines.push('```');
+      lines.push(mdCodeBlock(serializeRequestDict(seed.readbackRequest).slice(0, 1500), 'http'));
     }
     if (seed.authUsed) lines.push(`> NOTE: this request used **${seed.authScheme || 'auth'}** (masked here — supply a fresh token to replay).`);
   } else if (seed.baselineRequest) {

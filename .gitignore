@@ -20,3 +20,23 @@ backend/.env*
 session.json
 credentials.json
 devinfo/
+
+# Tests (internal only — but TRACKED in the private DEV remote).
+# Rationale mirrors the CLI repo: tests/ is the offline verification harness
+# (smoke_*.ts, the VM browser-verification scripts). While these lived loose in
+# the repo ROOT they were protected from a public snapshot only by the content
+# markers in .git/hooks/pre-push — so smoke_curated.ts and smoke_llmwire.ts,
+# which carry no marker, would have sailed straight into a public tree. Under
+# tests/ they are excluded by PATH, which does not depend on what is inside them.
+# Public exclusion is enforced by (a) the curated-snapshot publish flow — the
+# public repo has an unrelated 2-commit history, never a push of this tree — and
+# (b) .git/hooks/pre-push, which blocks any ref whose tree contains tests/ from
+# reaching a non-DEV BugTraceAI remote.
+# Only harness SOURCE is tracked; generated artifacts stay ignored. To track a
+# new non-source fixture type, add an explicit `!tests/**/*.<ext>` line.
+tests/**
+!tests/**/
+!tests/**/*.ts
+!tests/**/*.py
+!tests/**/*.md
+tests/**/__pycache__/

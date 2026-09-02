@@ -176,6 +176,16 @@ export const useRouteSync = ({ activeView, activeSubTab, onNavigate, onSubTabCha
     if (activeView === View.CLI_FRAMEWORK && currentPath.startsWith('/bugtraceai')) {
       return;
     }
+    // Same race, generalized: a hard/cold load of any tool sub-tab deep link (e.g.
+    // /discovery-tools/api-discovery) starts with activeView still at its default
+    // (CLI_FRAMEWORK) because the URL→state effect above hasn't applied its setState yet.
+    // Without this guard this effect sees the stale activeView, finds no matching
+    // sub-tab config for it, and bounces the already-correct URL back to /bugtraceai.
+    for (const config of Object.values(viewSubTabConfig)) {
+      if (currentPath.startsWith(config!.basePath + '/') && slugToTool[currentPath.slice(config!.basePath.length + 1)]) {
+        return;
+      }
+    }
 
     // Views with sub-tabs: navigate to /basePath/slug
     const config = viewSubTabConfig[activeView];

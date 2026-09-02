@@ -28,7 +28,7 @@
   },
   "keywords": [],
   "author": "",
-  "license": "AGPL-3.0",
+  "license": "Apache-2.0",
   "dependencies": {
     "@prisma/client": "^5.22.0",
     "chokidar": "^3.6.0",

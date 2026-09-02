@@ -134,6 +134,12 @@ VITE_CLI_API_URL=http://localhost:8000
 docker compose --env-file .env.docker up -d
 ```
 
+The default Compose stack starts PostgreSQL, the WEB backend, the frontend and
+the API-routes service. Optional Kali, reconFTW and CLI-MCP integrations are
+profiles; they require images supplied separately via
+`RECONFTW_MCP_IMAGE` and `BUGTRACEAI_CLI_MCP_IMAGE` and are not built from
+paths outside this repository.
+
 ### Step 4: Verify
 
 ```bash

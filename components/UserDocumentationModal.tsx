@@ -1,5 +1,5 @@
 // components/UserDocumentationModal.tsx
-// version 0.0.49 (docs current as of WEB 1.5.40-beta)
+// version 0.0.49 (docs current as of WEB 2.0.0-rc1)
  
 import React, { useState } from 'react';
 import { XMarkIcon, BookOpenIcon, LinkIcon, CodeBracketIcon, ShieldExclamationIcon, BeakerIcon, ChatIcon, CogIcon, ShieldCheckIcon, CodeSearchIcon, KeyIcon, FlowChartIcon, ArrowUpTrayIcon, JwtTokenIcon, MagnifyingGlassIcon, PencilDocumentIcon, ArrowPathIcon, CommandLineIcon, ApiRouteIcon } from './Icons.tsx';
