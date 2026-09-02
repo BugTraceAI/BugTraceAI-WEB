@@ -13,7 +13,7 @@
   <a href="https://deepwiki.com/BugTraceAI/BugTraceAI-WEB"><img src="https://img.shields.io/badge/Wiki-Documentation-000?logo=wikipedia&logoColor=white" alt="Wiki"/></a>
   <a href="https://deepwiki.com/BugTraceAI/BugTraceAI-WEB"><img src="https://deepwiki.com/badge.svg" alt="Ask DeepWiki"/></a>
   <img src="https://img.shields.io/badge/License-Apache--2.0-blue.svg" alt="License"/>
-  <img src="https://img.shields.io/badge/Version-2.0.0--rc1-orange" alt="Version"/>
+  <img src="https://img.shields.io/badge/Version-2.0.0-orange" alt="Version"/>
 </p>
 
 <p align="center">
@@ -44,7 +44,7 @@
 - [Tech Stack](#tech-stack)
 - [License](#license)
 
-## What's New in v2.0.0-rc1
+## What's New in v2.0.0
 
 - **Refactor standard release candidate** — this WEB snapshot is aligned with
   the BugTraceAI-CLI 4.0 release candidate and keeps the CLI dashboard
