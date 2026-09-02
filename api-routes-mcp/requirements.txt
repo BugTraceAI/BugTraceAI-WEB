@@ -1,8 +1,0 @@
-# Pinned below 2.0: mcp 2.x removed mcp.server.fastmcp (mcp_server.py imports it),
-# so an unbounded requirement made every FRESH build crash-loop on startup while
-# already-built images kept working. Same bound the CLI uses for the same imports.
-mcp[cli]>=1.20.0,<2.0
-fastmcp>=0.1.0
-fastapi>=0.100.0
-uvicorn[standard]>=0.24.0
-pydantic>=2.0.0
