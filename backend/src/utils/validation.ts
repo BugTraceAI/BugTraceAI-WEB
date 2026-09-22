@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
 // Session type validation
-export const sessionTypeSchema = z.enum(['websec', 'xss', 'sql']);
+export const sessionTypeSchema = z.enum(['general', 'websec', 'xss', 'sql']);
 
 // Message role validation
 export const messageRoleSchema = z.enum(['user', 'assistant', 'error']);

@@ -22,18 +22,62 @@ export type SortDir = 'asc' | 'desc';
  */
 export const normalizeMarkdownDocument = (content: string): string => {
   const lines = content.trim().split(/\r?\n/);
-  if (!/^```(?:markdown|md|plaintext|text)?[ \t]*$/i.test(lines[0] || '')) return content;
+  const firstFence = lines.findIndex(line => /^```(?:markdown|md|plaintext|text)?[ \t]*$/i.test(line));
+  if (firstFence < 0) return content;
+
+  // A report may prepend a normal Markdown heading before the model's document-level
+  // ```markdown wrapper.  Keep ordinary code samples untouched, but unwrap that
+  // explicit Markdown envelope so the report is rendered as headings and lists.
+  const isExplicitMarkdownFence = /^```(?:markdown|md|plaintext|text)[ \t]*$/i.test(lines[firstFence] || '');
+  if (firstFence > 0 && !isExplicitMarkdownFence) return content;
+
+  const closingCandidates = lines
+    .map((line, index) => (/^```[ \t]*$/.test(line) && index > firstFence ? index : -1))
+    .filter(index => index >= 0);
+
+  const nextNonEmptyIndex = (from: number): number => {
+    for (let index = from + 1; index < lines.length; index += 1) {
+      if (lines[index].trim() !== '') return index;
+    }
+    return -1;
+  };
+
+  const isThematicBreak = (line: string): boolean => /^\s*(?:---+|\*\*\*+|___+)\s*$/.test(line);
+  const isHeading = (line: string): boolean => /^#{1,6}\s+\S/.test(line.trim());
 
   let closingIndex = -1;
-  for (let index = lines.length - 1; index > 0; index--) {
-    if (/^```[ \t]*$/.test(lines[index])) {
-      closingIndex = index;
+  // An explicit Markdown envelope is often followed by a thematic break and
+  // the first finding. Prefer that unmistakable document boundary over a
+  // later closing fence belonging to a code sample inside the report.
+  for (const candidate of closingCandidates) {
+    const next = nextNonEmptyIndex(candidate);
+    if (next < 0) continue;
+    if (!isThematicBreak(lines[next])) continue;
+    const afterBreak = nextNonEmptyIndex(next);
+    if (afterBreak >= 0 && isHeading(lines[afterBreak])) {
+      closingIndex = candidate;
       break;
     }
   }
+
+  // If the wrapped document ends at EOF, its closing fence is also unambiguous.
+  if (closingIndex < 0) {
+    closingIndex = closingCandidates.find(candidate => nextNonEmptyIndex(candidate) < 0) ?? -1;
+  }
+
+  // Finally support the common `wrapper -> heading` shape. Iterate from the
+  // start so an inner code sample cannot make us select a much later fence.
+  if (closingIndex < 0) {
+    closingIndex = closingCandidates.find(candidate => {
+      const next = nextNonEmptyIndex(candidate);
+      return next >= 0 && isHeading(lines[next]);
+    }) ?? -1;
+  }
+
+  if (closingIndex < 0) closingIndex = closingCandidates[0] ?? -1;
   if (closingIndex < 0) return content;
 
-  const wrappedBody = lines.slice(1, closingIndex).join('\n');
+  const wrappedBody = lines.slice(firstFence + 1, closingIndex).join('\n');
   const containsMarkdownStructure =
     /(^|\n)#{1,6}\s+\S/.test(wrappedBody) ||
     /(^|\n)(?:[-*+]|\d+\.)\s+\S/.test(wrappedBody) ||
@@ -42,7 +86,82 @@ export const normalizeMarkdownDocument = (content: string): string => {
     /(^|\n)\|.+\|\s*$/.test(wrappedBody);
   if (!containsMarkdownStructure) return content;
 
-  return [...lines.slice(1, closingIndex), ...lines.slice(closingIndex + 1)].join('\n').trim();
+  return [
+    ...lines.slice(0, firstFence),
+    ...lines.slice(firstFence + 1, closingIndex),
+    ...lines.slice(closingIndex + 1),
+  ].join('\n').trim();
+};
+
+// The CLI can only identify a technology family in some reports, so its
+// Technology Stack table may repeat the unhelpful value "Technology" for
+// every row. Keep the persisted report untouched, but make the presentation
+// useful by deriving a readable role from the detected component name.
+const TECHNOLOGY_PRESENTATION: Record<string, { label: string; role: string }> = {
+  caddy: { label: 'Caddy', role: 'Web server / reverse proxy' },
+  graphiql: { label: 'GraphiQL', role: 'GraphQL IDE' },
+  graphql: { label: 'GraphQL', role: 'API query language' },
+  playground: { label: 'Playground', role: 'Interactive API explorer' },
+  redoc: { label: 'ReDoc', role: 'API documentation' },
+  uvicorn: { label: 'Uvicorn', role: 'ASGI server' },
+};
+
+const splitMarkdownTableRow = (line: string): string[] | null => {
+  const trimmed = line.trim();
+  if (!trimmed.startsWith('|') || !trimmed.endsWith('|')) return null;
+  return trimmed.slice(1, -1).split('|').map(cell => cell.trim());
+};
+
+const formatMarkdownTableRow = (cells: string[]): string => `| ${cells.join(' | ')} |`;
+
+/**
+ * Make the CLI report's Technology Stack section readable when the generator
+ * only supplied the generic `Technology` category. This is deliberately
+ * narrow: it changes only the four-column Component/Version/Category/Notes
+ * table immediately below the Technology Stack heading.
+ */
+export const sanitizeTechnologyStackTable = (content: string): string => {
+  if (!content) return content;
+  const lines = content.split(/\r?\n/);
+  const headingIndex = lines.findIndex(line => /^#{1,6}\s+Technology Stack\s*$/i.test(line.trim()));
+  if (headingIndex < 0) return content;
+
+  let headerIndex = -1;
+  for (let index = headingIndex + 1; index < Math.min(lines.length, headingIndex + 12); index += 1) {
+    const cells = splitMarkdownTableRow(lines[index]);
+    if (cells && cells.length === 4 && cells[0].toLowerCase() === 'component' && cells[2].toLowerCase() === 'category') {
+      headerIndex = index;
+      break;
+    }
+  }
+  if (headerIndex < 0 || headerIndex + 1 >= lines.length) return content;
+
+  const separator = splitMarkdownTableRow(lines[headerIndex + 1]);
+  if (!separator || separator.length !== 4 || !separator.every(cell => /^:?-{3,}:?$/.test(cell))) return content;
+
+  const rows: Array<{ index: number; cells: string[] }> = [];
+  for (let index = headerIndex + 2; index < lines.length; index += 1) {
+    const cells = splitMarkdownTableRow(lines[index]);
+    if (!cells || cells.length !== 4) break;
+    rows.push({ index, cells });
+  }
+  if (rows.length === 0) return content;
+
+  const changedRows = rows.map(({ cells }) => {
+    const component = cells[0].replace(/^\*+|\*+$/g, '').trim();
+    const normalized = TECHNOLOGY_PRESENTATION[component.toLowerCase()];
+    if (!normalized) return cells;
+    return [normalized.label, cells[1], normalized.role, cells[3]];
+  });
+  const hasChange = changedRows.some((cells, rowIndex) => cells.some((cell, cellIndex) => cell !== rows[rowIndex].cells[cellIndex]));
+  if (!hasChange) return content;
+
+  const output = [...lines];
+  output[headerIndex] = formatMarkdownTableRow(['Component', 'Version', 'Role', 'Notes']);
+  changedRows.forEach((cells, rowIndex) => {
+    output[rows[rowIndex].index] = formatMarkdownTableRow(cells);
+  });
+  return output.join('\n');
 };
 
 // CommonMark 0.31 §6 lists every construct a literal string can accidentally OPEN inside
@@ -65,6 +184,59 @@ const fencedBlock = (text: string): string => {
   const longest = runs.reduce((n, run) => Math.max(n, run.length), 0);
   const fence = '`'.repeat(Math.max(3, longest + 1));
   return `${fence}text\n${text}\n${fence}`;
+};
+
+/**
+ * Return whether a character position is inside a Markdown fenced code block.
+ *
+ * Reports produced by the CLI already fence some evidence values.  Protecting
+ * the same value a second time creates nested fences and makes marked render
+ * the literal `````text```` line as part of the code block (the broken layout
+ * visible in the report viewer).  This deliberately works on source lines,
+ * rather than trying to parse Markdown after the fact, so it also handles
+ * fenced blocks with a language tag and tilde fences.
+ */
+const isInsideFencedBlock = (content: string, position: number): boolean => {
+  const lines = content.split(/\r?\n/);
+  let offset = 0;
+  let fenceChar = '';
+  let fenceLength = 0;
+
+  for (const line of lines) {
+    const lineEnd = offset + line.length;
+    // A value on a fence line itself is not evidence content.  Treat it as
+    // outside so a malformed report cannot make us skip unrelated text.
+    if (position >= offset && position < lineEnd) return Boolean(fenceChar);
+
+    const marker = line.match(/^\s{0,3}(`{3,}|~{3,})/);
+    if (marker) {
+      const markerText = marker[1];
+      const markerChar = markerText[0];
+      if (!fenceChar) {
+        fenceChar = markerChar;
+        fenceLength = markerText.length;
+      } else if (markerChar === fenceChar && markerText.length >= fenceLength) {
+        fenceChar = '';
+        fenceLength = 0;
+      }
+    }
+
+    offset = lineEnd + 1;
+  }
+
+  return Boolean(fenceChar);
+};
+
+/** True when at least one occurrence of value is already fenced by the source. */
+const hasFencedOccurrence = (content: string, value: string): boolean => {
+  let from = 0;
+  while (from <= content.length - value.length) {
+    const index = content.indexOf(value, from);
+    if (index < 0) return false;
+    if (isInsideFencedBlock(content, index)) return true;
+    from = index + Math.max(1, value.length);
+  }
+  return false;
 };
 
 /**
@@ -100,7 +272,15 @@ export const protectQuotedValues = (
     .sort((a, b) => b.length - a.length);
 
   for (const value of candidates) {
-    if (seen.has(value) || markdownInert(value) || !text.includes(value)) continue;
+    // The CLI's report generator may already have emitted this value in a
+    // fenced evidence block.  Leave that block untouched: wrapping it again
+    // would produce nested fences and split the surrounding paragraph.
+    if (
+      seen.has(value) ||
+      markdownInert(value) ||
+      !text.includes(value) ||
+      hasFencedOccurrence(text, value)
+    ) continue;
     seen.add(value);
     // NUL cannot occur in report prose or in a payload field, so the placeholder can
     // never collide with the text it is protecting.
@@ -224,7 +404,7 @@ export const formatDate = (dateString: string | null): string => {
 /** Append a detections table to the base markdown */
 export const buildFullMarkdown = (markdown: string, detections: FindingItem[]): string => {
   if (!markdown) return markdown;
-  const normalizedMarkdown = normalizeMarkdownDocument(markdown);
+  const normalizedMarkdown = sanitizeTechnologyStackTable(normalizeMarkdownDocument(markdown));
   if (detections.length === 0) return normalizedMarkdown;
   const rows = detections.map(d => {
     const conf = d.confidence != null && d.confidence > 0 ? `${Math.round(d.confidence * 100)}%` : '-';

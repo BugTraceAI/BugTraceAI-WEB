@@ -20,6 +20,9 @@ import { OPEN_ROUTER_MODELS } from '../constants.ts';
 import { CURATED_MODEL_KEYS, DEFAULT_CHAT_MODEL_KEY, curatedModelName } from '../lib/curatedModels.ts';
 import type { ApiKeys } from '../types.ts';
 import { WEB_PROVIDER_CONFIGS } from '../lib/providers.ts';
+import { formatSecretPreview } from '../lib/maskedSecret.ts';
+import { SlidingSegmentedControl } from './cli/SlidingSegmentedControl.tsx';
+import { ToggleSwitch } from './cli/ToggleSwitch.tsx';
 
 interface SettingsModalProps {
     isOpen: boolean;
@@ -34,6 +37,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, i
         saveApiKeys: globalSaveApiKeys, setSaveApiKeys: setGlobalSaveApiKeys,
         providerId: globalProviderId, setProviderId: setGlobalProviderId,
         cliUrl, setCliUrl, cliConnected, cliVersion, setCli,
+        btaiApiUrl, setBtaiApiUrl, btaiApiConnected, btaiApiVersion, setBtaiApi,
         maxToolHops: globalMaxToolHops, setMaxToolHops: setGlobalMaxToolHops,
     } = useSettings();
 
@@ -52,6 +56,13 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, i
     const [localOpenRouterModel, setLocalOpenRouterModel] = useState(globalOpenRouterModel);
     const [localSaveApiKeys, setLocalSaveApiKeys] = useState(globalSaveApiKeys);
     const [localMaxToolHops, setLocalMaxToolHops] = useState(globalMaxToolHops);
+
+    const [isTestingBtaiApi, setIsTestingBtaiApi] = useState(false);
+    const [btaiApiStatusDetail, setBtaiApiStatusDetail] = useState<{
+        connected: boolean;
+        error?: string;
+        latencyMs?: number;
+    } | null>(null);
 
     const [isTesting, setIsTesting] = useState(false);
     const [testResult, setTestResult] = useState<{ success: boolean, message: string } | null>(null);
@@ -234,8 +245,39 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, i
         }
     };
 
+    const handleTestBtaiApi = async () => {
+        setIsTestingBtaiApi(true);
+        try {
+            const { testBtaiApiConnection } = await import('../services/btaiApiConnector.ts');
+            const result = await testBtaiApiConnection(btaiApiUrl);
+            setBtaiApiStatusDetail(result);
+
+            if (result.connected) {
+                setBtaiApi({
+                    connected: true,
+                    status: result.status,
+                    version: result.version,
+                });
+            } else {
+                setBtaiApi({
+                    connected: false,
+                    status: result.status,
+                    version: undefined,
+                });
+            }
+        } catch {
+            setBtaiApiStatusDetail({
+                connected: false,
+                error: 'Unexpected error',
+            });
+            setBtaiApi({ connected: false, status: 'unreachable', version: undefined });
+        } finally {
+            setIsTestingBtaiApi(false);
+        }
+    };
+
     const handleTestAll = async () => {
-        await Promise.all([handleTestBackend(), handleTestCli()]);
+        await Promise.all([handleTestBackend(), handleTestCli(), handleTestBtaiApi()]);
     };
 
     const handleClearAll = async () => {
@@ -352,46 +394,19 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, i
                             <XMarkIcon className="h-4 w-4" />
                         </button>
                     </div>
-                    <div className="flex gap-2 mt-3">
-                        <button
-                            onClick={() => setActiveTab('api')}
-                            className={`btn-mini ${activeTab === 'api'
-                                ? 'btn-mini-primary'
-                                : 'btn-mini-secondary'
-                                }`}
-                        >
-                            API Settings
-                        </button>
-                        <button
-                            onClick={() => setActiveTab('chat')}
-                            className={`btn-mini ${activeTab === 'chat'
-                                ? 'btn-mini-primary'
-                                : 'btn-mini-secondary'
-                                }`}
-                        >
-                            Chat
-                        </button>
-                        <button
-                            onClick={() => setActiveTab('status')}
-                            className={`btn-mini ${activeTab === 'status'
-                                ? 'btn-mini-primary'
-                                : 'btn-mini-secondary'
-                                }`}
-                        >
-                            System Status
-                            {cliConnected && (
-                                <span className="ml-2 w-2 h-2 rounded-full bg-success inline-block shadow-glow-success" title="CLI Connected" />
-                            )}
-                        </button>
-                        <button
-                            onClick={() => setActiveTab('danger')}
-                            className={`btn-mini transition-colors ${activeTab === 'danger'
-                                ? 'bg-red-500/20 text-red-400 border border-red-500/30'
-                                : 'text-ui-text-dim hover:text-red-400 hover:bg-red-500/10'
-                                }`}
-                        >
-                            Danger Zone
-                        </button>
+                    <div className="mt-3 overflow-x-auto pb-0.5">
+                        <SlidingSegmentedControl
+                            value={activeTab}
+                            onChange={value => setActiveTab(value as 'api' | 'chat' | 'status' | 'danger')}
+                            ariaLabel="Settings section"
+                            itemWidth={108}
+                            options={[
+                                { value: 'api', label: 'API settings' },
+                                { value: 'chat', label: 'Chat' },
+                                { value: 'status', label: <span className="inline-flex items-center gap-1.5">System status{cliConnected && <span className="h-1.5 w-1.5 rounded-full bg-success" title="CLI connected" />}</span> },
+                                { value: 'danger', label: 'Danger zone' },
+                            ]}
+                        />
                     </div>
                 </header>
                 <main className="flex-1 p-6 space-y-6 overflow-y-auto">
@@ -423,7 +438,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, i
                                             setLocalOpenRouterModel(CURATED_MODEL_KEYS.includes(stored) ? stored : DEFAULT_CHAT_MODEL_KEY);
                                         }
                                     }}
-                                    className="w-full input-premium p-2"
+                                    className="input-premium h-10 w-full px-4 py-2.5"
                                 >
                                     {Object.entries(WEB_PROVIDER_CONFIGS).map(([id, cfg]) => (
                                         <option key={id} value={id}>{cfg.name}{cfg.recommended ? ' (Recommended)' : ''}</option>
@@ -453,14 +468,14 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, i
                                                     setTestResult(null);
                                                 }}
                                                 placeholder="Enter your OpenRouter key (sk-or-v1...)"
-                                                className="w-full input-premium px-4 py-2"
+                                                className="input-premium h-10 w-full px-4 py-2.5"
                                             />
                                             {isKeyValidated && localApiKeys.openrouter && (
                                                 <CheckCircleIcon className="absolute top-1/2 right-3 -translate-y-1/2 h-6 w-6 text-green-400" title="This key has been validated." />
                                             )}
                                         </div>
                                         {localApiKeys.openrouter && localApiKeys.openrouter.length >= 4 && (
-                                            <p className="text-xs text-ui-text-dim mt-1 font-mono">Key: ····{localApiKeys.openrouter.slice(-4)}</p>
+                                            <p className="mt-1.5 text-[11px] text-ui-text-dim" aria-live="polite">Preview: <code className="font-mono text-ui-text-muted">{formatSecretPreview(localApiKeys.openrouter)}</code></p>
                                         )}
                                     </div>
 
@@ -473,7 +488,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, i
                                                 id="model-select"
                                                 value={localOpenRouterModel}
                                                 onChange={(e) => setLocalOpenRouterModel(e.target.value)}
-                                                className="flex-1 input-premium p-2"
+                                                className="input-premium h-10 flex-1 px-4 py-2.5"
                                                 disabled={isFetchingModels}
                                             >
                                                 {openRouterModels.map(model => (
@@ -511,14 +526,14 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, i
                                                         setTestResult(null);
                                                     }}
                                                     placeholder={cfg.keyPlaceholder || 'Enter API key for this provider'}
-                                                    className="w-full input-premium px-4 py-2"
+                                                    className="input-premium h-10 w-full px-4 py-2.5"
                                                 />
                                                 {isKeyValidated && key && (
                                                     <CheckCircleIcon className="absolute top-1/2 right-3 -translate-y-1/2 h-6 w-6 text-green-400" title="This key has been validated." />
                                                 )}
                                             </div>
                                             {key && key.length >= 4 && (
-                                                <p className="text-xs text-ui-text-dim mt-1 font-mono">Key: ····{key.slice(-4)}</p>
+                                                <p className="mt-1.5 text-[11px] text-ui-text-dim" aria-live="polite">Preview: <code className="font-mono text-ui-text-muted">{formatSecretPreview(key)}</code></p>
                                             )}
                                         </div>
 
@@ -530,7 +545,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, i
                                                 id="custom-model-select"
                                                 value={localOpenRouterModel}
                                                 onChange={(e) => setLocalOpenRouterModel(e.target.value)}
-                                                className="w-full input-premium p-2"
+                                                className="input-premium h-10 w-full px-4 py-2.5"
                                             >
                                                 {cfg.models.map((model) => (
                                                     <option key={model} value={model}>{model}</option>
@@ -551,7 +566,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, i
                                 <button
                                     onClick={handleTestApi}
                                     disabled={isTesting || !currentKey}
-                                    className="w-full flex items-center justify-center gap-2 px-4 py-2 text-sm font-semibold text-coral bg-coral/20 border border-coral/40 rounded-lg hover:bg-coral/30 disabled:opacity-60 disabled:cursor-wait transition-colors"
+                                    className="btn-mini btn-mini-secondary h-10 w-full !border-coral/40 !bg-coral/10 !text-coral hover:!bg-coral/20 disabled:cursor-wait disabled:opacity-60"
                                 >
                                     {isTesting ? <Spinner /> : 'Test API Connection'}
                                 </button>
@@ -562,21 +577,16 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, i
                                 )}
                             </div>
 
-                            <div className="relative flex items-start">
-                                <div className="flex items-center h-5">
-                                    <input
-                                        id="save-api-keys"
-                                        name="save-api-keys"
-                                        type="checkbox"
-                                        checked={localSaveApiKeys}
-                                        onChange={(e) => setLocalSaveApiKeys(e.target.checked)}
-                                        className="focus:ring-coral h-4 w-4 text-coral-active border-0 rounded bg-purple-light"
-                                    />
-                                </div>
-                                <div className="ml-3 text-sm">
-                                    <label htmlFor="save-api-keys" className="label-mini !text-ui-text-main">
+                            <div className="relative flex items-start gap-3">
+                                <ToggleSwitch
+                                    checked={localSaveApiKeys}
+                                    onChange={setLocalSaveApiKeys}
+                                    ariaLabel="Save API key in your browser"
+                                />
+                                <div className="min-w-0 text-sm">
+                                    <p className="label-mini !text-ui-text-main">
                                         Save API key in your browser
-                                    </label>
+                                    </p>
                                     <p className="text-[10px] text-ui-text-dim">The key will be stored in localStorage. Use this only on a trusted device.</p>
                                 </div>
                             </div>
@@ -617,10 +627,10 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, i
                             {/* Test All Button */}
                             <button
                                 onClick={handleTestAll}
-                                disabled={isTestingBackend || isTestingCli}
+                                disabled={isTestingBackend || isTestingCli || isTestingBtaiApi}
                                 className="w-full flex items-center justify-center gap-2 px-4 py-2 text-sm font-semibold text-coral bg-coral/20 border border-coral/40 rounded-lg hover:bg-coral/30 disabled:opacity-60 disabled:cursor-wait transition-colors"
                             >
-                                {(isTestingBackend || isTestingCli) ? <Spinner /> : 'Test All Connections'}
+                                {(isTestingBackend || isTestingCli || isTestingBtaiApi) ? <Spinner /> : 'Test All Connections'}
                             </button>
 
                             {/* Backend Section */}
@@ -808,6 +818,70 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, i
 
                                 <p className="text-xs text-muted">
                                     The CLI is optional and enables vulnerability scanning. When connected, you'll see a red pulse on the logo.
+                                </p>
+                            </div>
+
+                            {/* BugTraceAI-API Section */}
+                            <div className="p-3 rounded-lg border border-purple-light/50 bg-purple-deep/30 space-y-3">
+                                <div className="flex items-center justify-between">
+                                    <p className="text-sm font-medium text-off-white">BugTraceAI-API (standalone)</p>
+                                    <button
+                                        onClick={handleTestBtaiApi}
+                                        disabled={isTestingBtaiApi || !btaiApiUrl}
+                                        className="px-3 py-1 text-xs font-medium text-coral bg-coral/20 border border-coral/30 rounded hover:bg-coral/30 disabled:opacity-60 disabled:cursor-wait transition-colors"
+                                    >
+                                        {isTestingBtaiApi ? <Spinner /> : 'Test'}
+                                    </button>
+                                </div>
+
+                                <div>
+                                    <label htmlFor="btaiApiUrl" className="block text-xs text-muted mb-1">
+                                        BugTraceAI-API URL
+                                    </label>
+                                    <input
+                                        id="btaiApiUrl"
+                                        type="url"
+                                        value={btaiApiUrl}
+                                        onChange={(e) => {
+                                            setBtaiApiUrl(e.target.value);
+                                            setBtaiApiStatusDetail(null);
+                                        }}
+                                        placeholder="http://localhost:8005"
+                                        className="w-full text-sm input-premium px-3 py-1.5"
+                                    />
+                                </div>
+
+                                {btaiApiStatusDetail && (
+                                    <div className={`p-2 rounded border ${btaiApiStatusDetail.connected
+                                        ? 'bg-green-900/20 border-green-500/30'
+                                        : 'bg-yellow-900/20 border-yellow-500/30'
+                                        }`}>
+                                        <div className="flex items-center justify-between">
+                                            <p className="text-xs font-medium text-purple-gray">Status</p>
+                                            <span className={`px-2 py-0.5 text-xs font-medium rounded ${btaiApiStatusDetail.connected
+                                                ? 'bg-green-500/20 text-green-400'
+                                                : 'bg-yellow-500/20 text-yellow-400'
+                                                }`}>
+                                                {btaiApiStatusDetail.connected ? 'Connected' : 'Not Available'}
+                                            </span>
+                                        </div>
+                                        {btaiApiStatusDetail.connected ? (
+                                            <div className="text-xs text-purple-gray mt-1 space-y-1">
+                                                <div className="flex gap-4">
+                                                    <span>Version: <span className="text-off-white">{btaiApiVersion}</span></span>
+                                                    <span>Latency: <span className="text-off-white">{btaiApiStatusDetail.latencyMs}ms</span></span>
+                                                </div>
+                                            </div>
+                                        ) : (
+                                            <p className="text-xs text-yellow-300 mt-1">
+                                                {btaiApiStatusDetail.error || 'BugTraceAI-API not running. API auditing features disabled.'}
+                                            </p>
+                                        )}
+                                    </div>
+                                )}
+
+                                <p className="text-xs text-muted">
+                                    BugTraceAI-API is a separate product (own Docker/process). When connected, WEB can launch API audits over its REST API.
                                 </p>
                             </div>
                         </div>

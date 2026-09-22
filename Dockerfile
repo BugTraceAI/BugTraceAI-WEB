@@ -6,9 +6,11 @@ WORKDIR /app
 # Build-time arguments for Vite environment variables
 ARG VITE_API_URL=/api
 ARG VITE_CLI_API_URL=/cli-api
+ARG VITE_BTAI_API_URL=/btai-api
 
 ENV VITE_API_URL=$VITE_API_URL
 ENV VITE_CLI_API_URL=$VITE_CLI_API_URL
+ENV VITE_BTAI_API_URL=$VITE_BTAI_API_URL
 
 # Copy package configuration files
 COPY package.json package-lock.json ./
@@ -31,8 +33,11 @@ FROM nginx:alpine
 # Copy the built static content from the builder stage to the Nginx html directory
 COPY --from=builder /app/dist /usr/share/nginx/html
 
-# Copy the custom Nginx configuration
-COPY nginx.conf /etc/nginx/conf.d/default.conf
+# Copy the custom Nginx configuration template. The Launcher-selected API port
+# is rendered at container startup, so no host port is baked into the image.
+COPY nginx.conf /etc/nginx/nginx.conf.template
+COPY docker-entrypoint.d/25-btai-api-port.sh /docker-entrypoint.d/25-btai-api-port.sh
+RUN chmod +x /docker-entrypoint.d/25-btai-api-port.sh
 
 # Expose port 80 to the outside world
 EXPOSE 80

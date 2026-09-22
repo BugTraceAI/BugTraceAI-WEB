@@ -17,6 +17,11 @@ import { ChatSidebar } from './chat/ChatSidebar';
 import { abortCurrentRequest } from '../utils/apiManager.ts';
 import { useSettings } from '../contexts/SettingsProvider.tsx';
 
+const getToolsApiBase = (): string => {
+  const configuredBase = (import.meta.env.VITE_API_URL || 'http://localhost:3001').replace(/\/+$/, '');
+  return configuredBase.replace(/\/api$/, '');
+};
+
 interface WebSecAgentProps {
   messages: LegacyChatMessage[];
   onSendMessage: (message: string) => void;
@@ -201,8 +206,7 @@ export const WebSecAgent: React.FC<WebSecAgentProps> = ({
     if (webBrowsing) {
       setIsFetching(true);
       try {
-        const apiBase = (import.meta.env.VITE_API_URL || 'http://localhost:3001').replace(/\/$/, '');
-        messageContent = await enrichMessageWithWebContent(rawMessage, apiBase);
+        messageContent = await enrichMessageWithWebContent(rawMessage, getToolsApiBase());
       } catch {
         // If fetch fails, use raw message
       } finally {
@@ -389,8 +393,7 @@ export const WebSecAgent: React.FC<WebSecAgentProps> = ({
                   const opening = !isToolsMenuOpen;
                   setIsToolsMenuOpen(opening);
                   if (opening) {
-                    const apiBase = (import.meta.env.VITE_API_URL || 'http://localhost:3001').replace(/\/$/, '');
-                    fetch(`${apiBase}/api/tools/health`).then(r => r.json()).then(d => {
+                    fetch(`${getToolsApiBase()}/api/tools/health`).then(r => r.json()).then(d => {
                       if (d?.data) setContainerStatus(d.data);
                     }).catch(() => {});
                   }
@@ -472,6 +475,7 @@ export const WebSecAgent: React.FC<WebSecAgentProps> = ({
                       </div>
                       {activeAgent === 'bugtrace' && <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(16,185,129,0.6)]"></div>}
                     </button>
+
                   </div>
                 </>
               )}

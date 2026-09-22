@@ -6,9 +6,11 @@ import axios from 'axios';
 // TYPES
 // ============================================================================
 
+export type ChatSessionType = 'general' | 'websec' | 'xss' | 'sql';
+
 export interface ChatSession {
   id: string;
-  session_type: 'websec' | 'xss' | 'sql';
+  session_type: ChatSessionType;
   title: string;
   created_at: string;
   updated_at: string;
@@ -46,7 +48,7 @@ interface ChatContextType {
   error: string | null;
 
   // Actions
-  createSession: (type: 'websec' | 'xss' | 'sql', title?: string) => Promise<ChatSession>;
+  createSession: (type: ChatSessionType, title?: string) => Promise<ChatSession>;
   loadSessions: (includeArchived?: boolean) => Promise<void>;
   loadSession: (sessionId: string) => Promise<void>;
   sendMessage: (content: string, role: 'user' | 'assistant', sessionOverride?: ChatSession) => Promise<ChatMessage>;
@@ -82,7 +84,7 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // CREATE SESSION
   // --------------------------------------------------------------------------
   const createSession = useCallback(async (
-    type: 'websec' | 'xss' | 'sql',
+    type: ChatSessionType,
     title?: string
   ): Promise<ChatSession> => {
     try {

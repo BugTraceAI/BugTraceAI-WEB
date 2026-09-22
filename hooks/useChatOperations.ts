@@ -1,6 +1,6 @@
 // hooks/useChatOperations.ts
 import { useCallback } from 'react';
-import { useChatContext } from '../contexts/ChatContext';
+import { useChatContext, ChatSessionType } from '../contexts/ChatContext';
 
 /**
  * Custom hook that provides convenient chat operations
@@ -15,7 +15,7 @@ export const useChatOperations = () => {
    * @returns Promise<ChatSession>
    */
   const startNewChat = useCallback(
-    async (type: 'websec' | 'xss' | 'sql') => {
+    async (type: ChatSessionType) => {
       try {
         const session = await context.createSession(type);
         return session;

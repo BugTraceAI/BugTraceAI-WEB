@@ -45,6 +45,23 @@ function scheduleScanCleanup(scanId: number) {
   setTimeout(() => activeScans.delete(scanId), SCAN_TTL_MS);
 }
 
+type FindingRecord = Record<string, unknown>;
+
+function extractFindings(data: unknown): FindingRecord[] {
+  if (Array.isArray(data)) {
+    return data.filter((item): item is FindingRecord => Boolean(item) && typeof item === 'object' && !Array.isArray(item));
+  }
+  if (!data || typeof data !== 'object') return [];
+
+  const record = data as Record<string, unknown>;
+  return ['findings', 'validated_findings', 'manual_review', 'pending'].flatMap((key) => {
+    const value = record[key];
+    return Array.isArray(value)
+      ? value.filter((item): item is FindingRecord => Boolean(item) && typeof item === 'object' && !Array.isArray(item))
+      : [];
+  });
+}
+
 /**
  * Execute BugTraceAI-CLI MCP tool commands
  * This controller interfaces with the bugtrace-cli-mcp container
@@ -120,14 +137,19 @@ async function handleStartScan(args: {
   // Validate numeric params
   const safeDepth = Math.max(1, Math.min(10, Number(max_depth) || 2));
   const safeMaxUrls = Math.max(1, Math.min(500, Number(max_urls) || 20));
-  const safeType = ['full', 'hunter', 'manager'].includes(scan_type) ? scan_type : 'full';
+  if (scan_type === 'manager') {
+    return { error: 'manager scans are not supported by the CLI bridge yet; use the full scan instead' };
+  }
+  const safeType = scan_type === 'hunter' ? 'hunter' : 'full';
 
   scanCounter++;
   const scanId = scanCounter;
   const outputDir = buildOutputDir(scanId);
 
-  // Build bugtrace CLI command with escaped inputs
-  const cmd = `bugtrace scan '${shellEscape(target_url)}' --type ${safeType} --depth ${safeDepth} --max-urls ${safeMaxUrls} --json`;
+  // Use the options exposed by the actual CLI. The Web bridge cannot pass the
+  // MCP-only flags that used to be appended here (--type/--depth/--max-urls/--json).
+  const cliCommand = safeType === 'hunter' ? 'scan' : 'full';
+  const cmd = `REPORT_DIR_PATH='${shellEscape(outputDir)}' MAX_DEPTH=${safeDepth} MAX_URLS=${safeMaxUrls} bugtrace ${cliCommand} '${shellEscape(target_url)}'`;
   
   // Track the scan
   activeScans.set(scanId, {
@@ -147,7 +169,7 @@ async function handleStartScan(args: {
     scan_id: scanId,
     status: 'created',
     target_url,
-    scan_type,
+    scan_type: safeType,
     message: `Security scan started for ${target_url}`
   };
 }
@@ -206,16 +228,16 @@ async function handleQueryFindings(args: {
   }
   
   try {
-    // Shell command to read findings.json
-    const cmd = `cat '${shellEscape(scan.output_dir)}/findings.json' 2>/dev/null || echo "[]"`;
+    // The CLI writes validated_findings.json (or raw_findings.json), not findings.json.
+    const cmd = `cat '${shellEscape(scan.output_dir)}/validated_findings.json' 2>/dev/null || cat '${shellEscape(scan.output_dir)}/raw_findings.json' 2>/dev/null || echo "[]"`;
     const { stdout } = await dockerExec('bugtrace-cli-mcp', cmd, 30000);
     
-    let findings = JSON.parse(stdout);
+    let findings = extractFindings(JSON.parse(stdout));
     
     if (severity) {
       const wantedSeverity = severity.toLowerCase();
-      findings = findings.filter((f: any) =>
-        typeof f?.severity === 'string' && f.severity.toLowerCase() === wantedSeverity
+      findings = findings.filter((f) =>
+        typeof f.severity === 'string' && f.severity.toLowerCase() === wantedSeverity
       );
     }
     const safeLimit = normalizeLimit(limit, 20);
@@ -287,7 +309,7 @@ async function executeBackgroundScan(scanId: number, cmd: string) {
     scan.status = 'running';
     const outputDir = scan.output_dir;
     
-    const fullCmd = `mkdir -p '${shellEscape(outputDir)}' && ${cmd} --output '${shellEscape(outputDir)}'`;
+    const fullCmd = `mkdir -p '${shellEscape(outputDir)}' && ${cmd}`;
     await dockerExec('bugtrace-cli-mcp', fullCmd, 600000);
     scan.status = 'completed';
     scan.completedAt = new Date().toISOString();

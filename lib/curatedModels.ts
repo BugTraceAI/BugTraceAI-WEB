@@ -52,6 +52,7 @@ export const CURATED_MODELS: CuratedModel[] = [
     { key: 'deepseek/deepseek-v4-pro',                name: 'DeepSeek V4 Pro',         id: 'deepseek/deepseek-v4-pro' },
     { key: 'google/gemini-2.5-flash',                 name: 'Gemini 2.5 Flash',        id: 'google/gemini-2.5-flash' },
     { key: 'deepseek/deepseek-v4-flash',              name: 'DeepSeek V4 Flash',       id: 'deepseek/deepseek-v4-flash' },
+    { key: 'deepseek/deepseek-v4.1-flash',            name: 'DeepSeek V4.1 Flash',     id: 'deepseek/deepseek-v4.1-flash' },
 ];
 
 /** All selection keys, in pack order (for building dropdowns). */

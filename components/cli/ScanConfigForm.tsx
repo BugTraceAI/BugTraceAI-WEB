@@ -37,6 +37,8 @@ export interface ScanConfig {
   focused_agents: string[];
   param: string;            // empty string = not set
   url_list?: string[];      // Pre-defined URL list (from file upload)
+  /** API handoff kept with the loaded configuration until Start Scan. */
+  handoff?: Record<string, unknown>;
   auth?: AuthConfig;        // Auth config from YAML file (TOTP/2FA login)
 }
 
@@ -66,6 +68,17 @@ export const ScanConfigForm: React.FC<ScanConfigFormProps> = ({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const authFileInputRef = useRef<HTMLInputElement>(null);
   const { cliUrl, authConfigEnabled } = useSettings();
+
+  // A report handoff is treated like an imported OpenAPI inventory.  Keep the
+  // source visible in the same compact control used for local JSON uploads so
+  // the user can review the loaded URLs before starting the CLI scan.
+  useEffect(() => {
+    if (!config.handoff) return;
+    const operations = Array.isArray(config.handoff.operations) ? config.handoff.operations : [];
+    const endpoints = Array.isArray(config.handoff.endpoints) ? config.handoff.endpoints : [];
+    const count = operations.length || endpoints.length || config.url_list?.length || 0;
+    setUploadedFile({ name: 'BugTraceAI API handoff', type: 'swagger', count });
+  }, [config.handoff, config.url_list]);
 
   // Auth config state
   const [authConfigFile, setAuthConfigFile] = useState<{ name: string; config: AuthConfig } | null>(null);
@@ -400,7 +413,7 @@ export const ScanConfigForm: React.FC<ScanConfigFormProps> = ({
     setUploadedFile(null);
     setFileError('');
     setSwaggerUrlInput('');
-    onChange({ ...config, url_list: undefined });
+    onChange({ ...config, url_list: undefined, handoff: undefined });
     if (fileInputRef.current) fileInputRef.current.value = '';
   }, [config, onChange]);
 
@@ -623,7 +636,7 @@ export const ScanConfigForm: React.FC<ScanConfigFormProps> = ({
       setUploadedFile(null);
       setFileError('Imported URLs were cleared because the target changed. Re-import the file to rebuild the list.');
       if (fileInputRef.current) fileInputRef.current.value = '';
-      onChange({ ...config, target_url: value, url_list: undefined });
+      onChange({ ...config, target_url: value, url_list: undefined, handoff: undefined });
       return;
     }
 
@@ -649,7 +662,7 @@ export const ScanConfigForm: React.FC<ScanConfigFormProps> = ({
             Target URL
           </label>
           {activeScan ? (
-            <div className="input-premium font-mono text-xs h-8 flex items-center gap-2 border-coral/30 text-coral bg-coral/5 px-3">
+            <div className="input-premium font-mono text-sm h-10 flex items-center gap-2 border-coral/30 text-coral bg-coral/5 px-3">
               <div className="h-1.5 w-1.5 rounded-full bg-coral animate-pulse flex-shrink-0" />
               <span className="font-bold tracking-wider">SCANNING</span>
               <span className="opacity-40">|</span>
@@ -668,7 +681,7 @@ export const ScanConfigForm: React.FC<ScanConfigFormProps> = ({
                 disabled={disabled || uploadedFile !== null}
                 placeholder="https://example.com"
                 data-testid="scan-target-url-input"
-                className={`input-premium font-mono text-sm h-8 px-3 w-full disabled:opacity-50 disabled:cursor-not-allowed ${urlError ? 'border-error animate-shake' : ''}`}
+                className={`input-premium font-mono text-sm h-10 px-3 w-full disabled:opacity-50 disabled:cursor-not-allowed ${urlError ? 'border-error animate-shake' : ''}`}
                 title={uploadedFile ? 'Clear imported URLs first to change target' : ''}
               />
             </div>
@@ -681,7 +694,7 @@ export const ScanConfigForm: React.FC<ScanConfigFormProps> = ({
             <label className="label-mini block mb-1 ml-1">Import</label>
             {uploadedFile ? (
               <div
-                className="h-8 px-2 rounded-md bg-green-500/10 border border-green-500/30 flex items-center gap-1.5 cursor-pointer text-[10px]"
+                className="h-9 px-3 rounded-lg bg-green-500/10 border border-green-500/30 flex items-center gap-1.5 cursor-pointer text-[10px]"
                 onClick={() => setShowImportDropdown(!showImportDropdown)}
                 title={`${uploadedFile.count} URLs from ${uploadedFile.name}`}
               >
@@ -698,7 +711,7 @@ export const ScanConfigForm: React.FC<ScanConfigFormProps> = ({
               <button
                 onClick={() => setShowImportDropdown(!showImportDropdown)}
                 disabled={disabled}
-                className="h-8 px-3 rounded-md bg-white/[0.04] border border-white/[0.08] hover:border-coral/30 hover:bg-coral/5 text-[10px] text-white/60 hover:text-coral transition-all disabled:opacity-50"
+                className="btn-mini btn-mini-secondary !h-9 !px-3 !py-1.5 text-[10px] disabled:opacity-50"
                 title="Import URLs from file or Swagger"
               >
                 + URLs
@@ -740,7 +753,7 @@ export const ScanConfigForm: React.FC<ScanConfigFormProps> = ({
                 `}
               >
                 <div className="text-xs text-white/60">
-                  Drop <span className="text-blue-400">.txt</span> or <span className="text-orange-400">.json</span> here
+                  Drop <span className="text-blue-400">.txt</span> or <span className="text-orange-400">OpenAPI .json</span> here
                 </div>
                 <div className="text-[10px] text-white/40 mt-1">or click to browse</div>
               </div>
@@ -755,12 +768,12 @@ export const ScanConfigForm: React.FC<ScanConfigFormProps> = ({
                   onChange={(e) => setSwaggerUrlInput(e.target.value)}
                   onKeyDown={(e) => { if (e.key === 'Enter') { handleSwaggerUrlFetch(); setShowImportDropdown(false); } }}
                   placeholder="https://api.example.com/swagger.json"
-                  className="flex-1 bg-white/5 border border-white/10 rounded px-2 py-2 text-xs text-white/80 placeholder:text-white/30 focus:outline-none focus:border-coral/50"
+                  className="input-premium h-10 flex-1 px-3 py-2 text-xs"
                 />
                 <button
                   onClick={() => { handleSwaggerUrlFetch(); setShowImportDropdown(false); }}
                   disabled={isFetchingSwagger || !swaggerUrlInput.trim()}
-                  className="px-3 py-2 text-xs bg-coral/20 text-coral rounded hover:bg-coral/30 disabled:opacity-30"
+                  className="btn-mini btn-mini-secondary !h-10 !px-3 !py-2 text-[10px] text-coral disabled:opacity-30"
                 >
                   {isFetchingSwagger ? '...' : 'Fetch'}
                 </button>
@@ -783,7 +796,7 @@ export const ScanConfigForm: React.FC<ScanConfigFormProps> = ({
             />
             {authConfigFile ? (
               <div
-                className="h-8 px-2 rounded-md bg-purple-500/10 border border-purple-500/30 flex items-center gap-1.5 cursor-pointer text-[10px]"
+                className="h-9 px-3 rounded-lg bg-purple-500/10 border border-purple-500/30 flex items-center gap-1.5 cursor-pointer text-[10px]"
                 title={`Auth config: ${authConfigFile.name} (${authConfigFile.config.credentials.totp_secret ? 'TOTP' : 'Basic'})`}
               >
                 <span className="h-1.5 w-1.5 rounded-full bg-purple-400" />
@@ -801,7 +814,7 @@ export const ScanConfigForm: React.FC<ScanConfigFormProps> = ({
                 onDragOver={handleAuthDragOver}
                 onDragLeave={handleAuthDragLeave}
                 onDrop={handleAuthDrop}
-                className={`h-8 px-3 rounded-md border border-dashed cursor-pointer text-[10px] flex items-center justify-center transition-all ${
+                className={`h-9 px-3 rounded-lg border border-dashed cursor-pointer text-[10px] flex items-center justify-center transition-all ${
                   isAuthDragging
                     ? 'border-purple-400 bg-purple-500/10 text-purple-300'
                     : 'border-white/[0.15] bg-white/[0.02] text-white/40 hover:border-purple-400/50 hover:text-purple-300'
@@ -818,7 +831,7 @@ export const ScanConfigForm: React.FC<ScanConfigFormProps> = ({
         {providerInfo && (
           <div className="flex-shrink-0 flex flex-col items-center justify-end">
             <span className="label-mini block mb-1">Provider</span>
-            <div className="h-8 px-2.5 rounded-md bg-white/[0.04] border border-white/[0.06] flex items-center gap-1.5 cursor-default"
+            <div className="h-9 px-3 rounded-lg bg-white/[0.04] border border-white/[0.06] flex items-center gap-1.5 cursor-default"
                  title={`Active CLI provider: ${providerInfo.name}`}>
               <span className={`h-1.5 w-1.5 rounded-full flex-shrink-0 ${providerInfo.api_key_configured ? 'bg-green-400' : 'bg-yellow-400'}`} />
               <span className="text-[11px] text-ui-text-muted whitespace-nowrap">{providerInfo.name}</span>
@@ -841,7 +854,7 @@ export const ScanConfigForm: React.FC<ScanConfigFormProps> = ({
             onBlur={() => { if (config.max_depth < 1) onChange({ ...config, max_depth: 1 }); }}
             disabled={disabled}
             data-testid="scan-config-max-depth"
-            className="input-premium font-mono text-center text-sm h-8 w-full [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none [-moz-appearance:textfield]"
+            className="input-premium font-mono text-sm text-center h-10 w-full [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none [-moz-appearance:textfield]"
           />
         </div>
 
@@ -860,7 +873,7 @@ export const ScanConfigForm: React.FC<ScanConfigFormProps> = ({
             onBlur={() => { if (config.max_urls < 1) onChange({ ...config, max_urls: 1 }); }}
             disabled={disabled}
             data-testid="scan-config-max-urls"
-            className="input-premium font-mono text-center text-sm h-8 w-full [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none [-moz-appearance:textfield]"
+            className="input-premium font-mono text-sm text-center h-10 w-full [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none [-moz-appearance:textfield]"
           />
         </div>
 

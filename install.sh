@@ -246,19 +246,9 @@ db_name=${db_name:-bugtraceai_web}
 read -p "Database user (default: bugtraceai): " db_user
 db_user=${db_user:-bugtraceai}
 
-default_db_password=""
-if command -v openssl &> /dev/null; then
-    default_db_password=$(openssl rand -hex 24)
-fi
-read -sp "Database password (leave empty to generate a secure random password): " db_password
+read -sp "Database password (default: bugtraceai_dev_2026): " db_password
 echo ""
-if [ -z "$db_password" ]; then
-    db_password="$default_db_password"
-fi
-if [ -z "$db_password" ]; then
-    echo -e "${RED}❌ No password supplied and openssl is unavailable. Install openssl or enter a password.${NC}"
-    exit 1
-fi
+db_password=${db_password:-bugtraceai_dev_2026}
 
 # CLI Backend URL configuration
 section_header "Step 5: CLI Backend Configuration"
@@ -288,10 +278,8 @@ POSTGRES_PASSWORD=$db_password
 VITE_CLI_API_URL=$cli_api_url
 EOF
 
-chmod 600 .env
-
 echo -e "${GREEN}✓ Configuration file (.env) created${NC}"
-echo "  Database password: generated/configured (value hidden)"
+cat .env
 
 # Confirmation
 section_header "Step 7: Final Confirmation"
@@ -313,7 +301,7 @@ fi
 # Stop existing containers
 section_header "Step 8: Stopping Existing Containers"
 echo "Checking for existing containers..."
-if $DOCKER_COMPOSE_CMD -f docker-compose.yml down 2>/dev/null; then
+if $DOCKER_COMPOSE_CMD -f docker-compose.yml down -v 2>/dev/null; then
     echo -e "${GREEN}✓ Existing containers stopped${NC}"
 else
     echo -e "${YELLOW}⚠ No existing containers found (this is ok for first run)${NC}"

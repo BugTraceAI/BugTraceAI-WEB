@@ -52,7 +52,7 @@ router.post('/curl', executeLimiter, executeCurl);
 
 /**
  * GET /api/tools/health
- * Returns container availability: { kali: bool, recon: bool, bugtrace: bool }
+ * Returns container availability: { kali, recon, bugtrace }
  */
 router.get(
   '/health',
@@ -67,10 +67,14 @@ router.get(
       containers.map(async ([name, container]) => {
         try {
           const { stdout } = await execFileAsync(
-            'docker', ['inspect', '--format={{.State.Running}}', container],
+            'docker', ['inspect', '--format={{json .State}}', container],
             { timeout: 3000 }
           );
-          checks[name] = stdout.trim() === 'true';
+          const state = JSON.parse(stdout.trim()) as {
+            Running?: boolean;
+            Health?: { Status?: string };
+          };
+          checks[name] = state.Running === true && (!state.Health || state.Health.Status === 'healthy');
         } catch {
           checks[name] = false;
         }

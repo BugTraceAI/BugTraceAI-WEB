@@ -3,9 +3,12 @@
  * Maps all bugtraceaicli.conf parameters returned by GET /api/config.
  * Form-heavy component with extensive configuration schema - splitting would fragment settings UI.
  */
-import { useState, ReactNode } from 'react';
+import { useEffect, useState, ReactNode } from 'react';
 import { useConfigEditor, EDITABLE_KEYS } from '../../hooks/useConfigEditor';
 import { useSettings } from '../../contexts/SettingsProvider.tsx';
+import { ToggleSwitch } from './ToggleSwitch.tsx';
+import { MagnifyingGlassIcon } from '../Icons.tsx';
+import { CopyableCodeBlock } from '../CopyableCodeBlock.tsx';
 
 // --- Types ---
 
@@ -23,6 +26,61 @@ interface SectionDef {
   icon: ReactNode;
   fields: FieldDef[];
 }
+
+// Configuration search deliberately looks beyond exact key matches. Users
+// remember a concept ("crawler", "timeout", "rate limit"), not necessarily
+// the spelling used by the conf key. Every query word may match as a normal
+// substring or as a loose character sequence, which keeps the old forgiving
+// search behavior without pulling in a large search dependency.
+const normalizeConfigSearch = (value: string): string => value
+  .toLocaleLowerCase()
+  .normalize('NFD')
+  .replace(/[\u0300-\u036f]/g, '')
+  .replace(/[_-]+/g, ' ')
+  .replace(/\s+/g, ' ')
+  .trim();
+
+const isLooseMatch = (text: string, query: string): boolean => {
+  if (text.includes(query)) return true;
+  const compactQuery = query.replace(/\s/g, '');
+  return text.split(/\s+/).some(word => {
+    let cursor = 0;
+    let firstMatch = -1;
+    for (const character of compactQuery) {
+      cursor = word.indexOf(character, cursor);
+      if (cursor < 0) return false;
+      if (firstMatch < 0) firstMatch = cursor;
+      cursor += 1;
+    }
+    // Allow a small typo or omitted character, but do not match letters
+    // scattered across an entire description (for example `jwt` in a
+    // sentence that only happens to contain j, w and t).
+    return firstMatch >= 0 && cursor - firstMatch <= compactQuery.length + 2;
+  });
+};
+
+const matchesConfigSearch = (values: Array<string | undefined>, query: string): boolean => {
+  const normalizedQuery = normalizeConfigSearch(query);
+  if (!normalizedQuery) return true;
+  const haystack = normalizeConfigSearch(values.filter(Boolean).join(' '));
+  return normalizedQuery.split(' ').every(term => isLooseMatch(haystack, term));
+};
+
+const AUTH_CONFIG_TEMPLATE = `authentication:
+  login_type: form
+  login_url: "/login"
+  credentials:
+    username: "user@example.com"
+    password: "secret"
+    totp_secret: "JBSWY3DPEHPK3PXP"
+  login_flow:
+    - "Type $username into the email field"
+    - "Type $password into the password field"
+    - "Click the 'Sign In' button"
+    - "Enter $totp in the code field"
+  success_condition:
+    type: url_contains
+    value: "/"`;
 
 // --- Section definitions ---
 
@@ -511,25 +569,6 @@ function ChevronIcon({ open }: { open: boolean }) {
   );
 }
 
-// --- Toggle Switch ---
-
-function ToggleSwitch({ checked, onChange, disabled }: { checked: boolean; onChange: (v: boolean) => void; disabled?: boolean }) {
-  return (
-    <button
-      type="button"
-      role="switch"
-      aria-checked={checked}
-      disabled={disabled}
-      onClick={() => !disabled && onChange(!checked)}
-      className={`relative inline-flex h-5 w-10 flex-shrink-0 rounded-full border-2 border-transparent transition-all duration-300 ease-in-out focus:outline-none focus:ring-2 focus:ring-coral/20 ${disabled ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'} ${checked ? 'bg-coral shadow-[0_0_12px_rgba(255,127,80,0.3)]' : 'bg-ui-input-bg border-white/5'}`}
-    >
-      <span
-        className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow-lg ring-0 transition duration-300 ease-in-out ${checked ? 'translate-x-5' : 'translate-x-0'}`}
-      />
-    </button>
-  );
-}
-
 // --- Config Field ---
 
 function ConfigField({
@@ -608,18 +647,29 @@ function ConfigSection({
   editedFields,
   onEdit,
   defaultOpen,
+  searchQuery = '',
 }: {
   section: SectionDef;
   config: Record<string, any>;
   editedFields: Record<string, any>;
   onEdit: (key: string, value: any) => void;
   defaultOpen?: boolean;
+  searchQuery?: string;
 }) {
   const [isOpen, setIsOpen] = useState(defaultOpen ?? true);
   const visibleFields = section.fields.filter(f => config[f.key] !== undefined);
   const editedCount = visibleFields.filter(f => editedFields[f.key] !== undefined).length;
+  const searchActive = Boolean(normalizeConfigSearch(searchQuery));
+  const sectionMatches = matchesConfigSearch([section.title, section.id], searchQuery);
+  const filteredFields = visibleFields.filter(field => (
+    !searchActive || sectionMatches || matchesConfigSearch([field.key, field.label, field.description], searchQuery)
+  ));
 
-  if (visibleFields.length === 0) return null;
+  useEffect(() => {
+    if (searchActive) setIsOpen(true);
+  }, [searchActive]);
+
+  if (visibleFields.length === 0 || filteredFields.length === 0) return null;
 
   return (
     <div className="card-premium overflow-hidden">
@@ -637,7 +687,7 @@ function ConfigSection({
           </span>
         )}
         <div className="flex items-center gap-3">
-          <span className="label-mini opacity-40">{visibleFields.length} fields</span>
+          <span className="label-mini opacity-40">{searchActive ? filteredFields.length : visibleFields.length} fields</span>
           <div className={`text-ui-text-dim transition-transform duration-300 ${isOpen ? 'rotate-180' : ''}`}>
             <ChevronIcon open={false} />
           </div>
@@ -646,7 +696,7 @@ function ConfigSection({
 
       {isOpen && (
         <div className="px-2 pb-3 space-y-0.5">
-          {visibleFields.map(field => (
+          {filteredFields.map(field => (
             <ConfigField
               key={field.key}
               field={field}
@@ -685,13 +735,22 @@ const SEVERITY_COLORS = {
   medium: 'text-yellow-400',
 };
 
-function ThresholdsSection({ config, defaultOpen }: { config: Record<string, any>; defaultOpen?: boolean }) {
+function ThresholdsSection({ config, defaultOpen, searchQuery = '' }: { config: Record<string, any>; defaultOpen?: boolean; searchQuery?: string }) {
   const [isOpen, setIsOpen] = useState(defaultOpen ?? false);
   const thresholds: Record<string, number> | undefined = config.SKEPTICAL_THRESHOLDS;
+  const entries = thresholds && typeof thresholds === 'object' ? Object.entries(thresholds) : [];
+  const searchActive = Boolean(normalizeConfigSearch(searchQuery));
+  const sectionMatches = matchesConfigSearch(['Skeptical Thresholds', 'skeptical_thresholds'], searchQuery);
+  const filteredEntries = entries.filter(([key]) => {
+    const meta = THRESHOLD_META[key];
+    return !searchActive || sectionMatches || matchesConfigSearch([key, meta?.label, meta?.description], searchQuery);
+  });
 
-  if (!thresholds || typeof thresholds !== 'object') return null;
+  useEffect(() => {
+    if (searchActive) setIsOpen(true);
+  }, [searchActive]);
 
-  const entries = Object.entries(thresholds);
+  if (!thresholds || typeof thresholds !== 'object' || filteredEntries.length === 0) return null;
 
   return (
     <div className="card-premium overflow-hidden">
@@ -704,7 +763,7 @@ function ThresholdsSection({ config, defaultOpen }: { config: Record<string, any
         </div>
         <span className="title-standard flex-1">Skeptical Thresholds</span>
         <div className="flex items-center gap-3">
-          <span className="label-mini opacity-40">{entries.length} thresholds</span>
+          <span className="label-mini opacity-40">{searchActive ? filteredEntries.length : entries.length} thresholds</span>
           <div className={`text-ui-text-dim transition-transform duration-300 ${isOpen ? 'rotate-180' : ''}`}>
             <ChevronIcon open={false} />
           </div>
@@ -717,7 +776,7 @@ function ThresholdsSection({ config, defaultOpen }: { config: Record<string, any
             Minimum confidence score (0-10) for findings to pass to specialist agents. Lower = more permissive, Higher = stricter.
           </p>
           <div className="space-y-0.5">
-            {entries.map(([key, value]) => {
+            {filteredEntries.map(([key, value]) => {
               const meta = THRESHOLD_META[key];
               const severityColor = meta ? SEVERITY_COLORS[meta.severity] : 'text-ui-text-dim';
               return (
@@ -748,9 +807,14 @@ function ThresholdsSection({ config, defaultOpen }: { config: Record<string, any
 
 // --- Auth Config Section (Web-only setting) ---
 
-function AuthConfigSection() {
+function AuthConfigSection({ searchQuery = '' }: { searchQuery?: string }) {
   const { authConfigEnabled, setAuthConfigEnabled } = useSettings();
   const [isOpen, setIsOpen] = useState(true);
+  const searchActive = Boolean(normalizeConfigSearch(searchQuery));
+
+  if (searchActive && !matchesConfigSearch(['Authenticated Scanning', 'auth config', 'auth-config.yaml', 'totp', '2fa'], searchQuery)) {
+    return null;
+  }
 
   return (
     <div className="card-premium overflow-hidden">
@@ -799,23 +863,7 @@ function AuthConfigSection() {
                 <strong className="text-purple-300">YAML Format:</strong> The auth config file defines login credentials, TOTP secrets, and custom login flows.
                 Variables: <code className="text-purple-400">$username</code>, <code className="text-purple-400">$password</code>, <code className="text-purple-400">$totp</code>
               </p>
-              <pre className="mt-2 p-2 rounded bg-black/30 text-[10px] text-purple-200/70 overflow-x-auto">
-{`authentication:
-  login_type: form
-  login_url: "/login"
-  credentials:
-    username: "user@example.com"
-    password: "secret"
-    totp_secret: "JBSWY3DPEHPK3PXP"
-  login_flow:
-    - "Type $username into the email field"
-    - "Type $password into the password field"
-    - "Click the 'Sign In' button"
-    - "Enter $totp in the code field"
-  success_condition:
-    type: url_contains
-    value: "/"`}
-              </pre>
+              <CopyableCodeBlock value={AUTH_CONFIG_TEMPLATE} language="YAML TEMPLATE" />
             </div>
           )}
         </div>
@@ -839,6 +887,7 @@ export function ConfigurationTab() {
     handleSave,
     handleReload,
   } = useConfigEditor();
+  const [searchQuery, setSearchQuery] = useState('');
 
   // Build "Other Settings" section from unmapped keys
   const unmappedKeys = Object.keys(config).filter(k => !MAPPED_KEYS.has(k));
@@ -854,6 +903,21 @@ export function ConfigurationTab() {
       editable: EDITABLE_KEYS.has(key),
     })),
   } : null;
+
+  const normalizedSearch = normalizeConfigSearch(searchQuery);
+  const hasSearchResults = !normalizedSearch || [
+    ...CONFIG_SECTIONS.map(section => {
+      const visibleFields = section.fields.filter(field => config[field.key] !== undefined);
+      return visibleFields.length > 0 && (
+        matchesConfigSearch([section.title, section.id], searchQuery)
+        || visibleFields.some(field => matchesConfigSearch([field.key, field.label, field.description], searchQuery))
+      );
+    }),
+    otherSection ? matchesConfigSearch([otherSection.title, otherSection.id], searchQuery)
+      || otherSection.fields.some(field => matchesConfigSearch([field.key, field.label, field.description], searchQuery)) : false,
+    Boolean(config.SKEPTICAL_THRESHOLDS) && matchesConfigSearch(['Skeptical Thresholds', 'skeptical_thresholds', ...Object.keys(config.SKEPTICAL_THRESHOLDS || {})], searchQuery),
+    matchesConfigSearch(['Authenticated Scanning', 'auth config', 'auth-config.yaml', 'totp', '2fa'], searchQuery),
+  ].some(Boolean);
 
   if (isLoading) {
     return (
@@ -872,13 +936,32 @@ export function ConfigurationTab() {
             <span className="label-mini label-mini-accent">Kernel Configuration</span>
             <span className="title-standard">bugtraceaicli.conf</span>
           </div>
+          <div className="relative hidden w-64 shrink-0 lg:block">
+            <MagnifyingGlassIcon className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-ui-text-muted" />
+            <input
+              type="search"
+              value={searchQuery}
+              onChange={(event) => setSearchQuery(event.target.value)}
+              onKeyDown={(event) => { if (event.key === 'Escape') setSearchQuery(''); }}
+              placeholder="Search configuration…"
+              aria-label="Search CLI configuration"
+              className="input-premium h-9 w-full pl-9 pr-8 text-xs"
+            />
+            {searchQuery && (
+              <button
+                type="button"
+                onClick={() => setSearchQuery('')}
+                aria-label="Clear configuration search"
+                className="absolute right-2 top-1/2 -translate-y-1/2 px-1 text-sm text-ui-text-muted transition-colors hover:text-white"
+              >
+                ×
+              </button>
+            )}
+          </div>
           {hasChanges && (
             <span className="badge-mini badge-mini-accent animate-pulse shadow-[0_0_10px_rgba(255,127,80,0.2)]">
               {Object.keys(editedFields).length} Pending Changes
             </span>
-          )}
-          {version && (
-            <span className="badge-mini opacity-50">v{version}</span>
           )}
         </div>
         <div className="flex items-center gap-3 pr-1">
@@ -906,14 +989,38 @@ export function ConfigurationTab() {
         </div>
       </div>
 
+      <div className="mx-4 mb-1 lg:hidden">
+        <label className="relative block">
+          <MagnifyingGlassIcon className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-ui-text-muted" />
+          <input
+            type="search"
+            value={searchQuery}
+            onChange={(event) => setSearchQuery(event.target.value)}
+            onKeyDown={(event) => { if (event.key === 'Escape') setSearchQuery(''); }}
+            placeholder="Search configuration…"
+            aria-label="Search CLI configuration"
+            className="input-premium h-9 w-full pl-9 pr-8 text-xs"
+          />
+          {searchQuery && (
+            <button type="button" onClick={() => setSearchQuery('')} aria-label="Clear configuration search" className="absolute right-2 top-1/2 -translate-y-1/2 px-1 text-sm text-ui-text-muted hover:text-white">×</button>
+          )}
+        </label>
+      </div>
+
+      {normalizedSearch && !hasSearchResults && (
+        <div className="mx-4 mb-1 rounded-2xl border border-warning/20 bg-warning/5 px-4 py-3 text-xs text-ui-text-muted">
+          No configuration settings match <span className="font-mono text-white">{searchQuery}</span>.
+        </div>
+      )}
+
       {/* Sections */}
       <div className="flex-1 overflow-y-auto p-4 space-y-3">
         {/* Auth Config - Web-only setting */}
-        <AuthConfigSection />
+        <AuthConfigSection searchQuery={searchQuery} />
 
         {CONFIG_SECTIONS.map((section, i) =>
           section.id === 'skeptical_thresholds' ? (
-            <ThresholdsSection key={section.id} config={config} defaultOpen={i < 5} />
+            <ThresholdsSection key={section.id} config={config} defaultOpen={i < 5} searchQuery={searchQuery} />
           ) : (
             <ConfigSection
               key={section.id}
@@ -922,6 +1029,7 @@ export function ConfigurationTab() {
               editedFields={editedFields}
               onEdit={handleEdit}
               defaultOpen={i < 5}
+              searchQuery={searchQuery}
             />
           )
         )}
@@ -933,6 +1041,7 @@ export function ConfigurationTab() {
             editedFields={editedFields}
             onEdit={handleEdit}
             defaultOpen={false}
+            searchQuery={searchQuery}
           />
         )}
       </div>

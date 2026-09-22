@@ -100,7 +100,7 @@ export const PAGINATION = {
 // Valid Enum Values
 // ============================================================================
 
-export const VALID_SESSION_TYPES = ['websec', 'xss', 'sql'] as const;
+export const VALID_SESSION_TYPES = ['general', 'websec', 'xss', 'sql'] as const;
 
 export const VALID_ANALYSIS_TYPES = [
   'url_analysis',

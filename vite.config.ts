@@ -18,6 +18,7 @@ export default defineConfig(({ mode }) => {
 
   const backendPort = port('WEB_BACKEND_PORT', '3001'); // Express/Prisma backend
   const cliPort = port('CLI_PORT', '8000');             // CLI API (Launcher: CLI_PORT)
+  const btaiPort = port('BTAI_API_PORT', '8005'); // BugTraceAI-API REST (Launcher: BTAI_PORT)
   const krApiPort = port('KR_API_PORT', '8004');        // Kiterunner API
   const krMcpPort = port('KR_MCP_PORT', '8003');        // Kiterunner MCP
 
@@ -42,6 +43,11 @@ export default defineConfig(({ mode }) => {
           changeOrigin: true,
           ws: true,
           rewrite: (path) => path.replace(/^\/cli-api/, ''),
+        },
+        '/btai-api': {
+          target: `http://localhost:${btaiPort}`,
+          changeOrigin: true,
+          rewrite: (path) => path.replace(/^\/btai-api/, ''),
         },
         '/health': {
           target: `http://localhost:${backendPort}`,

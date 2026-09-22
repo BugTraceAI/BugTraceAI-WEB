@@ -226,11 +226,22 @@ export function buildFinisherUserMessage(seed: ExploitSeed): string {
 // Only HTTP request/parameter-mutation vuln classes make sense in the repeater.
 // Excludes things a repeater can't help with: security headers, misconfig,
 // vulnerable-library/version, info disclosure, TLS, tech fingerprint, etc.
-const REPEATER_ELIGIBLE_RE = /\b(xss|cross[ _-]?site[ _-]?script|sqli|sql[ _-]?inj|csti|ssti|template[ _-]?inj|idor|insecure[ _-]?direct[ _-]?object|lfi|rfi|file[ _-]?inclusion|path[ _-]?travers|directory[ _-]?travers|rce|remote[ _-]?code|command[ _-]?inj|os[ _-]?command|ssrf|open[ _-]?redirect|header[ _-]?inj|crlf|host[ _-]?header|prototype[ _-]?pollution|graphql|mass[ _-]?assign|nosql|xxe|ldap|jwt|broken[ _-]?access|access[ _-]?control|authoriz|authz|bac|csrf|cors|deserial|injection)\b/i;
+const REPEATER_ELIGIBLE_RE = /\b(xss|cross[ _-]?site[ _-]?script|sqli|sql[ _-]?inj|csti|ssti|template[ _-]?inj|idor|insecure[ _-]?direct[ _-]?object|lfi|rfi|file[ _-]?inclusion|path[ _-]?travers|directory[ _-]?travers|rce|remote[ _-]?code|command[ _-]?inj|os[ _-]?command|ssrf|open[ _-]?redirect|header[ _-]?inj|crlf|host[ _-]?header|prototype[ _-]?pollution|graphql|mass[ _-]?assign|nosql|xxe|ldap|jwt|broken[ _-]?access|access[ _-]?control|authorization|authentication|unauthenticated|bac|bola|bopla|csrf|cors|deserial|injection)\b/i;
 
 /** True if a finding's vuln type is worth taking to the AI Repeater. */
-export function isRepeaterEligible(vulnType?: string | null): boolean {
-  return !!vulnType && REPEATER_ELIGIBLE_RE.test(vulnType);
+export interface RepeaterEligibilityContext {
+  /** The HTTP target the repeater will load. */
+  url?: string | null;
+  /** The HTTP method the repeater will use for its first request. */
+  method?: string | null;
+}
+
+export function isRepeaterEligible(vulnType?: string | null, context?: RepeaterEligibilityContext): boolean {
+  if (!vulnType || !REPEATER_ELIGIBLE_RE.test(vulnType)) return false;
+  // API findings may be unconfirmed, but they still need a concrete request
+  // target. Without these fields AIrepeater would open with no useful action.
+  if (context && (!context.url?.trim() || !context.method?.trim())) return false;
+  return true;
 }
 
 // ── Raw HTTP request helpers (the repeater's Request pane) ──────────────────

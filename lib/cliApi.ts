@@ -28,6 +28,7 @@ export const CLI_WS_URL = CLI_API_URL.startsWith('http')
 export interface CreateScanRequest {
   target_url: string;
   scan_type?: string;
+  scan_depth?: string;
   safe_mode?: boolean;
   max_depth?: number;
   max_urls?: number;
@@ -36,6 +37,8 @@ export interface CreateScanRequest {
   focused_agents?: string[];
   param?: string;
   url_list?: string[];  // Pre-defined URL list (from URL list file or Swagger import)
+  /** API handoff pack for a method-aware CLI second pass. */
+  handoff?: Record<string, unknown>;
   auth?: {              // Auth config for authenticated scanning with TOTP/2FA
     login_url: string;
     credentials: {
@@ -60,7 +63,9 @@ export interface ScanStatusResponse {
   findings_count: number;
   active_agent?: string;
   phase?: string;
-  origin?: string; // "cli" or "web"
+  engine?: "cli"; // Executing engine. CLI reports are always the CLI engine.
+  launch_origin?: string; // Canonical provenance: "web-cli" | "cli" (legacy: "web" | "cli")
+  origin?: string; // Deprecated legacy field ("cli" or "web"); use launch_origin for new DTOs.
 }
 
 export interface ScanSummary {
@@ -69,7 +74,9 @@ export interface ScanSummary {
   status: string;
   progress: number;
   timestamp: string; // ISO format
-  origin: string; // "cli" or "web"
+  engine?: "cli"; // Executing engine. CLI reports are always the CLI engine.
+  launch_origin?: string; // Canonical provenance: "web-cli" | "cli" (legacy: "web" | "cli")
+  origin: string; // Deprecated legacy field ("cli" or "web"); use launch_origin for new DTOs.
   has_report: boolean; // Whether report files exist on disk
   recovery_available?: boolean; // Whether partial or full scan artifacts exist on disk
   provider?: string | null; // LLM provider used: "openrouter", "zai", etc.

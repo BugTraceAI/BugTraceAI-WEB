@@ -2,7 +2,9 @@
 // components/OobInteractionHelper.tsx
 // version 0.2 Beta — live OOB Collaborator (on-demand interactsh server)
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { SignalIcon, ClipboardDocumentListIcon, PuzzlePieceIcon } from './Icons.tsx';
+import { SignalIcon, PuzzlePieceIcon } from './Icons.tsx';
+import { CopyableCodeBlock } from './CopyableCodeBlock.tsx';
+import { copyText } from '../lib/clipboard.ts';
 import { ToolLayout } from './ToolLayout.tsx';
 import {
     oobStart,
@@ -132,7 +134,7 @@ export const OobInteractionHelper: React.FC = () => {
     }, [session]);
 
     const handleCopy = (payloadValue: string) => {
-        navigator.clipboard.writeText(payloadValue);
+        void copyText(payloadValue);
         setCopiedPayload(payloadValue);
         setTimeout(() => setCopiedPayload(null), 2000);
     };
@@ -162,7 +164,7 @@ export const OobInteractionHelper: React.FC = () => {
                         <button
                             onClick={startServer}
                             disabled={starting}
-                            className="btn-mini btn-mini-primary !h-10 !px-6 gap-2"
+                            className="btn-mini btn-mini-primary h-10 !px-6 gap-2"
                             title="Start a live OOB server and get a callback domain"
                         >
                             <SignalIcon className="h-4 w-4" />
@@ -220,7 +222,7 @@ export const OobInteractionHelper: React.FC = () => {
                     value={domain}
                     onChange={(e) => setDomain(e.target.value)}
                     placeholder="e.g., your-id.oastify.com (or start the collaborator above)"
-                    className="input-premium w-full p-4 font-mono text-sm"
+                    className="input-premium h-10 w-full px-4 py-2.5 font-mono text-sm"
                 />
             </div>
 
@@ -228,7 +230,7 @@ export const OobInteractionHelper: React.FC = () => {
                 <button
                     onClick={handleGenerate}
                     disabled={!domain.trim()}
-                    className="btn-mini btn-mini-primary !h-12 !px-10 !rounded-xl shadow-glow-coral group gap-3"
+                    className="btn-mini btn-mini-primary h-11 !px-8 !rounded-xl shadow-glow-coral group gap-2"
                     title="Generate OOB payloads based on the domain"
                 >
                     <PuzzlePieceIcon className="h-5 w-5 group-hover:rotate-12 transition-transform" />
@@ -245,21 +247,7 @@ export const OobInteractionHelper: React.FC = () => {
                                 {category.payloads.map((payload) => (
                                     <div key={payload.name} className="card-premium p-4 !bg-ui-bg/40 hover:border-ui-accent/40 transition-all group/card">
                                         <p className="label-mini mb-3 opacity-70">{payload.name}</p>
-                                        <div className="bg-black/40 p-3 rounded-xl font-mono text-xs text-ui-accent/90 relative group border border-white/5">
-                                            <pre className="overflow-x-auto no-scrollbar"><code className="whitespace-pre-wrap break-all">{payload.value}</code></pre>
-                                            <button
-                                                onClick={() => handleCopy(payload.value)}
-                                                className="absolute top-2 right-2 p-1.5 rounded-lg bg-ui-accent/10 border border-ui-accent/30 text-ui-accent opacity-0 group-hover:opacity-100 focus:opacity-100 transition-all hover:bg-ui-accent/20"
-                                                aria-label={`Copy ${payload.name}`}
-                                                title={`Copy ${payload.name}`}
-                                            >
-                                                {copiedPayload === payload.value ? (
-                                                    <span className="text-[8px] font-black px-1">COPIED</span>
-                                                ) : (
-                                                    <ClipboardDocumentListIcon className="h-4 w-4" />
-                                                )}
-                                            </button>
-                                        </div>
+                                        <CopyableCodeBlock value={payload.value} language="PAYLOAD" />
                                     </div>
                                 ))}
                             </div>

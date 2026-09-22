@@ -30,6 +30,17 @@ interface SettingsContextType {
         version?: string;
         dockerAvailable?: boolean;
     }) => void;
+    // BugTraceAI-API Connection (standalone product, separate process/Docker)
+    btaiApiUrl: string;
+    setBtaiApiUrl: (url: string) => void;
+    btaiApiConnected: boolean;
+    btaiApiStatus: 'healthy' | 'degraded' | 'unreachable' | null;
+    btaiApiVersion: string | undefined;
+    setBtaiApi: (state: {
+        connected: boolean;
+        status: 'healthy' | 'degraded' | 'unreachable' | null;
+        version?: string;
+    }) => void;
     // Auth Config (TOTP login YAML)
     authConfigEnabled: boolean;
     setAuthConfigEnabled: (enabled: boolean) => void;
@@ -58,6 +69,22 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
     // Auth Config (TOTP login YAML) - disabled by default
     const [authConfigEnabled, setAuthConfigEnabled] = useState<boolean>(false);
+
+    // BugTraceAI-API Connection state (standalone product, separate process/Docker)
+    const [btaiApiUrl, setBtaiApiUrl] = useState<string>('/btai-api');
+    const [btaiApiConnected, setBtaiApiConnected] = useState(false);
+    const [btaiApiStatus, setBtaiApiStatus] = useState<'healthy' | 'degraded' | 'unreachable' | null>(null);
+    const [btaiApiVersion, setBtaiApiVersion] = useState<string | undefined>(undefined);
+
+    const setBtaiApi = useCallback((state: {
+        connected: boolean;
+        status: 'healthy' | 'degraded' | 'unreachable' | null;
+        version?: string;
+    }) => {
+        setBtaiApiConnected(state.connected);
+        setBtaiApiStatus(state.status);
+        setBtaiApiVersion(state.version);
+    }, []);
 
     // Chat circuit breaker: max consecutive tool-call rounds before the WebSec Agent stops
     const [maxToolHops, setMaxToolHops] = useState<number>(15);
@@ -120,6 +147,16 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
                 if (Number.isFinite(n) && n > 0) setMaxToolHops(n);
             }
 
+            // Load BugTraceAI-API URL — env var wins when set (Docker proxy mode)
+            const envBtaiApiUrl = import.meta.env.VITE_BTAI_API_URL;
+            if (envBtaiApiUrl) {
+                setBtaiApiUrl(envBtaiApiUrl);
+                localStorage.removeItem('btaiApiUrl');
+            } else {
+                const savedBtaiApiUrl = localStorage.getItem('btaiApiUrl');
+                if (savedBtaiApiUrl) setBtaiApiUrl(savedBtaiApiUrl);
+            }
+
         } catch (e) { console.error("Could not load settings:", e); }
     }, []);
 
@@ -164,6 +201,14 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     }, [cliUrl]);
 
     useEffect(() => {
+        // Don't persist API URL in Docker mode
+        if (!import.meta.env.VITE_BTAI_API_URL) {
+            try { localStorage.setItem('btaiApiUrl', btaiApiUrl); }
+            catch (e) { console.error("Could not save BTAI API URL:", e); }
+        }
+    }, [btaiApiUrl]);
+
+    useEffect(() => {
         try { localStorage.setItem('authConfigEnabled', String(authConfigEnabled)); }
         catch (e) { console.error("Could not save authConfigEnabled:", e); }
     }, [authConfigEnabled]);
@@ -182,9 +227,11 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         cliUrl, setCliUrl,
         cliConnected, cliStatus, cliVersion, cliDockerAvailable,
         setCli,
+        btaiApiUrl, setBtaiApiUrl,
+        btaiApiConnected, btaiApiStatus, btaiApiVersion, setBtaiApi,
         authConfigEnabled, setAuthConfigEnabled,
         maxToolHops, setMaxToolHops,
-    }), [themeId, setThemeId, apiKeys, openRouterModel, saveApiKeys, providerId, cliUrl, cliConnected, cliStatus, cliVersion, cliDockerAvailable, setCli, authConfigEnabled, maxToolHops]);
+    }), [themeId, setThemeId, apiKeys, openRouterModel, saveApiKeys, providerId, cliUrl, cliConnected, cliStatus, cliVersion, cliDockerAvailable, setCli, btaiApiUrl, setBtaiApiUrl, btaiApiConnected, btaiApiStatus, btaiApiVersion, setBtaiApi, authConfigEnabled, maxToolHops]);
 
     return <SettingsContext.Provider value={value}>{children}</SettingsContext.Provider>;
 };

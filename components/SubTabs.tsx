@@ -1,6 +1,7 @@
 // components/SubTabs.tsx
 import React from 'react';
 import { Tool } from '../types.ts';
+import { SlidingSegmentedControl } from './cli/SlidingSegmentedControl.tsx';
 
 interface SubTab {
   id: Tool;
@@ -14,24 +15,21 @@ interface SubTabsProps {
 }
 
 export const SubTabs: React.FC<SubTabsProps> = ({ activeTool, setTool, tools }) => {
+  // Keep every tab in a group the same width. Longer tool names get a little
+  // extra room, but the active indicator and typography remain shared.
+  const longestLabel = Math.max(...tools.map(tool => tool.name.length), 0);
+  const itemWidth = Math.min(176, Math.max(104, Math.ceil(longestLabel * 7 + 34)));
+
   return (
-    <div className="flex items-center gap-2 mb-8 bg-ui-input-bg/40 p-1.5 rounded-2xl border border-ui-border self-start">
-      {tools.map((tool) => (
-        <button
-          key={tool.id}
-          onClick={() => setTool(tool.id)}
-          className={`
-            h-9 px-5 rounded-xl font-black text-[10px] uppercase tracking-wider transition-all duration-300 flex items-center gap-2
-            ${activeTool === tool.id
-              ? 'bg-ui-accent text-ui-bg shadow-glow-coral'
-              : 'text-ui-text-dim hover:text-ui-text-main hover:bg-ui-accent/10'
-            }
-          `}
-          aria-current={activeTool === tool.id ? 'page' : undefined}
-        >
-          {tool.name}
-        </button>
-      ))}
+    <div className="mb-4 px-1" role="navigation" aria-label="Analysis tool navigation">
+      <SlidingSegmentedControl
+        value={activeTool}
+        onChange={value => setTool(value as Tool)}
+        ariaLabel="Analysis tool navigation"
+        testIdPrefix="analysis-tool"
+        itemWidth={itemWidth}
+        options={tools.map(tool => ({ value: tool.id, label: tool.name }))}
+      />
     </div>
   );
 };

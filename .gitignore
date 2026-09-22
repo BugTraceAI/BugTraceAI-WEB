@@ -5,6 +5,9 @@ dist/
 .claude/
 .trash/
 
+# Internal planning and analysis docs (mirrors BugTraceAI-CLI/.gitignore)
+.planning/
+
 # Backend specific
 backend/node_modules/
 backend/dist/

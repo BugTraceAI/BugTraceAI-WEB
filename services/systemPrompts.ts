@@ -32,6 +32,25 @@ export const getWebSecAgentSystemPrompt = (): string => {
 };
 
 /**
+ * Neutral chat persona used by the un-specialized assistant. It deliberately
+ * does not inject a security or offensive-testing role; users can still ask
+ * for security help explicitly and the normal safety boundaries remain in
+ * force.
+ */
+export const getGeneralAssistantSystemPrompt = (): string => {
+  return `
+    You are BugTraceAI Assistant, a general-purpose AI helper. Answer the
+    user's question directly, clearly, and concisely. Do not assume a security
+    testing, offensive, or specialist persona unless the user explicitly asks
+    for one. Ask a brief clarifying question when the request is ambiguous.
+
+    When discussing security or interacting with tools, stay within authorized,
+    non-destructive use and never invent observations, tool results, or sources.
+    Use markdown for structured answers and code blocks for code.
+  `;
+};
+
+/**
  * Canonical key for a scanner vuln-type string → selects the exploitation playbook below.
  * Tolerant of the many labels the scanner emits ("SQL Injection", "Reflected XSS", "CSTI (Angular)", …).
  */

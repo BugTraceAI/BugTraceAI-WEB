@@ -5,8 +5,9 @@ import { generateSstiPayloads } from '../services/Service.ts';
 import { ForgedPayload } from '../types.ts';
 import { useApiOptions } from '../hooks/useApiOptions.ts';
 import { Spinner } from './Spinner.tsx';
-import { PuzzlePieceIcon, ClipboardDocumentListIcon } from './Icons.tsx';
+import { PuzzlePieceIcon } from './Icons.tsx';
 import { ToolLayout } from './ToolLayout.tsx';
+import { CopyableCodeBlock } from './CopyableCodeBlock.tsx';
 
 const TEMPLATE_ENGINES = ['Jinja2 (Python)', 'Twig (PHP)', 'Freemarker (Java)', 'Velocity (Java)', 'Generic'];
 
@@ -20,7 +21,6 @@ export const SstiForge: React.FC<SstiForgeProps> = ({ onShowApiKeyWarning }) => 
   const [generatedPayloads, setGeneratedPayloads] = useState<ForgedPayload[] | null>(null);
   const [isGenerating, setIsGenerating] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
-  const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
   const { apiOptions, isApiKeySet } = useApiOptions();
 
   const handleGenerate = useCallback(async () => {
@@ -46,12 +46,6 @@ export const SstiForge: React.FC<SstiForgeProps> = ({ onShowApiKeyWarning }) => 
     }
   }, [engine, goal, apiOptions, isApiKeySet, onShowApiKeyWarning]);
 
-  const handleCopy = (text: string, index: number) => {
-    navigator.clipboard.writeText(text);
-    setCopiedIndex(index);
-    setTimeout(() => setCopiedIndex(null), 2000);
-  };
-
   return (
     <ToolLayout
       icon={<PuzzlePieceIcon className="h-8 w-8 text-coral" />}
@@ -66,7 +60,7 @@ export const SstiForge: React.FC<SstiForgeProps> = ({ onShowApiKeyWarning }) => 
               id="engine"
               value={engine}
               onChange={(e) => setEngine(e.target.value)}
-              className="input-premium w-full p-4 appearance-none cursor-pointer"
+              className="input-premium h-10 w-full px-4 py-2.5 appearance-none cursor-pointer text-sm"
               disabled={isGenerating}
             >
               {TEMPLATE_ENGINES.map(eng => <option key={eng} value={eng} className="bg-ui-bg text-ui-text-main">{eng}</option>)}
@@ -85,7 +79,7 @@ export const SstiForge: React.FC<SstiForgeProps> = ({ onShowApiKeyWarning }) => 
             value={goal}
             onChange={(e) => setGoal(e.target.value)}
             placeholder="e.g., id, cat /etc/passwd, {{7*7}}"
-            className="input-premium w-full h-32 p-5 font-mono text-sm resize-y"
+            className="input-premium h-32 w-full resize-y p-4 font-mono text-sm leading-relaxed sm:p-5"
             disabled={isGenerating}
           />
         </div>
@@ -95,7 +89,7 @@ export const SstiForge: React.FC<SstiForgeProps> = ({ onShowApiKeyWarning }) => 
         <button
           onClick={handleGenerate}
           disabled={isGenerating || !goal.trim()}
-          className="btn-mini btn-mini-primary !h-12 !px-10 !rounded-xl shadow-glow-coral group gap-3"
+          className="btn-mini btn-mini-primary h-11 !px-8 !rounded-xl shadow-glow-coral group gap-2"
           title="Generate SSTI payloads based on the selected engine and goal"
         >
           {isGenerating ? <Spinner /> : <PuzzlePieceIcon className="h-5 w-5 group-hover:rotate-12 transition-transform" />}
@@ -128,21 +122,7 @@ export const SstiForge: React.FC<SstiForgeProps> = ({ onShowApiKeyWarning }) => 
                 <span className="label-mini !text-[8px] opacity-40">VECTOR-{index + 1}</span>
               </div>
               <p className="text-ui-text-dim text-[11px] leading-relaxed mb-4 min-h-[32px]">{p.description}</p>
-              <div className="bg-black/40 p-3 rounded-xl font-mono text-xs text-ui-accent/90 relative group border border-white/5">
-                <pre className="overflow-x-auto no-scrollbar"><code className="whitespace-pre-wrap break-all">{p.payload}</code></pre>
-                <button
-                  onClick={() => handleCopy(p.payload, index)}
-                  className="absolute top-2 right-2 p-1.5 rounded-lg bg-ui-accent/10 border border-ui-accent/30 text-ui-accent opacity-0 group-hover:opacity-100 focus:opacity-100 transition-all hover:bg-ui-accent/20"
-                  aria-label="Copy payload"
-                  title="Copy payload"
-                >
-                  {copiedIndex === index ? (
-                    <span className="text-[8px] font-black px-1">COPIED</span>
-                  ) : (
-                    <ClipboardDocumentListIcon className="h-4 w-4" />
-                  )}
-                </button>
-              </div>
+              <CopyableCodeBlock value={p.payload} language="PAYLOAD" />
             </div>
           )) : (
             <div className="col-span-full text-center p-12 bg-ui-bg/20 border border-dashed border-ui-border rounded-xl">

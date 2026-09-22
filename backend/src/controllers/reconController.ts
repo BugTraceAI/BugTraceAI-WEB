@@ -28,6 +28,11 @@ function toScanId(value: unknown): number | null {
   return Number.isFinite(scanId) ? scanId : null;
 }
 
+function normalizeLimit(value: unknown, fallback: number): number {
+  const limit = Number(value);
+  return Number.isFinite(limit) && limit > 0 ? Math.min(Math.floor(limit), 500) : fallback;
+}
+
 function scheduleScanCleanup(scanId: number) {
   setTimeout(() => activeScans.delete(scanId), SCAN_TTL_MS);
 }
@@ -225,23 +230,26 @@ async function handleGetFindings(args: { scan_id: number; finding_type?: string;
   // Logic to read files from reconftw-mcp output directory
   // Example: cat /opt/reconftw/output/domain.com/subdomains.txt
   const target = scan.target;
+  const allowedFindingTypes = new Set(['all', 'subdomains', 'webs', 'vulnerabilities', 'urls', 'emails']);
+  const safeFindingType = allowedFindingTypes.has(finding_type) ? finding_type : 'all';
+  const safeLimit = normalizeLimit(limit, 50);
   let filePath = `/opt/reconftw/output/${shellEscape(target)}/`;
   
-  switch (finding_type) {
+  switch (safeFindingType) {
     case 'subdomains': filePath += 'subdomains/subdomains.txt'; break;
     case 'webs': filePath += 'webs/webs.txt'; break;
     case 'vulnerabilities': filePath += 'vulns/nuclei_output.txt'; break;
     default: filePath += 'subdomains/subdomains.txt';
   }
   
-  const cmd = `cat ${filePath} 2>/dev/null | head -n ${limit} || echo "No findings found for ${finding_type}"`;
-  // Command executed via dockerExec (execFile, no shell injection)
+  const cmd = `cat ${filePath} 2>/dev/null | head -n ${safeLimit} || echo "No findings found for ${safeFindingType}"`;
+  // target is shell-escaped and safeLimit is normalized to an integer.
   
   const { stdout } = await dockerExec('reconftw-mcp', cmd, 30000);
   return {
     scan_id,
     target,
-    finding_type,
+    finding_type: safeFindingType,
     result: stdout
   };
 }

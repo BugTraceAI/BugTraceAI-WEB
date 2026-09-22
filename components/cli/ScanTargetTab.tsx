@@ -3,7 +3,7 @@
  * Orchestrates scan configuration, execution, and real-time output display.
  * Manages scan lifecycle from form submission through WebSocket monitoring.
  */
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { ScanConfigForm, ScanConfig } from './ScanConfigForm.tsx';
 import { ScanConsole } from './ScanConsole.tsx';
@@ -11,6 +11,10 @@ import { ScanDashboard } from './ScanDashboard.tsx';
 import { TerminalIcon, TrashIcon, StopIcon, PauseIcon, PlayIcon } from '../Icons.tsx';
 import { useScanSocket } from '../../hooks/useScanSocket.ts';
 import { cliApi } from '../../lib/cliApi.ts';
+import { ApiScanLauncher } from './ApiScanLauncher.tsx';
+import { SlidingSegmentedControl } from './SlidingSegmentedControl.tsx';
+import { useSettings } from '../../contexts/SettingsProvider.tsx';
+import { createBtaiApi } from '../../lib/btaiApi.ts';
 
 interface ScanTargetTabProps {
   onScanStart?: (config: ScanConfig) => void;
@@ -28,7 +32,10 @@ const DEFAULT_CONFIG: ScanConfig = {
   param: '',
   url_list: undefined,
   auth: undefined,
+  handoff: undefined,
 };
+
+const ACTIVE_API_SCAN_STATUSES = new Set(['pending', 'running', 'initializing', 'queued']);
 
 interface ActiveScan {
   id: number;
@@ -38,6 +45,8 @@ interface ActiveScan {
 }
 
 export const ScanTargetTab: React.FC<ScanTargetTabProps> = ({ onScanStart }) => {
+  const [engine, setEngine] = useState<'cli' | 'api'>('cli');
+  const [apiScanInProgress, setApiScanInProgress] = useState(false);
   const [config, setConfig] = useState<ScanConfig>(DEFAULT_CONFIG);
   const [scanError, setScanError] = useState<string | null>(null);
   const [runningScan, setRunningScan] = useState<ActiveScan | null>(null);
@@ -47,18 +56,71 @@ export const ScanTargetTab: React.FC<ScanTargetTabProps> = ({ onScanStart }) => 
   const [controlBusy, setControlBusy] = useState(false);
   const startingRef = useRef(false);
   const wasScanningRef = useRef(false);
+  const apiScanBusyRef = useRef(false);
   const location = useLocation();
   const navigate = useNavigate();
+  const { btaiApiUrl } = useSettings();
   const { logs, isConnected, isScanning, subscribe, unsubscribe, clearLogs, clearDashboard, pipeline, agents, metrics, findings, agentLevels } = useScanSocket();
+
+  // Keep the cross-engine lock alive even when the API launcher is unmounted
+  // while the user changes the selector. The API scan itself continues on its
+  // own server; this lightweight list poll only protects the shared CLI output.
+  const setApiBusy = useCallback((busy: boolean) => {
+    // A freshly mounted launcher reports `false` before its rehydration request
+    // completes. Never let that transient value clear a lock already confirmed
+    // by the parent poller.
+    if (!busy && apiScanBusyRef.current) return;
+    apiScanBusyRef.current = busy;
+    setApiScanInProgress(busy);
+  }, []);
+
+  const refreshApiScanLock = useCallback(async (): Promise<boolean> => {
+    if (!btaiApiUrl) {
+      apiScanBusyRef.current = false;
+      setApiScanInProgress(false);
+      return false;
+    }
+    try {
+      const response = await createBtaiApi(btaiApiUrl).listScans(20);
+      const active = response.scans.some(scan => ACTIVE_API_SCAN_STATUSES.has(String(scan.status || '').toLowerCase()));
+      apiScanBusyRef.current = active;
+      setApiScanInProgress(active);
+      return active;
+    } catch {
+      // API offline is not a reason to disable the independent CLI. Preserve a
+      // previously known active lock until the API confirms it is terminal.
+      return apiScanBusyRef.current;
+    }
+  }, [btaiApiUrl]);
+
+  useEffect(() => {
+    void refreshApiScanLock();
+    if (!btaiApiUrl) return undefined;
+    const interval = window.setInterval(() => { void refreshApiScanLock(); }, 2000);
+    return () => window.clearInterval(interval);
+  }, [btaiApiUrl, refreshApiScanLock]);
 
   // Hydrate config from router state (e.g. "Load into Scan" from API Discovery)
   useEffect(() => {
-    const state = location.state as { url_list?: string[]; target_url?: string } | null;
-    if (state?.url_list && state.url_list.length > 0) {
+    const state = location.state as {
+      url_list?: string[];
+      target_url?: string;
+      handoff?: Record<string, unknown>;
+    } | null;
+    if ((state?.url_list && state.url_list.length > 0) || state?.handoff) {
+      const handoffUrls = state?.handoff
+        ? (Array.isArray(state.handoff.operations)
+          ? state.handoff.operations
+          : Array.isArray(state.handoff.endpoints) ? state.handoff.endpoints : [])
+          .map((item: any) => typeof item?.url === 'string' ? item.url : '')
+          .filter(Boolean)
+        : [];
+      const loadedUrls = state?.url_list?.length ? state.url_list : handoffUrls;
       setConfig(prev => ({
         ...prev,
-        url_list: state.url_list,
+        url_list: loadedUrls.length > 0 ? loadedUrls : prev.url_list,
         target_url: state.target_url ?? prev.target_url,
+        handoff: state.handoff ?? prev.handoff,
       }));
       // Clear state so a page refresh doesn't re-apply it
       navigate(location.pathname, { replace: true, state: null });
@@ -148,6 +210,15 @@ export const ScanTargetTab: React.FC<ScanTargetTabProps> = ({ onScanStart }) => 
       return;
     }
 
+    // Re-check immediately before POST so a scan started in another tab (or
+    // just after the last poll) cannot saturate the shared output channel.
+    if (await refreshApiScanLock()) {
+      setScanError('An API scan is already running. Stop it or wait for it to finish before starting a Web scan.');
+      startingRef.current = false;
+      setIsStarting(false);
+      return;
+    }
+
     try {
       const response = await cliApi.startScan({
         target_url: config.target_url,
@@ -160,6 +231,7 @@ export const ScanTargetTab: React.FC<ScanTargetTabProps> = ({ onScanStart }) => 
         focused_agents: config.focused_agents.length > 0 ? config.focused_agents : undefined,
         param: config.param || undefined,
         url_list: config.url_list,
+        handoff: config.handoff,
         auth: config.auth,
       });
 
@@ -250,6 +322,28 @@ export const ScanTargetTab: React.FC<ScanTargetTabProps> = ({ onScanStart }) => 
 
   return (
     <div className="h-full flex flex-col gap-3 p-4">
+      <div className="flex flex-wrap items-center gap-3 px-1" role="group" aria-label="Scan engine">
+        <span className="label-mini text-muted">Engine</span>
+          <SlidingSegmentedControl
+          value={engine}
+          onChange={value => setEngine(value as 'cli' | 'api')}
+          ariaLabel="Scan engine"
+          disabled={scanInProgress}
+          testIdPrefix="scan-engine"
+          options={[{ value: 'cli', label: 'Scan Web' }, { value: 'api', label: 'Scan API' }]}
+        />
+        <span className="ml-auto text-[10px] text-muted/70">Reports keep the launch origin</span>
+      </div>
+
+      {engine === 'cli' && apiScanInProgress && (
+        <div className="rounded-xl border border-warning/30 bg-warning/10 px-4 py-3 text-[11px] leading-relaxed text-warning" role="status">
+          <span className="font-bold uppercase tracking-[0.1em]">API scan in progress.</span>{' '}
+          Web scans are temporarily locked because both engines share the live output channel. Wait for the API scan to finish or stop it from <strong>Scan API</strong>.
+        </div>
+      )}
+
+      {engine === 'api' ? <ApiScanLauncher onBusyChange={setApiBusy} blockedByCli={scanInProgress} /> : (
+      <>
       {/* Scan in progress banner - compact */}
       {/* Scan in progress banner - removed as it's now inline */}
 
@@ -269,7 +363,7 @@ export const ScanTargetTab: React.FC<ScanTargetTabProps> = ({ onScanStart }) => 
               <button
                 onClick={handleClearView}
                 data-testid="scan-clear-button"
-                className="btn-mini btn-mini-secondary h-8 px-5 whitespace-nowrap mt-auto"
+                className="btn-mini btn-mini-secondary h-9 px-5 whitespace-nowrap mt-auto"
               >
                 <TrashIcon className="h-3.5 w-3.5 mr-2" />
                 Clear
@@ -280,7 +374,7 @@ export const ScanTargetTab: React.FC<ScanTargetTabProps> = ({ onScanStart }) => 
                   onClick={handlePauseToggle}
                   disabled={controlBusy || !runningScan}
                   data-testid="scan-pause-button"
-                  className={`btn-mini h-8 px-5 whitespace-nowrap ${
+                  className={`btn-mini h-9 px-5 whitespace-nowrap ${
                     isPaused ? 'btn-mini-primary shadow-glow-coral' : 'btn-mini-secondary'
                   } ${controlBusy || !runningScan ? 'opacity-50 cursor-not-allowed' : ''}`}
                   title={isPaused ? 'Resume scan' : 'Pause scan'}
@@ -301,7 +395,7 @@ export const ScanTargetTab: React.FC<ScanTargetTabProps> = ({ onScanStart }) => 
                   onClick={handleStopScan}
                   disabled={controlBusy || !runningScan}
                   data-testid="scan-stop-button"
-                  className={`btn-mini btn-mini-secondary h-8 px-5 whitespace-nowrap !text-error border border-error-border/40 ${
+                  className={`btn-mini btn-mini-secondary h-9 px-5 whitespace-nowrap !text-error border border-error-border/40 ${
                     controlBusy || !runningScan ? 'opacity-50 cursor-not-allowed' : ''
                   }`}
                   title="Stop scan"
@@ -313,16 +407,16 @@ export const ScanTargetTab: React.FC<ScanTargetTabProps> = ({ onScanStart }) => 
             ) : (
               <button
                 onClick={handleStartScan}
-                disabled={!isValidUrl()}
+                disabled={!isValidUrl() || apiScanInProgress}
                 data-testid="scan-start-button"
                 className={`
-                btn-mini h-8 px-6 whitespace-nowrap mt-auto
+                btn-mini h-9 px-6 whitespace-nowrap mt-auto
                 ${isValidUrl()
                     ? 'btn-mini-primary shadow-glow-coral'
                     : 'btn-mini-secondary opacity-30 grayscale cursor-not-allowed'
                   }
               `}
-                title={!isValidUrl() ? 'Please enter a valid target URL' : 'Start security scan'}
+                title={apiScanInProgress ? 'An API scan is already running' : !isValidUrl() ? 'Please enter a valid target URL' : 'Start security scan'}
               >
                 <TerminalIcon className="h-3.5 w-3.5 mr-2" />
                 Start Scan
@@ -358,6 +452,8 @@ export const ScanTargetTab: React.FC<ScanTargetTabProps> = ({ onScanStart }) => 
           agentLevels={agentLevels}
         />
       </div>
+      </>
+      )}
     </div>
   );
 };

@@ -5,8 +5,10 @@ import { forgePayloads } from '../services/Service.ts';
 import { ForgedPayload } from '../types.ts';
 import { useApiOptions } from '../hooks/useApiOptions.ts';
 import { Spinner } from './Spinner.tsx';
-import { FireIcon, ClipboardDocumentListIcon } from './Icons.tsx';
+import { FireIcon } from './Icons.tsx';
 import { ToolLayout } from './ToolLayout.tsx';
+import { SlidingSegmentedControl } from './cli/SlidingSegmentedControl.tsx';
+import { CopyableCodeBlock } from './CopyableCodeBlock.tsx';
 
 type ForgeTab = 'ai' | 'fuzz';
 
@@ -22,11 +24,9 @@ export const PayloadForge: React.FC<PayloadForgeProps> = ({ payloadForForge, onP
   const [forgedPayloads, setForgedPayloads] = useState<ForgedPayload[] | null>(null);
   const [isForging, setIsForging] = useState<boolean>(false);
   const [forgeError, setForgeError] = useState<string | null>(null);
-  const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
   const { apiOptions, isApiKeySet } = useApiOptions();
 
   const [payloadList, setPayloadList] = useState<string>('');
-  const [listCopied, setListCopied] = useState<boolean>(false);
 
   const [activeTab, setActiveTab] = useState<ForgeTab>('ai');
 
@@ -102,19 +102,6 @@ export const PayloadForge: React.FC<PayloadForgeProps> = ({ payloadForForge, onP
     }
   }, [basePayload, apiOptions, isApiKeySet, onShowApiKeyWarning]);
 
-  const handleCopy = (text: string, index: number) => {
-    navigator.clipboard.writeText(text);
-    setCopiedIndex(index);
-    setTimeout(() => setCopiedIndex(null), 2000);
-  };
-
-  const handleListCopy = () => {
-    if (!payloadList) return;
-    navigator.clipboard.writeText(payloadList);
-    setListCopied(true);
-    setTimeout(() => setListCopied(false), 2000);
-  };
-
   return (
     <ToolLayout
       icon={<FireIcon className="h-8 w-8 text-orange-400" />}
@@ -128,7 +115,7 @@ export const PayloadForge: React.FC<PayloadForgeProps> = ({ payloadForForge, onP
           value={basePayload}
           onChange={(e) => setBasePayload(e.target.value)}
           placeholder="e.g., <script>alert(1)</script>"
-          className="input-premium w-full h-28 p-5 font-mono text-sm resize-y"
+          className="input-premium h-32 w-full resize-y p-4 font-mono text-sm leading-relaxed sm:p-5"
           disabled={isForging}
         />
       </div>
@@ -137,7 +124,7 @@ export const PayloadForge: React.FC<PayloadForgeProps> = ({ payloadForForge, onP
         <button
           onClick={handleForge}
           disabled={isForging || !basePayload.trim()}
-          className="btn-mini btn-mini-primary !h-12 !px-10 !rounded-xl shadow-glow-coral gap-3 group"
+          className="btn-mini btn-mini-primary h-11 !px-8 !rounded-xl shadow-glow-coral gap-2 group"
         >
           {isForging ? <Spinner /> : <FireIcon className="h-5 w-5 group-hover:rotate-12 transition-transform" />}
           FORGE ADVANCED VARIATIONS
@@ -162,19 +149,15 @@ export const PayloadForge: React.FC<PayloadForgeProps> = ({ payloadForForge, onP
 
       {forgedPayloads && !isForging && (
         <div className="mt-10">
-          <div className="flex bg-ui-input-bg/40 p-1.5 rounded-2xl border border-ui-border self-start mb-8 min-w-[300px] mx-auto sm:mx-0">
-            <button
-              onClick={() => setActiveTab('ai')}
-              className={`w-1/2 h-9 text-[10px] font-black uppercase tracking-wider rounded-xl transition-all ${activeTab === 'ai' ? 'bg-ui-accent text-ui-bg shadow-glow-coral' : 'text-ui-text-dim hover:text-ui-text-main hover:bg-white/5'}`}
-            >
-              AI Variations
-            </button>
-            <button
-              onClick={() => setActiveTab('fuzz')}
-              className={`w-1/2 h-9 text-[10px] font-black uppercase tracking-wider rounded-xl transition-all ${activeTab === 'fuzz' ? 'bg-ui-accent text-ui-bg shadow-glow-coral' : 'text-ui-text-dim hover:text-ui-text-main hover:bg-white/5'}`}
-            >
-              Fuzzing List
-            </button>
+          <div className="mb-6">
+            <SlidingSegmentedControl
+              value={activeTab}
+              onChange={value => setActiveTab(value as ForgeTab)}
+              ariaLabel="Payload forge result view"
+              itemWidth={148}
+              variant="sub"
+              options={[{ value: 'ai', label: 'AI variations' }, { value: 'fuzz', label: 'Fuzzing list' }]}
+            />
           </div>
 
           {activeTab === 'ai' ? (
@@ -186,20 +169,7 @@ export const PayloadForge: React.FC<PayloadForgeProps> = ({ payloadForForge, onP
                     <span className="label-mini !text-[8px] opacity-40">BYPASS-{index + 1}</span>
                   </div>
                   <p className="text-ui-text-dim text-[11px] leading-relaxed mb-4 min-h-[32px]">{p.description}</p>
-                  <div className="bg-black/40 p-3 rounded-xl font-mono text-xs text-ui-accent/90 relative group border border-white/5">
-                    <pre className="overflow-x-auto no-scrollbar"><code className="whitespace-pre-wrap break-all">{p.payload}</code></pre>
-                    <button
-                      onClick={() => handleCopy(p.payload, index)}
-                      className="absolute top-2 right-2 p-1.5 rounded-lg bg-ui-accent/10 border border-ui-accent/30 text-ui-accent opacity-0 group-hover:opacity-100 focus:opacity-100 transition-all hover:bg-ui-accent/20"
-                      aria-label="Copy"
-                    >
-                      {copiedIndex === index ? (
-                        <span className="text-[8px] font-black px-1">COPIED</span>
-                      ) : (
-                        <ClipboardDocumentListIcon className="h-4 w-4" />
-                      )}
-                    </button>
-                  </div>
+                  <CopyableCodeBlock value={p.payload} language="PAYLOAD" />
                 </div>
               )) : (
                 <div className="col-span-full text-center p-12 bg-ui-bg/20 border border-dashed border-ui-border rounded-xl">
@@ -215,24 +185,7 @@ export const PayloadForge: React.FC<PayloadForgeProps> = ({ payloadForForge, onP
                   Comprehensive list for fuzzing tools like Burp Intruder, combining all variations with common bypass prefixes.
                 </p>
               </div>
-              <div className="relative group">
-                <textarea
-                  readOnly
-                  value={payloadList}
-                  className="w-full h-80 p-5 font-mono text-[11px] bg-black/60 border border-ui-border rounded-2xl text-ui-accent/70 focus:outline-none scrollbar-mission"
-                />
-                <button
-                  onClick={handleListCopy}
-                  className="absolute top-4 right-4 btn-mini btn-mini-secondary !h-9 !px-4 gap-2 opacity-80 group-hover:opacity-100"
-                >
-                  {listCopied ? 'COPIED TO CLIPBOARD' : (
-                    <>
-                      <ClipboardDocumentListIcon className="h-4 w-4" />
-                      COPY MISSION LIST
-                    </>
-                  )}
-                </button>
-              </div>
+              <CopyableCodeBlock value={payloadList} language="FUZZING LIST" maxHeight="20rem" />
             </div>
           )}
         </div>

@@ -4,25 +4,7 @@
 
 import React from 'react';
 import type { FieldDef } from '../../lib/cliConfigSchema.ts';
-
-// --- Toggle Switch ---
-
-function ToggleSwitch({ checked, onChange, disabled }: { checked: boolean; onChange: (v: boolean) => void; disabled?: boolean }) {
-    return (
-        <button
-            type="button"
-            role="switch"
-            aria-checked={checked}
-            disabled={disabled}
-            onClick={() => !disabled && onChange(!checked)}
-            className={`relative inline-flex h-5 w-10 flex-shrink-0 rounded-full border-2 border-transparent transition-all duration-300 ease-in-out focus:outline-none focus:ring-2 focus:ring-coral/20 ${disabled ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'} ${checked ? 'bg-coral shadow-[0_0_12px_rgba(255,127,80,0.3)]' : 'bg-ui-input-bg border-white/5'}`}
-        >
-            <span
-                className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow-lg ring-0 transition duration-300 ease-in-out ${checked ? 'translate-x-5' : 'translate-x-0'}`}
-            />
-        </button>
-    );
-}
+import { ToggleSwitch } from './ToggleSwitch.tsx';
 
 // --- Config Field ---
 
@@ -61,6 +43,7 @@ export const ConfigField: React.FC<ConfigFieldProps> = ({ field, value, editedVa
                         checked={!!currentValue}
                         onChange={(v) => onEdit(field.key, v)}
                         disabled={!isEditable}
+                        ariaLabel={field.label}
                     />
                 ) : field.type === 'number' ? (
                     isEditable ? (

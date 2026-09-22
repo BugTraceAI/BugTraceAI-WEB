@@ -1,10 +1,11 @@
 // components/chat/SearchResult.tsx
 import React from 'react';
+import { ChatSessionType } from '../../contexts/ChatContext';
 
 interface SearchResultData {
   session_id: string;
   session_title: string;
-  session_type: 'websec' | 'xss' | 'sql';
+  session_type: ChatSessionType;
   match_count: number;
   snippet: string;
   message_id: string;

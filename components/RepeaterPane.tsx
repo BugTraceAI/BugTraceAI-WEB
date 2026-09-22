@@ -30,6 +30,99 @@ interface RepeaterPaneProps {
 export const RepeaterPane: React.FC<RepeaterPaneProps> = ({ seed, onShowApiKeyWarning, tabId }) => {
   const a = useRepeaterAgent(seed, onShowApiKeyWarning, tabId);
 
+  // The agent drawer is useful at different widths depending on whether the
+  // operator is reading reasoning, editing a request, or reviewing a response.
+  // Keep the choice per browser so switching repeater tabs does not reset it.
+  const [agentWidth, setAgentWidth] = useState(() => {
+    try {
+      const saved = Number(window.localStorage.getItem('airepeaterAgentWidth'));
+      return Number.isFinite(saved) && saved >= 280 && saved <= 600 ? saved : 390;
+    } catch {
+      return 390;
+    }
+  });
+  const [agentFooterHeight, setAgentFooterHeight] = useState(() => {
+    try {
+      const saved = Number(window.localStorage.getItem('airepeaterAgentFooterHeight'));
+      return Number.isFinite(saved) && saved >= 120 && saved <= 320 ? saved : 158;
+    } catch {
+      return 158;
+    }
+  });
+  const resizeState = useRef<{ startX: number; startWidth: number } | null>(null);
+  const footerResizeState = useRef<{ startY: number; startHeight: number } | null>(null);
+  const [isResizingAgent, setIsResizingAgent] = useState(false);
+  const [isResizingAgentFooter, setIsResizingAgentFooter] = useState(false);
+
+  useEffect(() => {
+    try { window.localStorage.setItem('airepeaterAgentWidth', String(agentWidth)); } catch { /* storage unavailable */ }
+  }, [agentWidth]);
+
+  useEffect(() => {
+    try { window.localStorage.setItem('airepeaterAgentFooterHeight', String(agentFooterHeight)); } catch { /* storage unavailable */ }
+  }, [agentFooterHeight]);
+
+  useEffect(() => {
+    if (!isResizingAgent) return undefined;
+
+    const handlePointerMove = (event: PointerEvent) => {
+      const state = resizeState.current;
+      if (!state) return;
+      // The divider sits on the left edge of the drawer: moving left makes it wider.
+      const next = Math.min(600, Math.max(280, state.startWidth - (event.clientX - state.startX)));
+      setAgentWidth(next);
+    };
+    const stopResize = () => {
+      resizeState.current = null;
+      setIsResizingAgent(false);
+    };
+
+    window.addEventListener('pointermove', handlePointerMove);
+    window.addEventListener('pointerup', stopResize, { once: true });
+    return () => {
+      window.removeEventListener('pointermove', handlePointerMove);
+      window.removeEventListener('pointerup', stopResize);
+    };
+  }, [isResizingAgent]);
+
+  useEffect(() => {
+    if (!isResizingAgentFooter) return undefined;
+
+    const handlePointerMove = (event: PointerEvent) => {
+      const state = footerResizeState.current;
+      if (!state) return;
+      // Moving the divider up gives the controls more room; moving it down
+      // gives the agent stream more room. The footer itself remains scrollable.
+      const next = Math.min(320, Math.max(120, state.startHeight - (event.clientY - state.startY)));
+      setAgentFooterHeight(next);
+    };
+    const stopResize = () => {
+      footerResizeState.current = null;
+      setIsResizingAgentFooter(false);
+    };
+
+    window.addEventListener('pointermove', handlePointerMove);
+    window.addEventListener('pointerup', stopResize, { once: true });
+    return () => {
+      window.removeEventListener('pointermove', handlePointerMove);
+      window.removeEventListener('pointerup', stopResize);
+    };
+  }, [isResizingAgentFooter]);
+
+  const beginAgentResize = (event: React.PointerEvent<HTMLDivElement>) => {
+    if (event.button !== 0) return;
+    event.preventDefault();
+    resizeState.current = { startX: event.clientX, startWidth: agentWidth };
+    setIsResizingAgent(true);
+  };
+
+  const beginAgentFooterResize = (event: React.PointerEvent<HTMLDivElement>) => {
+    if (event.button !== 0) return;
+    event.preventDefault();
+    footerResizeState.current = { startY: event.clientY, startHeight: agentFooterHeight };
+    setIsResizingAgentFooter(true);
+  };
+
   // The Repeater reuses the ACTIVE provider's key + base_url (only the model id is overridden),
   // so the model must be valid for that provider — OpenRouter → the curated pack; any other
   // provider (Anthropic, Z.ai, …) → that provider's own model list.
@@ -120,7 +213,10 @@ export const RepeaterPane: React.FC<RepeaterPaneProps> = ({ seed, onShowApiKeyWa
       </div>
 
       {/* ── 3-pane grid ───────────────────────────────────────── */}
-      <div className="flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-[1fr_1fr_390px] gap-3 p-3">
+      <div
+        className={`flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_var(--airepeater-agent-width)] gap-3 p-3 ${isResizingAgent || isResizingAgentFooter ? 'select-none' : ''}`}
+        style={{ '--airepeater-agent-width': `${agentWidth}px` } as React.CSSProperties}
+      >
         {/* Request */}
         <div className="flex flex-col min-h-0 bg-purple-medium/30 border border-glass-border rounded-2xl overflow-hidden">
           <div className="flex items-center justify-between px-4 py-2.5 border-b border-glass-border/60">
@@ -162,7 +258,25 @@ export const RepeaterPane: React.FC<RepeaterPaneProps> = ({ seed, onShowApiKeyWa
         </div>
 
         {/* AI Agent drawer */}
-        <div className="flex flex-col min-h-0 bg-purple-medium/30 border border-glass-border rounded-2xl overflow-hidden">
+        <div className="relative flex flex-col min-h-0 bg-purple-medium/30 border border-glass-border rounded-2xl overflow-hidden">
+          <div
+            role="separator"
+            aria-label="Resize AI Agent panel"
+            aria-orientation="vertical"
+            aria-valuemin={280}
+            aria-valuemax={600}
+            aria-valuenow={Math.round(agentWidth)}
+            tabIndex={0}
+            onPointerDown={beginAgentResize}
+            onKeyDown={(event) => {
+              if (event.key === 'ArrowLeft') setAgentWidth(width => Math.min(600, width + 24));
+              if (event.key === 'ArrowRight') setAgentWidth(width => Math.max(280, width - 24));
+            }}
+            className="group absolute -left-2 top-0 bottom-0 z-10 hidden w-4 lg:flex items-center justify-center cursor-col-resize touch-none"
+            title="Drag to resize AI Agent"
+          >
+            <span className="h-16 w-1 rounded-full bg-white/10 transition-colors group-hover:bg-coral/80 group-focus:bg-coral/80" />
+          </div>
           <div className="flex items-center justify-between px-4 py-2.5 border-b border-glass-border/60 bg-gradient-to-b from-purple-accent/10 to-transparent">
             <div className="flex items-center gap-2 font-bold text-sm text-white">
               <span className="w-6 h-6 rounded-lg bg-gradient-to-br from-purple-accent to-coral flex items-center justify-center"><AiBrainIcon className="h-3.5 w-3.5 text-white" /></span>
@@ -198,6 +312,27 @@ export const RepeaterPane: React.FC<RepeaterPaneProps> = ({ seed, onShowApiKeyWa
             )}
             {a.isRunning && !a.pendingApproval && <div className="text-xs text-purple-gray animate-pulse px-1">Thinking…</div>}
           </div>
+
+          <div
+            role="separator"
+            aria-label="Resize AI Agent controls"
+            aria-orientation="horizontal"
+            aria-valuemin={120}
+            aria-valuemax={320}
+            aria-valuenow={Math.round(agentFooterHeight)}
+            tabIndex={0}
+            onPointerDown={beginAgentFooterResize}
+            onKeyDown={(event) => {
+              if (event.key === 'ArrowUp') setAgentFooterHeight(height => Math.min(320, height + 24));
+              if (event.key === 'ArrowDown') setAgentFooterHeight(height => Math.max(120, height - 24));
+            }}
+            className="group flex h-2 flex-none items-center justify-center cursor-row-resize touch-none border-t border-glass-border/60"
+            title="Drag to resize AI Agent controls"
+          >
+            <span className="h-1 w-16 rounded-full bg-white/10 transition-colors group-hover:bg-coral/80 group-focus:bg-coral/80" />
+          </div>
+
+          <div className="flex min-h-0 flex-none flex-col overflow-y-auto" style={{ height: `${agentFooterHeight}px` }}>
 
           {/* hops (iterations) + exploit model — BOTH configurable, with hover help on where each comes from */}
           <div className="px-4 py-1.5 flex items-center gap-2 text-[10px] font-mono text-muted/80 border-t border-glass-border/40">
@@ -402,9 +537,11 @@ export const RepeaterPane: React.FC<RepeaterPaneProps> = ({ seed, onShowApiKeyWa
             ) : (
               <button onClick={handleAgentSend} disabled={!agentInput.trim()} className="p-2 rounded-xl bg-coral text-white hover:bg-coral-hover disabled:opacity-40" aria-label="Send to agent"><PaperAirplaneIcon className="h-4 w-4" /></button>
             )}
+            </div>
+          </div>
+
           </div>
         </div>
-      </div>
     </div>
   );
 };

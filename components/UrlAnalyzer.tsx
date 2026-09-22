@@ -173,7 +173,7 @@ export const UrlAnalyzer: React.FC<UrlAnalyzerProps> = ({
             value={url}
             onChange={(e) => setUrl(e.target.value)}
             placeholder="https://ginandjuice.shop/"
-            className="input-premium w-full !py-3.5 px-6 !rounded-2xl !text-base"
+              className="input-premium h-10 w-full px-4 !rounded-xl !text-sm"
             disabled={isLoading}
             onKeyDown={(e) => e.key === 'Enter' && !isLoading && handleAnalyze()}
           />
@@ -181,7 +181,7 @@ export const UrlAnalyzer: React.FC<UrlAnalyzerProps> = ({
         <button
           onClick={handleAnalyze}
           disabled={isLoading || !url.trim()}
-          className="btn-mini btn-mini-primary !py-4 px-10 !rounded-2xl !text-sm group"
+          className="btn-mini btn-mini-primary h-11 !px-8 !rounded-xl !text-sm group"
         >
           {isLoading ? <Spinner /> : <ScanIcon className="h-5 w-5 mr-3 group-hover:rotate-12 transition-transform" />}
           Analyze URL

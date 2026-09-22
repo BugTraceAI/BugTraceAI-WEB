@@ -12,8 +12,8 @@
   <a href="https://bugtraceai.com"><img src="https://img.shields.io/badge/Website-bugtraceai.com-blue?logo=google-chrome&logoColor=white" alt="Website"/></a>
   <a href="https://deepwiki.com/BugTraceAI/BugTraceAI-WEB"><img src="https://img.shields.io/badge/Wiki-Documentation-000?logo=wikipedia&logoColor=white" alt="Wiki"/></a>
   <a href="https://deepwiki.com/BugTraceAI/BugTraceAI-WEB"><img src="https://deepwiki.com/badge.svg" alt="Ask DeepWiki"/></a>
-  <img src="https://img.shields.io/badge/License-Apache--2.0-blue.svg" alt="License"/>
-  <img src="https://img.shields.io/badge/Version-2.0.0-orange" alt="Version"/>
+  <img src="https://img.shields.io/badge/License-AGPL--3.0-blue.svg" alt="License"/>
+  <img src="https://img.shields.io/badge/Version-2.0.24--beta-orange" alt="Version"/>
 </p>
 
 <p align="center">
@@ -37,6 +37,7 @@
 - [Disclaimer](#disclaimer)
 - [What is BugTraceAI-WEB?](#what-is-bugtraceai-web)
 - [Features](#features)
+- [What's New in v2.0.24-beta](#whats-new-in-v2024-beta)
 - [Architecture](#architecture)
 - [Getting Started](#getting-started)
 - [Development Setup](#development-setup)
@@ -44,14 +45,71 @@
 - [Tech Stack](#tech-stack)
 - [License](#license)
 
-## What's New in v2.0.0
+## What's New in v2.0.24-beta
 
-- **Refactor standard release candidate** — this WEB snapshot is aligned with
-  the BugTraceAI-CLI 4.0 release candidate and keeps the CLI dashboard
-  integration explicit.
-- **License transition** — BugTraceAI-owned portions of this snapshot are
-  released under Apache-2.0. Earlier AGPL-3.0 releases retain their original
-  terms; see `LICENSE-HISTORY.md` and `THIRD_PARTY_NOTICES.md`.
+This release consolidates the public WEB experience and its connection to the
+standalone BugTraceAI-API service.
+
+### Visual and interaction improvements
+
+- **Dedicated ModelLab navigation** — ModelLab is a first-class sidebar module
+  at `/modellab`, with separate benchmark, results and history views instead of
+  being buried inside the CLI area.
+- **Consistent visual language** — shared glass/dark surfaces, compact status
+  badges, responsive layouts, expandable report rows and reusable tool headers
+  keep the dashboard, analysis tools and report views visually coherent.
+- **Design-system reference** — the visual system is browsable at
+  `/design-system` (and `/bugtraceai/design-system`) without changing
+  application state, making the public UI tokens and component patterns easy
+  to review.
+- **Live progress surfaces** — the Swarm Graph shows specialist escalation
+  levels while work is still running, and AuthDiscovery exposes per-URL
+  progress plus JWT/cookie totals in the event stream and graph.
+- **AIrepeater workbench** — a Burp/Caido-style Request / Response / AI Agent
+  workspace with tabs, response search, manual or agent-driven execution,
+  vulnerability playbooks and report handoff.
+- **Clearer API findings** — review-state prefixes are removed from visible
+  finding titles, review states remain in their dedicated badges, and meaningful
+  categories are shown only when they add context.
+
+### ModelLab improvements
+
+- Calibrated `quick-v3` and `advanced-v2` suites, with legacy suites retained
+  for comparison.
+- A **Best per slot** leaderboard recommends separate models for MUTATION,
+  SKEPTICAL, ANALYSIS and REPORTING instead of one global winner.
+- An opt-in MUTATION diversity probe measures whether generated payloads are
+  meaningfully varied before influencing the MUTATION recommendation.
+- Live benchmark progress, cancellation/recovery, cost visibility, local run
+  history, deletion confirmation and an OpenRouter **Test key** flow are kept
+  in the module.
+- ModelLab owns its OpenRouter key independently from the scanner provider; its
+  credentials are sent only with ModelLab requests to the CLI benchmark API.
+
+### BugTraceAI-API integration
+
+- WEB uses the typed client in `lib/btaiApi.ts` for API scans, HTTP status
+  polling, results/findings, OpenAPI and handoff artifacts, report downloads,
+  health checks and provider selection/testing.
+- API scan IDs are treated as opaque strings and API progress uses the REST
+  contract (`0.0`–`1.0`), preserving the API/CLI contract boundary.
+- The default deployment base path is same-origin `/btai-api`; Settings can
+  override it for a direct or remote API URL, and `VITE_BTAI_API_URL` supports
+  build-time configuration.
+- BugTraceAI-API is a separate process and has no WebSocket dependency. Nginx
+  proxies `/btai-api/` over the shared `BTAI_SHARED_NETWORK` Docker bridge to
+  `bugtrace-api` on the REST port selected by `launcher.sh`, so the integration
+  does not depend on fixed ports or host-network hairpin routing.
+- API finding presentation normalizes evidence, PoCs, classifications,
+  validation state and AI enrichment without confusing API findings with CLI
+  findings.
+
+The complete historical detail is in [CHANGELOG.md](CHANGELOG.md). The WEB and
+API remain intended for a local machine or trusted network; do not expose the
+CLI/API services directly to the Internet without an authenticated reverse
+proxy and appropriate authorization.
+
+## What's New in v1.5.40-beta
 
 - **Anthropic provider (Claude Messages API)** — Select Anthropic alongside OpenRouter and Z.ai. Enter an `sk-ant-...` key, pick a Claude model, and chat, analysis, and the AIrepeater all run on the native Messages API (`x-api-key`).
 - **Curated model pack + Thinking control** — The OpenRouter model picker loads a hand-picked, verified set from a single file, with **Thinking / High / xHigh** entries that enable OpenRouter's `reasoning` parameter for deeper responses.
@@ -100,7 +158,6 @@ When connected to BugTraceAI-CLI (optional):
 
 ### AI Assistants
 
-- **WebSec Agent** — Integrated chat for security questions and **unified control for Kali MCP and ReconFTW agents**. Supports optional **web browsing** toggle for real-time research during analysis.
 - **Kali Expert Agent (MCP)** — Real-time terminal access to the full Kali Linux toolset (Nmap, SQLMap, etc.) via the WebSec Chat.
 - **ReconFTW Agent (MCP)** — Fully automated reconnaissance pipelines managed directly from the browser.
 - **XSS Exploitation Assistant** — Given a confirmed XSS: cookie theft, keyloggers, phishing overlays, session hijacking
@@ -173,10 +230,6 @@ Each analysis runs through multiple AI passes with different perspectives (Bug H
 - **SQLite** (CLI) — Source of truth for all scan data. Accessed via CLI API on port 8000.
 
 They work **autonomously or together** — the WEB app doesn't need the CLI to function, and vice versa.
-
-The default Compose stack is self-contained. Kali, reconFTW and CLI-MCP are
-optional profiles and use externally supplied images; no private sibling
-repository is required to build or run the default WEB stack.
 
 ## Getting Started
 
@@ -366,10 +419,7 @@ BugTraceAI-WEB/
 
 ## License
 
-Apache-2.0 License. See [LICENSE](LICENSE) for details. The `api-routes-mcp`
-service downloads and runs third-party Kiterunner and ffuf binaries; their
-licenses and notices remain applicable and are listed in
-`THIRD_PARTY_NOTICES.md`.
+AGPL-3.0 License. See [LICENSE](LICENSE) for details.
 
 ---
 

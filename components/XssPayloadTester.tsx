@@ -3,6 +3,7 @@
 import React from 'react';
 import { InjectionPoint } from '../types.ts';
 import { FireIcon } from './Icons.tsx';
+import { CopyableCodeBlock } from './CopyableCodeBlock.tsx';
 
 interface XssPayloadTesterProps {
   payload: string;
@@ -45,9 +46,7 @@ export const XssPayloadTester: React.FC<XssPayloadTesterProps> = ({ payload, ana
 
   return (
     <div className="space-y-2">
-      <pre className="w-full bg-black/30 border border-purple-800/50 rounded-lg p-3 text-purple-200 text-sm overflow-x-auto">
-        <code>{payload}</code>
-      </pre>
+      <CopyableCodeBlock value={payload} language="PAYLOAD" />
       <div className="flex items-start flex-wrap gap-2">
         <button
           onClick={handleTestPayload}

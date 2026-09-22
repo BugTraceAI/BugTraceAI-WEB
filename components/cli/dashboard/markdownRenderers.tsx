@@ -3,6 +3,7 @@
 // Reusable table, code block, and heading renderers for CLI report display.
 
 import React from 'react';
+import { CopyableCodeBlock } from '../../CopyableCodeBlock.tsx';
 
 /** Styled table wrapper for markdown-rendered tables. */
 export const MarkdownTable: React.FC<React.TableHTMLAttributes<HTMLTableElement>> = ({ children, ...props }) => (
@@ -67,41 +68,7 @@ export const SeverityBadge: React.FC<{ severity: string }> = ({ severity }) => {
 
 /** Code block with copy button and syntax highlighting wrapper. */
 export const MarkdownCodeBlock: React.FC<{ language?: string; children: string }> = ({ language, children }) => {
-    const [copied, setCopied] = React.useState(false);
-
-    const handleCopy = () => {
-        navigator.clipboard.writeText(children).then(() => {
-            setCopied(true);
-            setTimeout(() => setCopied(false), 2000);
-        });
-    };
-
-    return (
-        <div className="relative group my-3 rounded-lg overflow-hidden border border-white/10">
-            {language && (
-                <div className="flex items-center justify-between px-3 py-1.5 bg-black/40 border-b border-white/5">
-                    <span className="text-[10px] text-ui-text-muted uppercase tracking-wider">{language}</span>
-                    <button
-                        onClick={handleCopy}
-                        className="text-[10px] text-ui-text-dim hover:text-ui-text-main transition-colors"
-                    >
-                        {copied ? 'Copied!' : 'Copy'}
-                    </button>
-                </div>
-            )}
-            <pre className="p-3 bg-black/20 overflow-x-auto">
-                <code className="text-xs text-ui-text-main font-mono leading-relaxed">{children}</code>
-            </pre>
-            {!language && (
-                <button
-                    onClick={handleCopy}
-                    className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 text-[10px] text-ui-text-dim hover:text-ui-text-main bg-black/50 px-2 py-1 rounded transition-all"
-                >
-                    {copied ? 'Copied!' : 'Copy'}
-                </button>
-            )}
-        </div>
-    );
+    return <CopyableCodeBlock value={children} language={language || 'CODE'} />;
 };
 
 /** Markdown heading with anchor-like styling. */

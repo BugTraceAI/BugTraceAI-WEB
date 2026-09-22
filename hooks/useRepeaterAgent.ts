@@ -27,6 +27,8 @@ export interface StreamItem { id: number; kind: 'reasoning' | 'tool' | 'user'; t
 export interface RepeaterTask { title: string; status: 'running' | 'done'; }
 
 const DEFAULT_MAX_HOPS = 24;  // default max agent tool-hops before it pauses; overridable in the AIrepeater UI (localStorage 'repeaterMaxHops')
+const NO_NEW_EVIDENCE_THRESHOLD = 3;
+const NO_NEW_EVIDENCE_MARKER = 'NO_NEW_EVIDENCE_STOP';
 
 // SINGLE-THREAD LOCK: only one Repeater agent can run at a time across all tabs.
 // This eliminates all cross-tab race conditions (shared rate limiter, circuit breaker,
@@ -185,6 +187,9 @@ export const useRepeaterAgent = (
   const persistedKeysRef = useRef<Set<string>>(new Set());
   const lastSentRequestRef = useRef<string>('');
   const lastOkRef = useRef<boolean>(false);
+  const lastEvidenceSignatureRef = useRef<string>('');
+  const repeatedEvidenceCountRef = useRef(0);
+  const noNewEvidenceStopRef = useRef(false);
 
   useEffect(() => { apiOptionsRef.current = apiOptions; }, [apiOptions]);
   useEffect(() => { providerIdRef.current = providerId; }, [providerId]);
@@ -284,6 +289,7 @@ export const useRepeaterAgent = (
       setStream([]); setTasks([]); setToolHops(0); setIsRunning(false); setPendingApproval(false);
       apiHistoryRef.current = []; runningRef.current = false; approvalRef.current = null;
       lastParsedRef.current = null; lastSentRequestRef.current = ''; lastOkRef.current = false;
+      lastEvidenceSignatureRef.current = ''; repeatedEvidenceCountRef.current = 0; noNewEvidenceStopRef.current = false;
       setMode('manual'); modeRef.current = 'manual';
     }
   }, [seed]);
@@ -356,7 +362,24 @@ export const useRepeaterAgent = (
         try {
           const parsed = await doSend();
           const ok = lastOkRef.current;
-          return `Response: HTTP ${parsed.status} (${ok ? 'OK' : 'FAILED'})\n${parsed.headers.slice(0, 500)}\n\n${parsed.body.slice(0, 4000)}`;
+          // A stable response after several different probes is evidence too:
+          // it means the current campaign is no longer learning anything. Stop
+          // deterministically instead of letting an agent loop mutate forever.
+          const evidenceSignature = `${parsed.status}\n${parsed.body.trim()}`;
+          if (evidenceSignature && evidenceSignature === lastEvidenceSignatureRef.current) {
+            repeatedEvidenceCountRef.current += 1;
+          } else {
+            lastEvidenceSignatureRef.current = evidenceSignature;
+            repeatedEvidenceCountRef.current = 1;
+          }
+          const response = `Response: HTTP ${parsed.status} (${ok ? 'OK' : 'FAILED'})\n${parsed.headers.slice(0, 500)}\n\n${parsed.body.slice(0, 4000)}`;
+          if (repeatedEvidenceCountRef.current >= NO_NEW_EVIDENCE_THRESHOLD) {
+            noNewEvidenceStopRef.current = true;
+            const message = `\n\n${NO_NEW_EVIDENCE_MARKER}: The last ${repeatedEvidenceCountRef.current} probes produced the same HTTP status and body. Do not send more requests. Give an explicit conclusion now: FALSE POSITIVE if the evidence does not support the hypothesis, or MANUAL_REVIEW if confirmation needs credentials, a browser, or another unavailable capability.`;
+            pushReasoning('— Stopping: no new evidence after repeated identical responses. —');
+            return `${response}${message}`;
+          }
+          return response;
         } catch (e) { return `send_request failed: ${e instanceof Error ? e.message : String(e)}`; }
       }
       case 'remove_header':
@@ -458,8 +481,23 @@ export const useRepeaterAgent = (
     if (!opts) { onShowApiKeyWarning(); return; }
     globalRunningTabId = tabId ?? null;
     runningRef.current = true; stoppedRef.current = false; setIsRunning(true);
+    lastEvidenceSignatureRef.current = ''; repeatedEvidenceCountRef.current = 0; noNewEvidenceStopRef.current = false;
     const history: any[] = [{ role: 'system', content: getFinisherSystemPrompt(vulnTypeRef.current) }, ...apiHistoryRef.current, { role: 'user', content: userContent }];
     let hops = 0; let keep = true;
+    const requestForcedConclusion = async (callOpts: any) => {
+      const prompt = 'The evidence circuit breaker stopped further requests because repeated probes produced no new evidence. Do not call tools. Give a concise explicit conclusion starting with exactly one of FALSE POSITIVE: or MANUAL_REVIEW:, cite the observed HTTP evidence, and explain what would be needed to confirm anything that remains uncertain. Mark the relevant task complete if appropriate.';
+      history.push({ role: 'user', content: prompt });
+      try {
+        const finalMsg: any = await callOpenRouterChatWithTools(history, [], callOpts);
+        const finalContent = String(finalMsg?.content || 'MANUAL_REVIEW: No additional evidence was produced before the circuit breaker stopped the investigation.');
+        history.push({ role: 'assistant', content: finalContent });
+        pushReasoning(finalContent);
+      } catch (error) {
+        const fallback = `MANUAL_REVIEW: The evidence circuit breaker stopped after repeated identical responses. ${error instanceof Error ? error.message : 'No final model conclusion was returned.'}`;
+        history.push({ role: 'assistant', content: fallback });
+        pushReasoning(fallback);
+      }
+    };
     try {
       while (keep && !stoppedRef.current) {
         // Provider-guard the exploit model: a repeater model chosen/adopted while on
@@ -484,7 +522,10 @@ export const useRepeaterAgent = (
             history.push({ role: 'tool', name: tc.function?.name, tool_call_id: tc.id, content: result });
           }
           hops++; setToolHops((h) => h + 1);
-          if (hops >= maxHopsRef.current) { pushReasoning('— Reached max tool hops. Message me to continue. —'); keep = false; }
+          if (noNewEvidenceStopRef.current) {
+            await requestForcedConclusion(callOpts);
+            keep = false;
+          } else if (hops >= maxHopsRef.current) { pushReasoning('— Reached max tool hops. Message me to continue. —'); keep = false; }
         } else {
           // Fallback: model leaked tool calls as text (deepseek-style). Parse + execute,
           // then feed results back as plain text so it keeps iterating.
@@ -498,7 +539,10 @@ export const useRepeaterAgent = (
             }
             history.push({ role: 'user', content: `Tool results:\n${results.join('\n\n')}\n\nContinue: issue the next tool call, or give your final conclusion — call add_finding on success, write "MANUAL_REVIEW: <what's needed to confirm>" if it's real but unconfirmable non-destructively (blind / needs OOB or a browser), or "FALSE POSITIVE: <reason>" only if the evidence shows no vuln.` });
             hops++; setToolHops((h) => h + 1);
-            if (hops >= maxHopsRef.current) { pushReasoning('— Reached max tool hops. Message me to continue. —'); keep = false; }
+            if (noNewEvidenceStopRef.current) {
+              await requestForcedConclusion(callOpts);
+              keep = false;
+            } else if (hops >= maxHopsRef.current) { pushReasoning('— Reached max tool hops. Message me to continue. —'); keep = false; }
           } else {
             if (rawContent) pushReasoning(rawContent);
             history.push({ role: 'assistant', content: rawContent });

@@ -1,13 +1,13 @@
 {
   "name": "bugtraceai",
   "private": true,
-  "license": "Apache-2.0",
-  "version": "2.0.0",
+  "license": "AGPL-3.0",
+  "version": "2.0.24-beta",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
-    "test": "vitest run services/repeaterPersistence.test.ts services/reportFindingPresentation.test.ts",
+    "test": "vitest run services/repeaterPersistence.test.ts services/reportFindingPresentation.test.ts services/finisherSeed.test.ts tests/unit/report_origin.test.ts tests/unit/btaiApiConnector.test.ts tests/unit/markdownTransformers.test.ts tests/unit/apiReportPresentation.test.ts tests/unit/apiReportSorting.test.ts tests/unit/apiFindingStatus.test.ts",
     "preview": "vite preview",
     "lint": "eslint . --ext .ts,.tsx --report-unused-disable-directives",
     "lint:fix": "eslint . --ext .ts,.tsx --fix"
