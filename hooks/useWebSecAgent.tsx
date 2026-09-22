@@ -21,6 +21,8 @@ interface ApiHistoryItem {
   tool_calls?: unknown[];
 }
 
+const TOOL_REQUEST_TIMEOUT_MS = 90_000;
+
 // Append non-code text to an assistant bubble WITHOUT it being swallowed by an
 // unclosed ``` code fence. When the model writes a code block and then makes a
 // tool call (leaving the fence open), naively concatenating the "> Executing…"
@@ -126,9 +128,8 @@ export const useWebSecAgent = (
 
                                 for (const toolCall of messageObj.tool_calls) {
                                     const toolName = toolCall.function.name;
-                                    const args = JSON.parse(toolCall.function.arguments);
-                                    
                                     try {
+                                        const args = JSON.parse(toolCall.function.arguments);
                                         let targetUrl: string;
                                         let payload: Record<string, unknown>;
 
@@ -144,11 +145,19 @@ export const useWebSecAgent = (
                                             payload = { tool: toolName, args: args };
                                         }
 
-                                        const res = await fetch(targetUrl, {
-                                            method: 'POST',
-                                            headers: { 'Content-Type': 'application/json' },
-                                            body: JSON.stringify(payload)
-                                        });
+                                        const controller = new AbortController();
+                                        const timeoutId = window.setTimeout(() => controller.abort(), TOOL_REQUEST_TIMEOUT_MS);
+                                        let res: Response;
+                                        try {
+                                            res = await fetch(targetUrl, {
+                                                method: 'POST',
+                                                headers: { 'Content-Type': 'application/json' },
+                                                body: JSON.stringify(payload),
+                                                signal: controller.signal,
+                                            });
+                                        } finally {
+                                            window.clearTimeout(timeoutId);
+                                        }
                                         if (!res.ok) {
                                             // Surface the REAL reason (e.g. "Only http/https URLs are allowed",
                                             // "Invalid URL format") so the model can self-correct instead of
@@ -188,11 +197,14 @@ export const useWebSecAgent = (
                                         });
                                     } catch (e: unknown) {
                                         const error = e as Error;
+                                        const errorMessage = error.name === 'AbortError'
+                                            ? `Tool request timed out after ${TOOL_REQUEST_TIMEOUT_MS / 1000} seconds`
+                                            : error.message;
                                         currentHistory.push({
                                             role: 'tool',
                                             name: toolName,
                                             tool_call_id: toolCall.id,
-                                            content: `Execution failed: ${error.message}`
+                                            content: `Execution failed: ${errorMessage}`
                                         });
                                     }
                                 }

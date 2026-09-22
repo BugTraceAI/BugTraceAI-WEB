@@ -217,3 +217,75 @@ export interface ValidationResult {
     is_valid: boolean;
     reasoning: string;
 }
+
+// ============================================================================
+// Report provenance (HANDOFF B.1 / E)
+// ============================================================================
+
+/**
+ * Executing engine. Discriminates the client/route/viewer/capabilities.
+ * Never infer engine from the badge text: both "web-cli" and "cli" are the CLI
+ * engine, both "web-api" and "api" are the API engine.
+ */
+export type ScanEngine = 'cli' | 'api';
+
+/**
+ * Canonical launch origin — how the scan was started. Independent of engine.
+ * Exact four values for every NEW report; "legacy-unknown" is a read-only
+ * migration fallback for unverifiable legacy metadata, NOT a fifth origin.
+ */
+export type LaunchOrigin = 'web-cli' | 'web-api' | 'cli' | 'api' | 'legacy-unknown';
+
+/**
+ * Human-readable badge for a launch origin.
+ *
+ *   web-cli => "WEB → CLI"   (BugTraceAI-WEB → CLI REST)
+ *   web-api => "WEB → API"   (BugTraceAI-WEB → API REST)
+ *   cli     => "CLI"         (direct terminal/native CLI)
+ *   api     => "API"         (direct API REST / automation / MCP)
+ *   else    => "Legacy / origin unknown"
+ */
+export function getBadge(origin: string | null | undefined): string {
+  switch (origin) {
+    case 'web-cli': return 'WEB → CLI';
+    case 'web-api': return 'WEB → API';
+    case 'cli': return 'CLI';
+    case 'api': return 'API';
+    default: return 'Legacy / origin unknown';
+  }
+}
+
+/**
+ * Normalize a legacy CLI `origin` value (or a fresh `launch_origin`) into the
+ * canonical LaunchOrigin. Pure function — safe to unit test without a DOM.
+ *
+ *   "web"   → "web-cli"     (WEB launched the CLI scan)
+ *   "cli"   → "cli"         (terminal/native CLI)
+ *   canonical values pass through unchanged
+ *   missing / anything else → "legacy-unknown" (migration fallback, NOT a 5th origin)
+ */
+export function normalizeLaunchOrigin(value: string | null | undefined): LaunchOrigin {
+  if (!value) return 'legacy-unknown';
+  switch (value) {
+    case 'web': return 'web-cli';
+    case 'cli': return 'cli';
+    case 'web-cli':
+    case 'web-api':
+    case 'api': return value as LaunchOrigin;
+    default: return 'legacy-unknown';
+  }
+}
+
+/**
+ * Return the engine implied by an engine-qualified report key (`cli:12` → 'cli',
+ * `api:a1b2c3d4-e5f` → 'api'). Unqualified / malformed keys return null.
+ * Never coerces API ids into numbers.
+ */
+export function getReportSource(key: string): ScanEngine | null {
+  if (!key) return null;
+  const firstColon = key.indexOf(':');
+  if (firstColon <= 0) return null;
+  const engine = key.slice(0, firstColon);
+  if (engine === 'cli' || engine === 'api') return engine as ScanEngine;
+  return null;
+}

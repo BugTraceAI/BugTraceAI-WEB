@@ -4,6 +4,8 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
 import { MarkdownRenderer } from '../../MarkdownRenderer.tsx';
+import { CopyableCodeBlock } from '../../CopyableCodeBlock.tsx';
+import { SlidingSegmentedControl } from '../SlidingSegmentedControl.tsx';
 import { ArrowPathIcon, ArrowDownTrayIcon, DocumentTextIcon, InformationCircleIcon } from '../../Icons.tsx';
 import { useReportViewer, Finding } from '../../../hooks/useReportViewer.ts';
 import type { FindingItem } from '../../../lib/cliApi.ts';
@@ -35,6 +37,15 @@ const isDetPrevalidated = (d: { status?: string; validated?: boolean }): boolean
   const status = d.status?.toUpperCase();
   if (status) return status === 'VALIDATED_CONFIRMED' || status === 'VALIDATED';
   return Boolean(d.validated);
+};
+
+const isPendingReview = (finding: Finding): boolean => {
+  if (finding._needsReview) return true;
+  const normalized = String(finding.status || '').toLowerCase().replace(/[_-]+/g, ' ').trim();
+  return normalized === 'needs review'
+    || normalized === 'pending review'
+    || normalized === 'pending to review'
+    || normalized === 'manual review';
 };
 
 export const ReportMarkdownViewer: React.FC<ReportMarkdownViewerProps> = ({ report, onBack, onSendToRepeater }) => {
@@ -522,20 +533,6 @@ export const ReportMarkdownViewer: React.FC<ReportMarkdownViewerProps> = ({ repo
             </div>
           </div>
 
-          {/* Tech Stack Mini-Badges */}
-          {scanStats?.tech_stack?.technologies && (
-            <div className="flex items-center gap-1.5 overflow-hidden">
-              {scanStats.tech_stack.technologies.slice(0, 4).map((tech) => (
-                <span key={tech.name} className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-white/5 text-muted border border-white/5">
-                  {tech.name}
-                </span>
-              ))}
-              {(scanStats.tech_stack.technologies.length > 4) && (
-                <span className="text-[9px] text-muted">+{scanStats.tech_stack.technologies.length - 4}</span>
-              )}
-            </div>
-          )}
-
           <div className="flex-shrink-0 text-right flex items-center gap-4">
             <button
               onClick={() => setShowMetrics(!showMetrics)}
@@ -800,40 +797,19 @@ export const ReportMarkdownViewer: React.FC<ReportMarkdownViewerProps> = ({ repo
       {/* CONTENT TABS */}
       <div className="dashboard-card overflow-hidden">
         {/* Tab switcher */}
-        <div className="flex border-b border-glass-border/20">
-          <button
-            onClick={() => setActiveTab('findings')}
-            title="Validated vulnerabilities confirmed through multi-stage verification (L1-L5 escalation). These are real, exploitable issues."
-            className={`px-5 py-3 text-xs font-semibold uppercase tracking-wider transition-colors ${activeTab === 'findings'
-              ? 'text-coral border-b-2 border-coral'
-              : 'text-muted hover:text-purple-gray'
-              }`}
-          >
-            Findings ({filteredFindings.length})
-          </button>
-          {detections.length > 0 && (
-            <button
-              onClick={() => setActiveTab('detections')}
-              title="Raw detections from scanning agents before final report validation. Includes probes, canaries, unconfirmed signals, and prevalidated results that may still require manual review."
-              className={`px-5 py-3 text-xs font-semibold uppercase tracking-wider transition-colors ${activeTab === 'detections'
-                ? 'text-coral border-b-2 border-coral'
-                : 'text-muted hover:text-purple-gray'
-                }`}
-            >
-              ALL DETECTIONS ({detections.length})
-            </button>
-          )}
-          {markdown && (
-            <button
-              onClick={() => setActiveTab('report')}
-              className={`px-5 py-3 text-xs font-semibold uppercase tracking-wider transition-colors ${activeTab === 'report'
-                ? 'text-coral border-b-2 border-coral'
-                : 'text-muted hover:text-purple-gray'
-                }`}
-            >
-              Full Report
-            </button>
-          )}
+        <div className="border-b border-glass-border/20 p-3">
+          <SlidingSegmentedControl
+            value={activeTab}
+            onChange={value => setActiveTab(value as 'findings' | 'detections' | 'report')}
+            ariaLabel="Report content view"
+            itemWidth={156}
+            variant="sub"
+            options={[
+              { value: 'findings', label: `Findings (${filteredFindings.length})` },
+              ...(detections.length > 0 ? [{ value: 'detections', label: `All detections (${detections.length})` }] : []),
+              ...(markdown ? [{ value: 'report', label: 'Full report' }] : []),
+            ]}
+          />
         </div>
 
         {activeTab === 'findings' ? (
@@ -876,10 +852,12 @@ export const ReportMarkdownViewer: React.FC<ReportMarkdownViewerProps> = ({ repo
                     const isExpanded = expandedIdx === globalIdx;
                     const sev = (finding.severity || 'info').toLowerCase();
                     const colors = SEVERITY_COLORS[sev] || SEVERITY_COLORS.low;
-                    const statusLabel = finding._needsReview
-                      ? 'Needs Review'
+                    const needsReview = isPendingReview(finding);
+                    const statusLabel = needsReview
+                      ? 'PR'
                       : finding.status === 'VALIDATED_CONFIRMED' ? 'Confirmed' : finding.validated ? 'Validated' : 'Pending';
-                    const statusColor = finding._needsReview
+                    const statusTitle = needsReview ? 'Pending To Review' : statusLabel;
+                    const statusColor = needsReview
                       ? 'text-violet-300 bg-violet-500/15'
                       : finding.status === 'VALIDATED_CONFIRMED'
                         ? 'text-emerald-400 bg-emerald-500/15'
@@ -910,7 +888,11 @@ export const ReportMarkdownViewer: React.FC<ReportMarkdownViewerProps> = ({ repo
                             <span className={`w-1.5 h-1.5 rounded-full ${colors.dot}`} />
                             {finding.severity}
                           </span>
-                          <span className={`px-2 py-0.5 rounded-full text-[10px] font-medium w-fit ${statusColor}`}>
+                          <span
+                            className={`px-2 py-0.5 rounded-full text-[10px] font-medium w-fit ${statusColor}`}
+                            title={statusTitle}
+                            aria-label={statusTitle}
+                          >
                             {statusLabel}
                           </span>
                           <span className="text-sm text-white font-mono">
@@ -1027,7 +1009,7 @@ export const ReportMarkdownViewer: React.FC<ReportMarkdownViewerProps> = ({ repo
                                     {httpEvidence.request && (
                                       <div>
                                         <p className="text-xs text-muted uppercase tracking-wider font-bold mb-2">HTTP Request</p>
-                                        <pre className="bg-black/30 border border-white/10 p-3 rounded-lg font-mono text-xs overflow-auto whitespace-pre-wrap break-all">{httpEvidence.request}</pre>
+                                        <CopyableCodeBlock value={httpEvidence.request} language="HTTP REQUEST" />
                                       </div>
                                     )}
                                     {(httpEvidence.response || httpEvidence.status != null) && (
@@ -1036,7 +1018,7 @@ export const ReportMarkdownViewer: React.FC<ReportMarkdownViewerProps> = ({ repo
                                           HTTP Response{httpEvidence.status != null ? ` — ${httpEvidence.status}` : ''}
                                         </p>
                                         {httpEvidence.response && (
-                                          <pre className="bg-black/30 border border-white/10 p-3 rounded-lg font-mono text-xs overflow-auto whitespace-pre-wrap break-all max-h-80">{httpEvidence.response}</pre>
+                                          <CopyableCodeBlock value={httpEvidence.response} language="HTTP RESPONSE" maxHeight="20rem" />
                                         )}
                                       </div>
                                     )}

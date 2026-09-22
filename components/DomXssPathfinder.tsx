@@ -8,6 +8,7 @@ import { useApiOptions } from '../hooks/useApiOptions.ts';
 import { Spinner } from './Spinner.tsx';
 import { FlowChartIcon, ScanIcon } from './Icons.tsx';
 import { ToolLayout } from './ToolLayout.tsx';
+import { CopyableCodeBlock } from './CopyableCodeBlock.tsx';
 
 interface DomXssPathfinderProps {
   onAnalysisStart: () => void;
@@ -88,16 +89,16 @@ export const DomXssPathfinder: React.FC<DomXssPathfinderProps> = ({ onAnalysisSt
           value={code}
           onChange={(e) => setCode(e.target.value)}
           placeholder={`const urlParams = new URLSearchParams(window.location.search);\nconst name = urlParams.get('name');\ndocument.getElementById('greeting').innerHTML = 'Hello, ' + name;`}
-          className="input-premium w-full h-64 p-5 font-mono text-sm resize-y"
+          className="input-premium h-64 w-full resize-y p-4 font-mono text-xs leading-relaxed sm:p-5"
           disabled={isLoading}
         />
       </div>
 
-      <div className="mt-8 flex justify-center">
+      <div className="mt-6 flex justify-center">
         <button
           onClick={handleAnalyze}
           disabled={isLoading || !code.trim()}
-          className="btn-mini btn-mini-primary !h-12 !px-10 !rounded-xl shadow-glow-coral group gap-3"
+          className="btn-mini btn-mini-primary h-11 !rounded-xl !px-8 shadow-glow-coral group gap-2 !text-sm"
         >
           {isLoading ? <Spinner /> : <ScanIcon className="h-5 w-5 group-hover:scale-110 transition-transform" />}
           TRACE DATA FLOW
@@ -114,7 +115,7 @@ export const DomXssPathfinder: React.FC<DomXssPathfinderProps> = ({ onAnalysisSt
       )}
 
       {error && !isLoading && (
-        <div className="mt-8 p-5 bg-red-500/10 border border-red-500/30 text-red-400 rounded-xl font-mono text-xs max-w-3xl mx-auto flex items-center gap-3">
+        <div className="mx-auto mt-6 flex max-w-3xl items-center gap-3 rounded-xl border border-error/30 bg-error/10 px-4 py-3 font-mono text-xs text-error">
           <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
           {error}
         </div>
@@ -140,7 +141,7 @@ export const DomXssPathfinder: React.FC<DomXssPathfinderProps> = ({ onAnalysisSt
                     </div>
                     <div className="mb-4">
                       <p className="label-mini mb-1.5 opacity-60">VULNERABLE CHAIN</p>
-                      <pre className="bg-black/40 p-3 rounded-xl font-mono text-[10px] text-ui-accent/90 overflow-x-auto border border-white/5"><code>{path.code_snippet}</code></pre>
+                      <CopyableCodeBlock value={path.code_snippet} language="CODE" />
                     </div>
                     <div>
                       <p className="label-mini mb-1 opacity-60">ANALYSIS</p>

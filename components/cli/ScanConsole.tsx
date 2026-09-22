@@ -6,6 +6,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { TrashIcon, ShareIcon, ListBulletIcon } from '../Icons.tsx';
 import { SwarmGraph } from './SwarmGraph.tsx';
+import { SlidingSegmentedControl } from './SlidingSegmentedControl.tsx';
 import type { PipelineState, AgentState, MetricsState, Finding } from '../../hooks/useScanSocket';
 
 export interface LogEntry {
@@ -176,27 +177,23 @@ export const ScanConsole: React.FC<ScanConsoleProps> = ({
           )}
         </div>
 
-        {/* View toggle: Split (director) / Graph / Events */}
-        <div className="flex items-center gap-0.5 bg-white/[0.04] border border-white/[0.06] rounded-lg p-0.5">
-          <button
-            onClick={() => setView('split')}
-            className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[9px] font-bold uppercase tracking-wider transition-all duration-200 ${view === 'split' ? 'bg-coral text-white' : 'text-muted hover:text-white'}`}
-          >
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="h-3 w-3"><rect x="3" y="4" width="8" height="16" rx="1.5" /><rect x="13" y="4" width="8" height="16" rx="1.5" /></svg> Split
-          </button>
-          <button
-            onClick={() => setView('graph')}
-            className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[9px] font-bold uppercase tracking-wider transition-all duration-200 ${view === 'graph' ? 'bg-coral text-white' : 'text-muted hover:text-white'}`}
-          >
-            <ShareIcon className="h-3 w-3" /> Graph
-          </button>
-          <button
-            onClick={() => setView('events')}
-            className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[9px] font-bold uppercase tracking-wider transition-all duration-200 ${view === 'events' ? 'bg-coral text-white' : 'text-muted hover:text-white'}`}
-          >
-            <ListBulletIcon className="h-3 w-3" /> Events
-          </button>
-        </div>
+        {/* Contextual view switch: the same quieter sub-control used throughout the app. */}
+        <SlidingSegmentedControl
+          value={view}
+          onChange={value => setView(value as typeof view)}
+          ariaLabel="Scan console view"
+          testIdPrefix="scan-console-view"
+          variant="sub"
+          itemWidth={72}
+          options={[
+            {
+              value: 'split',
+              label: <><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="h-3 w-3"><rect x="3" y="4" width="8" height="16" rx="1.5" /><rect x="13" y="4" width="8" height="16" rx="1.5" /></svg> Split</>,
+            },
+            { value: 'graph', label: <><ShareIcon className="h-3 w-3" /> Graph</> },
+            { value: 'events', label: <><ListBulletIcon className="h-3 w-3" /> Events</> },
+          ]}
+        />
       </div>
 
       {/* Console body — director view: full-bleed graph + superimposed events. Idle → ONE centred radar. */}

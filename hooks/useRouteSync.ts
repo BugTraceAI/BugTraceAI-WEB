@@ -100,6 +100,10 @@ export const useRouteSync = ({ activeView, activeSubTab, onNavigate, onSubTabCha
     // Mobile route — handled by App.tsx early return, skip sync
     if (pathname === '/mobile') return;
 
+    // Standalone visual reference page intentionally lives outside the app view
+    // state machine; never bounce it back to the CLI framework on load.
+    if (pathname === '/design-system' || pathname === '/bugtraceai/design-system') return;
+
     // Dynamic routes: chat sessions
     if (pathname.startsWith('/chat/') || pathname === '/chat') {
       if (activeView !== View.WEB_SEC_AGENT) {
@@ -159,6 +163,10 @@ export const useRouteSync = ({ activeView, activeSubTab, onNavigate, onSubTabCha
 
     // Mobile route — don't redirect away
     if (currentPath === '/mobile') return;
+
+    // The design-system preview has its own route and must not be rewritten to
+    // the active application view while the page is being inspected.
+    if (currentPath === '/design-system' || currentPath === '/bugtraceai/design-system') return;
 
     // Fresh load / reload of a known static route (e.g. /modellab, /history): on mount
     // activeView still holds its default (CLI_FRAMEWORK) because the URL→state effect

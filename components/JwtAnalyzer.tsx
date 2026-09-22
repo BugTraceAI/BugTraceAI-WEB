@@ -11,6 +11,8 @@ import { KeyIcon, ShieldCheckIcon, FireIcon, ChatIcon, DocumentTextIcon, CodeBra
 import { MarkdownRenderer } from './MarkdownRenderer.tsx';
 import { ToolLayout } from './ToolLayout.tsx';
 import { sanitizeFilename, triggerDownload } from '../utils/reportExporter.ts';
+import { SlidingSegmentedControl } from './cli/SlidingSegmentedControl.tsx';
+import { CopyableCodeBlock } from './CopyableCodeBlock.tsx';
 
 interface JwtAnalyzerProps {
     initialToken: string | null;
@@ -93,15 +95,15 @@ export const JwtAnalyzer: React.FC<JwtAnalyzerProps> = ({ initialToken, report, 
                 <div className="mt-8 grid grid-cols-1 lg:grid-cols-3 gap-x-6 gap-y-8 animate-fade-in">
                     <div>
                         <h4 className="label-mini !text-blue-400 mb-2">JWT HEADER</h4>
-                        <pre className="bg-black/40 p-4 rounded-xl font-mono text-[10px] text-blue-300/80 overflow-x-auto border border-blue-500/10"><code>{decodedJwt.header}</code></pre>
+                        <CopyableCodeBlock value={decodedJwt.header} language="JWT HEADER" />
                     </div>
                     <div>
                         <h4 className="label-mini !text-ui-accent mb-2">CLAIMS PAYLOAD</h4>
-                        <pre className="bg-black/40 p-4 rounded-xl font-mono text-[10px] text-ui-accent/80 overflow-x-auto border border-ui-accent/10"><code>{decodedJwt.payload}</code></pre>
+                        <CopyableCodeBlock value={decodedJwt.payload} language="JWT PAYLOAD" />
                     </div>
                     <div>
                         <h4 className="label-mini !text-orange-400 mb-2">SIGNATURE DATA</h4>
-                        <pre className="bg-black/40 p-4 rounded-xl font-mono text-[10px] text-orange-300/80 overflow-x-auto border border-orange-500/10 break-all"><code>{decodedJwt.signature}</code></pre>
+                        <CopyableCodeBlock value={decodedJwt.signature} language="JWT SIGNATURE" />
                     </div>
                 </div>
             )}
@@ -172,19 +174,15 @@ export const JwtAnalyzer: React.FC<JwtAnalyzerProps> = ({ initialToken, report, 
                     </div>
 
                     <div className="card-premium p-6 sm:p-8 flex flex-col !bg-ui-bg/40">
-                        <div className="flex bg-ui-input-bg/40 p-1.5 rounded-2xl border border-ui-border self-start mb-8 min-w-[300px]">
-                            <button
-                                onClick={() => setActiveTab('blue')}
-                                className={`w-1/2 h-9 text-[10px] font-black uppercase tracking-wider rounded-xl transition-all ${activeTab === 'blue' ? 'bg-blue-500 text-ui-bg shadow-glow-blue/20' : 'text-ui-text-dim hover:text-ui-text-main hover:bg-white/5'}`}
-                            >
-                                Defensive Analysis
-                            </button>
-                            <button
-                                onClick={() => setActiveTab('red')}
-                                className={`w-1/2 h-9 text-[10px] font-black uppercase tracking-wider rounded-xl transition-all ${activeTab === 'red' ? 'bg-red-500 text-ui-bg shadow-glow-coral' : 'text-ui-text-dim hover:text-ui-text-main hover:bg-white/5'}`}
-                            >
-                                Attack Surface
-                            </button>
+                        <div className="mb-6">
+                            <SlidingSegmentedControl
+                                value={activeTab}
+                                onChange={value => setActiveTab(value as 'blue' | 'red')}
+                                ariaLabel="JWT analysis team"
+                                itemWidth={164}
+                                variant="sub"
+                                options={[{ value: 'blue', label: 'Defensive analysis' }, { value: 'red', label: 'Attack surface' }]}
+                            />
                         </div>
 
                         <div className="flex-1 overflow-y-auto min-h-[400px]">
@@ -216,7 +214,7 @@ export const JwtAnalyzer: React.FC<JwtAnalyzerProps> = ({ initialToken, report, 
                                     }
                                 }}
                                 disabled={!getCurrentResult()}
-                                className="btn-mini btn-mini-primary !h-12 !w-full !rounded-xl gap-3 shadow-glow-coral"
+                    className="btn-mini btn-mini-primary h-11 !w-full !rounded-xl gap-2 shadow-glow-coral"
                                 title="Analyze this report with the WebSec Agent"
                             >
                                 <ChatIcon className="h-5 w-5" />

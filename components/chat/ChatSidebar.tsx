@@ -7,7 +7,7 @@ import { SessionCard } from './SessionCard';
 import { NewChatModal } from './NewChatModal';
 import { ConfirmDeleteModal } from './ConfirmDeleteModal';
 import { ChatSearchBar } from './ChatSearchBar';
-import { ChatSession } from '../../contexts/ChatContext';
+import { ChatSession, ChatSessionType } from '../../contexts/ChatContext';
 import { XMarkIcon } from '../Icons.tsx';
 import { Spinner } from '../Spinner.tsx';
 
@@ -52,7 +52,7 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({ isOpen, onToggle }) =>
     return Array.from(uniqueMap.values());
   }, [sessions, showArchived]);
 
-  const handleNewChat = async (type: 'websec' | 'xss' | 'sql') => {
+  const handleNewChat = async (type: ChatSessionType) => {
     try {
       const session = await startNewChat(type);
       navigate(`/chat/${session.id}`);

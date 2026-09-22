@@ -2,11 +2,12 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useChatOperations } from '../../hooks/useChatOperations';
 import { SearchResult } from './SearchResult';
+import { ChatSessionType } from '../../contexts/ChatContext';
 
 interface SearchResultData {
   session_id: string;
   session_title: string;
-  session_type: 'websec' | 'xss' | 'sql';
+  session_type: ChatSessionType;
   match_count: number;
   snippet: string;
   message_id: string;
@@ -46,7 +47,7 @@ export const ChatSearchBar: React.FC<ChatSearchBarProps> = ({ onResultSelect }) 
               flatResults.push({
                 session_id: result.session_id,
                 session_title: result.session_title,
-                session_type: result.session_type as 'websec' | 'xss' | 'sql',
+                session_type: result.session_type as ChatSessionType,
                 match_count: result.match_count,
                 snippet: firstMatch.snippet,
                 message_id: firstMatch.message_id,

@@ -1,6 +1,7 @@
 // components/cli/ReportContent.tsx
 import React, { useState } from 'react';
-import { ShieldCheckIcon, ChevronDownIcon, ChevronUpIcon, ClipboardDocumentListIcon } from '../Icons.tsx';
+import { ShieldCheckIcon, ChevronDownIcon, ChevronUpIcon } from '../Icons.tsx';
+import { CopyableCodeBlock } from '../CopyableCodeBlock.tsx';
 
 interface Finding {
   id?: string;
@@ -74,10 +75,6 @@ const severityStyles: Record<string, { badge: string; border: string; glow: stri
     border: 'border-gray-500/30',
     glow: ''
   }
-};
-
-const copyToClipboard = (text: string) => {
-  navigator.clipboard.writeText(text);
 };
 
 export const ReportContent: React.FC<ReportContentProps> = ({ data, scanId }) => {
@@ -272,20 +269,8 @@ export const ReportContent: React.FC<ReportContentProps> = ({ data, scanId }) =>
                       )}
                       {finding.payload && (
                         <div className="md:col-span-2">
-                          <h4 className="text-[10px] font-bold text-muted uppercase tracking-widest mb-2 flex items-center justify-between">
-                            Exploit Payload
-                            <button
-                              onClick={(e) => { e.stopPropagation(); copyToClipboard(finding.payload!); }}
-                              className="text-[9px] text-muted hover:text-white flex items-center gap-1 transition-colors"
-                            >
-                              <ClipboardDocumentListIcon className="h-3 w-3" /> Copy
-                            </button>
-                          </h4>
-                          <div className="bg-black/40 p-3 rounded-lg border border-white/10 relative group">
-                            <code className="text-xs font-mono text-yellow-400 break-all whitespace-pre-wrap">
-                              {finding.payload}
-                            </code>
-                          </div>
+                          <h4 className="text-[10px] font-bold text-muted uppercase tracking-widest mb-2">Exploit Payload</h4>
+                          <CopyableCodeBlock value={finding.payload} language="PAYLOAD" />
                         </div>
                       )}
                     </div>

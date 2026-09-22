@@ -7,6 +7,7 @@ import { ToolLayout } from './ToolLayout.tsx';
 import { ScanIcon, ApiRouteIcon, StopIcon, ArrowDownTrayIcon, HistoryIcon, TrashIcon, ArrowPathIcon } from './Icons.tsx';
 import { useKiterunner, KrRoute, KrSavedScan, KrScanStatus } from '../hooks/useKiterunner.ts';
 import { ConfirmDeleteModal } from './chat/ConfirmDeleteModal.tsx';
+import { SlidingSegmentedControl } from './cli/SlidingSegmentedControl.tsx';
 
 // ── Route tag detection ───────────────────────────────────────────────────────
 type RouteTag = 'AUTH' | 'ADMIN' | 'FILE' | 'INTERNAL' | 'DATA' | 'INTERESTING';
@@ -296,32 +297,18 @@ export const ApiDiscovery: React.FC = () => {
       title="API Discovery"
       description="Brute-force API routes"
     >
-      <div className="flex flex-wrap items-center gap-2 border-b border-white/5 pb-5">
-        <button
-          onClick={() => setActiveTab('current')}
-          className={`group py-2.5 px-4 label-mini rounded-xl transition-all duration-300 flex items-center gap-2 border ${activeTab === 'current'
-            ? 'border-ui-accent/40 text-ui-accent bg-ui-accent/8'
-            : 'border-white/5 text-ui-text-dim hover:text-ui-text-main hover:bg-white/5'
-            }`}
-        >
-          <ApiRouteIcon className="h-4 w-4" />
-          Current Scan
-        </button>
-        <button
-          onClick={() => setActiveTab('history')}
-          className={`group py-2.5 px-4 label-mini rounded-xl transition-all duration-300 flex items-center gap-2 border ${activeTab === 'history'
-            ? 'border-ui-accent/40 text-ui-accent bg-ui-accent/8'
-            : 'border-white/5 text-ui-text-dim hover:text-ui-text-main hover:bg-white/5'
-            }`}
-        >
-          <HistoryIcon className="h-4 w-4" />
-          Old Scans
-          {scanHistory.length > 0 && (
-            <span className="inline-flex items-center justify-center min-w-5 h-5 px-1.5 rounded-full bg-white/10 text-[10px] text-white">
-              {scanHistory.length}
-            </span>
-          )}
-        </button>
+      <div className="flex flex-wrap items-center gap-2 border-b border-white/5 pb-4">
+        <SlidingSegmentedControl
+          value={activeTab}
+          onChange={value => setActiveTab(value as 'current' | 'history')}
+          ariaLabel="API discovery view"
+          itemWidth={142}
+          variant="sub"
+          options={[
+            { value: 'current', label: <><ApiRouteIcon className="h-4 w-4" />Current scan</> },
+            { value: 'history', label: <><HistoryIcon className="h-4 w-4" />Old scans{scanHistory.length > 0 && <span className="ml-1 inline-flex min-h-4 min-w-4 items-center justify-center rounded-full bg-white/10 px-1 text-[9px] text-white">{scanHistory.length}</span>}</> },
+          ]}
+        />
         {activeTab === 'history' && scanHistory.length > 0 && (
           <button
             onClick={() => setPendingDelete({ kind: 'all', count: scanHistory.length })}

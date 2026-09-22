@@ -1,6 +1,7 @@
 // version 0.0.18
 import React from 'react';
 import { InjectionPoint } from '../types.ts';
+import { CopyableCodeBlock } from './CopyableCodeBlock.tsx';
 
 interface PayloadTesterProps {
   payload: string;
@@ -36,9 +37,7 @@ export const PayloadTester: React.FC<PayloadTesterProps> = ({ payload, analyzedT
 
   return (
     <div className="space-y-2">
-      <pre className="w-full bg-black/30 border border-purple-800/50 rounded-lg p-3 text-purple-200 text-sm overflow-x-auto">
-        <code>{payload}</code>
-      </pre>
+      <CopyableCodeBlock value={payload} language="PAYLOAD" />
       <div className="flex items-start gap-4">
         <button
           onClick={handleTestPayload}

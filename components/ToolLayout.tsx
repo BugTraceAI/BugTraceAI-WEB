@@ -8,23 +8,26 @@ interface ToolLayoutProps {
     children: React.ReactNode;
 }
 
-export const ToolLayout: React.FC<ToolLayoutProps> = ({ title, description, children }) => {
+export const ToolLayout: React.FC<ToolLayoutProps> = ({ title, description, icon, children }) => {
     return (
-        <div className="max-w-[90%] mx-auto w-full flex flex-col flex-1 min-h-0">
-            <div className="bg-purple-medium/30 backdrop-blur-xl rounded-[2rem] border border-white/5 shadow-xl animate-fade-in flex flex-col flex-1 min-h-0">
-                {/* Compact header */}
-                <div className="flex-shrink-0 px-6 py-3 sm:px-8 border-b border-white/5">
-                    <h1 className="text-lg font-bold tracking-tight text-white">
-                        {title}
-                        <span className="text-sm text-purple-gray ml-3 font-normal hidden sm:inline">
-                            {description}
-                        </span>
-                    </h1>
-                    <p className="text-xs text-purple-gray mt-0.5 sm:hidden">{description}</p>
+        <div className="mx-auto flex w-full max-w-6xl flex-1 min-h-0 flex-col">
+            <div className="card-premium flex flex-1 min-h-0 flex-col overflow-hidden !rounded-3xl border-white/10 animate-fade-in">
+                <div className="flex-shrink-0 border-b border-white/10 bg-white/[0.025] px-5 py-4 sm:px-6">
+                    <div className="flex items-start gap-3">
+                        <div className="mt-0.5 flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl border border-coral/30 bg-coral/10 text-coral">
+                            {/* Tool-specific icons are supplied by callers; retaining them here
+                                makes every tool header follow the same visual rhythm. */}
+                            {icon}
+                        </div>
+                        <div className="min-w-0">
+                            <span className="label-mini label-mini-accent">Analysis tool</span>
+                            <h1 className="title-standard mt-1">{title}</h1>
+                            <p className="mt-1 text-xs leading-relaxed text-ui-text-muted">{description}</p>
+                        </div>
+                    </div>
                 </div>
 
-                {/* Scrollable content area */}
-                <div className="flex-1 p-6 sm:p-8 overflow-y-auto">
+                <div className="flex-1 overflow-y-auto p-5 sm:p-6">
                     {children}
                 </div>
             </div>

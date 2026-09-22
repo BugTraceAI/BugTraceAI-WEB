@@ -141,7 +141,7 @@ export const BUGTRACE_TOOLS = [
         type: "object",
         properties: {
           target_url: { type: "string" },
-          scan_type: { type: "string", enum: ["full", "hunter", "manager"] },
+          scan_type: { type: "string", enum: ["full", "hunter"], description: "Supported by the Web CLI bridge: full or hunter." },
           max_depth: { type: "integer" },
           max_urls: { type: "integer" }
         },

@@ -1,8 +1,9 @@
 // components/MarkdownRenderer.tsx
 import { marked } from 'marked';
 import DOMPurify from 'dompurify';
-import React, { useMemo } from 'react';
+import React, { useEffect, useMemo, useRef } from 'react';
 import { normalizeMarkdownDocument, protectQuotedValues } from '../lib/markdownTransformers';
+import { copyText } from '../lib/clipboard.ts';
 
 // Configure marked options once
 marked.setOptions({
@@ -65,10 +66,10 @@ const markdownStyles = `
 }
 
 .markdown-content pre {
-    background-color: rgba(0, 0, 0, 0.5);
-    border: 1px solid var(--glass-border);
-    border-radius: 8px;
-    padding: 1em;
+    background-color: transparent;
+    border: 0;
+    border-radius: 0;
+    padding: 0.8em;
     overflow-x: auto;
     white-space: pre-wrap;
     word-wrap: break-word;
@@ -82,6 +83,8 @@ const markdownStyles = `
     color: inherit;
     border: none;
 }
+.markdown-content .btai-code-block { margin-block: 1em; }
+.markdown-content .btai-code-toolbar { min-height: 2rem; }
 
 .markdown-content a {
     color: #FF7F50; /* coral accent */
@@ -131,6 +134,18 @@ const markdownStyles = `
 `;
 
 export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content, protectValues }) => {
+    const rootRef = useRef<HTMLDivElement>(null);
+    const markdownRenderer = useMemo(() => {
+        const renderer = new marked.Renderer();
+        const defaultCode = new marked.Renderer();
+        renderer.code = (code, infostring, escaped) => {
+            const language = (infostring || '').trim().split(/\s+/)[0].replace(/[^a-zA-Z0-9_+#.-]/g, '').slice(0, 32) || 'CODE';
+            const renderedCode = defaultCode.code(code, infostring, escaped);
+            return `<div class="btai-code-block"><div class="btai-code-toolbar"><span class="btai-code-language">${language}</span><button type="button" class="btai-code-copy" aria-label="Copy code"><span aria-hidden="true">⧉</span> Copy</button></div>${renderedCode}</div>\n`;
+        };
+        return renderer;
+    }, []);
+
     const parsedHtml = useMemo(() => {
         if (!content) return '';
         // Fence any finding data the prose quotes inline BEFORE marked parses it: the
@@ -139,26 +154,49 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content, pro
         const safe = protectValues?.length
             ? protectQuotedValues(content, protectValues)
             : content;
-        const rawHtml = marked.parse(normalizeMarkdownDocument(safe)) as string;
+        const rawHtml = marked.parse(normalizeMarkdownDocument(safe), { renderer: markdownRenderer }) as string;
         const clean = DOMPurify.sanitize(rawHtml, {
             ALLOWED_TAGS: [
                 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'p', 'br', 'hr',
                 'ul', 'ol', 'li', 'blockquote', 'pre', 'code',
                 'table', 'thead', 'tbody', 'tr', 'th', 'td',
-                'strong', 'em', 'b', 'i', 'a', 'del', 'sup', 'sub',
+                'strong', 'em', 'b', 'i', 'a', 'del', 'sup', 'sub', 'button',
                 'span', 'div', 'img',
             ],
-            ALLOWED_ATTR: ['href', 'src', 'alt', 'title', 'class', 'id', 'target', 'rel'],
+            ALLOWED_ATTR: ['href', 'src', 'alt', 'title', 'class', 'id', 'target', 'rel', 'type', 'aria-label', 'aria-hidden'],
             ALLOW_DATA_ATTR: false,
         });
         // Open all links in new tab
         return clean.replace(/<a /g, '<a target="_blank" rel="noopener noreferrer" ');
-    }, [content, protectValues]);
+    }, [content, markdownRenderer, protectValues]);
+
+    useEffect(() => {
+        const buttons = rootRef.current?.querySelectorAll<HTMLButtonElement>('.btai-code-copy');
+        if (!buttons) return;
+        const cleanups: Array<() => void> = [];
+        buttons.forEach(button => {
+            const original = button.innerHTML;
+            const handleCopy = async () => {
+                const value = button.closest('.btai-code-block')?.querySelector('pre code')?.textContent || '';
+                try {
+                    await copyText(value);
+                    button.innerHTML = '<span aria-hidden="true">✓</span> Copied';
+                    window.setTimeout(() => { button.innerHTML = original; }, 1800);
+                } catch {
+                    button.innerHTML = '<span aria-hidden="true">!</span> Retry';
+                    window.setTimeout(() => { button.innerHTML = original; }, 2200);
+                }
+            };
+            button.addEventListener('click', handleCopy);
+            cleanups.push(() => button.removeEventListener('click', handleCopy));
+        });
+        return () => cleanups.forEach(cleanup => cleanup());
+    }, [parsedHtml]);
 
     return (
         <>
             <style>{markdownStyles}</style>
-            <div 
+            <div ref={rootRef}
                 className="markdown-content max-w-none text-current break-words"
                 dangerouslySetInnerHTML={{ __html: parsedHtml }} 
             />

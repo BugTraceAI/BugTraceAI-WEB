@@ -1,11 +1,12 @@
 // @author: Albert C | @yz9yt | github.com/yz9yt
 // components/MainMenu.tsx
 // version 0.5 - Use global CLI connection context for availability
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { View } from '../types.ts';
 import { BugTraceAILogo, BrainIcon, HistoryIcon, XMarkIcon, LinkIcon, CodeBracketIcon, ChatIcon, ArrowUpTrayIcon, KeyIcon, PencilDocumentIcon, JwtTokenIcon, MagnifyingGlassIcon, ArrowPathIcon, BeakerIcon } from './Icons.tsx';
 import { useSettings } from '../contexts/SettingsProvider.tsx';
 import { APP_VERSION } from '../constants.ts';
+import { createBtaiApi } from '../lib/btaiApi.ts';
 
 interface MainMenuProps {
   isOpen: boolean;
@@ -32,8 +33,21 @@ const appViews = [
 ];
 
 export const MainMenu: React.FC<MainMenuProps> = ({ isOpen, onClose, onNavigate, activeView }) => {
-  // Use global CLI connection context for consistent state
-  const { cliConnected } = useSettings();
+  // Use global connection contexts for consistent state
+  const { cliConnected, btaiApiUrl } = useSettings();
+  // Lightweight one-shot API health check so we can show connectivity separately
+  // from CLI without duplicating the stable poller elsewhere (full poller is in
+  // useBtaiApiConnection — out of this file's scope).
+  const [apiConnected, setApiConnected] = useState(false);
+  useEffect(() => {
+    let alive = true;
+    createBtaiApi(btaiApiUrl)
+      .healthCheck()
+      .then(res => { if (alive) setApiConnected(res.status === 'ok' && res.service === 'bugtraceai-api'); })
+      .catch(() => { /* offline is an expected UI state */ });
+    return () => { alive = false; };
+    // Health check runs once on mount; no component state is captured.
+  }, [btaiApiUrl]);
 
   const NavLink: React.FC<{ view: View, name: string, icon: React.ReactNode, color: string, disabled?: boolean, requiresCli?: boolean }> = ({ view, name, icon, color, disabled, requiresCli }) => (
     <button
@@ -89,15 +103,15 @@ export const MainMenu: React.FC<MainMenuProps> = ({ isOpen, onClose, onNavigate,
 
         {/* Navigation */}
         <nav className="flex flex-col flex-grow overflow-y-auto overflow-x-hidden min-h-0">
-          {/* BugTraceAI - First position (requires CLI) */}
+          {/* BugTraceAI - first position. Opens whenever CLI or API is up, or even
+              when neither is (features inside the control centre stay engine-specific
+              and disabled). Model Lab below stays CLI-only. */}
           <div className="mb-4">
             <NavLink
               view={View.CLI_FRAMEWORK}
               name="BugTraceAI"
               icon={<BrainIcon className="h-5 w-5" />}
               color="text-coral"
-              disabled={!cliConnected}
-              requiresCli={true}
             />
           </div>
 
@@ -126,8 +140,8 @@ export const MainMenu: React.FC<MainMenuProps> = ({ isOpen, onClose, onNavigate,
 
         {/* Bottom section */}
         <div className="mt-auto pt-6 border-t border-ui-border space-y-3">
-          {/* CLI Connection Status */}
-          <div className="px-4 py-3 rounded-2xl bg-dashboard-bg/50 border border-ui-border shadow-inner">
+          {/* Engine Connectivity — CLI and API shown separately */}
+          <div className="px-4 py-3 rounded-2xl bg-dashboard-bg/50 border border-ui-border shadow-inner space-y-2">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <span className={`w-2 h-2 rounded-full ${cliConnected ? 'bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)] animate-pulse' : 'bg-ui-text-muted/30'}`} />
@@ -135,6 +149,15 @@ export const MainMenu: React.FC<MainMenuProps> = ({ isOpen, onClose, onNavigate,
               </div>
               <span className={`text-[10px] font-bold ${cliConnected ? 'text-green-500' : 'text-ui-text-muted/60'}`}>
                 {cliConnected ? 'ACTIVE' : 'OFFLINE'}
+              </span>
+            </div>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <span className={`w-2 h-2 rounded-full ${apiConnected ? 'bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)] animate-pulse' : 'bg-ui-text-muted/30'}`} />
+                <span className="label-mini !text-[9px] text-ui-text-dim">API System</span>
+              </div>
+              <span className={`text-[10px] font-bold ${apiConnected ? 'text-green-500' : 'text-ui-text-muted/60'}`}>
+                {apiConnected ? 'ACTIVE' : 'OFFLINE'}
               </span>
             </div>
           </div>

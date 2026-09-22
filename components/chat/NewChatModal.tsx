@@ -1,11 +1,12 @@
 // components/chat/NewChatModal.tsx
 import React, { useEffect } from 'react';
-import { ShieldCheckIcon, ShieldExclamationIcon, BeakerIcon } from '../Icons.tsx';
+import { AiBrainIcon, ShieldCheckIcon, ShieldExclamationIcon, BeakerIcon } from '../Icons.tsx';
+import { ChatSessionType } from '../../contexts/ChatContext';
 
 interface NewChatModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSelect: (type: 'websec' | 'xss' | 'sql') => void;
+  onSelect: (type: ChatSessionType) => void;
 }
 
 export const NewChatModal: React.FC<NewChatModalProps> = ({ isOpen, onClose, onSelect }) => {
@@ -21,6 +22,12 @@ export const NewChatModal: React.FC<NewChatModalProps> = ({ isOpen, onClose, onS
   if (!isOpen) return null;
 
   const assistantTypes = [
+    {
+      type: 'general' as const,
+      icon: <AiBrainIcon className="h-8 w-8 text-ui-accent" />,
+      label: 'GENERAL ASSISTANT',
+      description: 'Chat sin especialización',
+    },
     {
       type: 'websec' as const,
       icon: <ShieldCheckIcon className="h-8 w-8 text-coral" />,

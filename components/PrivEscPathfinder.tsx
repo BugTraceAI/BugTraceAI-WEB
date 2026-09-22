@@ -74,7 +74,7 @@ export const PrivEscPathfinder: React.FC<PrivEscPathfinderProps> = ({ onAnalysis
             value={technology}
             onChange={(e) => setTechnology(e.target.value)}
             placeholder="e.g., WordPress, Apache Tomcat"
-            className="input-premium w-full"
+            className="input-premium h-10 w-full px-4 py-2.5 text-sm"
             disabled={isLoading}
           />
         </div>
@@ -86,7 +86,7 @@ export const PrivEscPathfinder: React.FC<PrivEscPathfinderProps> = ({ onAnalysis
             value={version}
             onChange={(e) => setVersion(e.target.value)}
             placeholder="e.g., 5.8.1, 9.0.50"
-            className="input-premium w-full"
+            className="input-premium h-10 w-full px-4 py-2.5 text-sm"
             disabled={isLoading}
           />
         </div>
@@ -96,7 +96,7 @@ export const PrivEscPathfinder: React.FC<PrivEscPathfinderProps> = ({ onAnalysis
         <button
           onClick={handleSearch}
           disabled={isLoading || !technology.trim() || !version.trim()}
-          className="btn-mini btn-mini-primary !py-4 px-10 !rounded-2xl !text-sm group"
+          className="btn-mini btn-mini-primary h-11 !px-8 !rounded-xl !text-sm group"
         >
           {isLoading ? <Spinner /> : <ScanIcon className="h-5 w-5 mr-3 group-hover:rotate-12 transition-transform" />}
           Find Exploits

@@ -3,6 +3,7 @@
 // editable (transparent textarea overlaid on a highlighted <pre>) or read-only.
 // Pure React/CSS — no Monaco/CDN, safe for offline/cPanel deploys.
 import React, { useRef, useState, useMemo, useEffect } from 'react';
+import { copyText } from '../lib/clipboard.ts';
 
 // Palette matched to the AI Repeater mockup (BugTraceAI theme).
 const C = {
@@ -108,6 +109,7 @@ export const HttpEditor: React.FC<HttpEditorProps> = ({ value, onChange, readOnl
   const lineCount = (value.length ? value.split('\n').length : 1);
   const gutter = Array.from({ length: lineCount }, (_, i) => i + 1).join('\n');
   const [wrap, setWrap] = useState(true);
+  const [copyState, setCopyState] = useState<'idle' | 'copied' | 'error'>('idle');
 
   // ── Find within this response (Burp-style bottom bar — long responses need search, not scroll-and-read) ──
   const [find, setFind] = useState('');
@@ -155,6 +157,16 @@ export const HttpEditor: React.FC<HttpEditorProps> = ({ value, onChange, readOnl
       e.preventDefault(); findInputRef.current?.focus(); findInputRef.current?.select();
     }
   };
+  const handleCopy = async () => {
+    try {
+      await copyText(value);
+      setCopyState('copied');
+      window.setTimeout(() => setCopyState('idle'), 1800);
+    } catch {
+      setCopyState('error');
+      window.setTimeout(() => setCopyState('idle'), 2200);
+    }
+  };
   const toolBtn = 'text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded text-muted/60 hover:text-coral bg-dashboard-bg/60 flex items-center';
 
   return (
@@ -163,6 +175,11 @@ export const HttpEditor: React.FC<HttpEditorProps> = ({ value, onChange, readOnl
       <div className="relative flex-1 min-h-0 flex overflow-hidden">
         {/* top-right control: word-wrap toggle (Find is the bottom bar) */}
         <div className="absolute top-1 right-2 z-20 flex items-center gap-1">
+          {readOnly && (
+            <button type="button" onClick={handleCopy} className="btai-code-copy" title="Copy response" aria-label="Copy response">
+              <span aria-hidden="true">⧉</span> {copyState === 'copied' ? 'Copied' : copyState === 'error' ? 'Retry' : 'Copy'}
+            </button>
+          )}
           <button type="button" onClick={() => setWrap((w) => !w)} className={toolBtn}
             title={wrap ? 'Word-wrap ON — click for no-wrap (+ line numbers)' : 'No-wrap — click to wrap long lines'}>
             {wrap ? 'wrap' : 'no-wrap'}

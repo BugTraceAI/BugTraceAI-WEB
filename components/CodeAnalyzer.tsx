@@ -158,19 +158,19 @@ export const CodeAnalyzer: React.FC<CodeAnalyzerProps> = ({ onAnalysisStart, onA
           value={code}
           onChange={(e) => setCode(e.target.value)}
           placeholder="function vulnerable(userInput) {\n  const sql = `SELECT * FROM users WHERE id = '${userInput}'`;\n  // ...\n}"
-          className="input-premium w-full h-80 p-6 font-mono text-xs resize-y transition-all duration-300 shadow-inner"
+          className="input-premium h-64 w-full resize-y p-4 font-mono text-xs leading-relaxed transition-all duration-300 shadow-inner sm:p-5"
           disabled={isLoading}
         />
       </div>
 
       <div className="max-w-xl mx-auto my-6 space-y-4">
         <div className="flex flex-col gap-2">
-          <span className="label-mini !text-[9px] px-1">Analysis Recursive Depth</span>
+          <span className="label-mini px-1">Analysis recursive depth</span>
           <select
             id="depth-select-sast"
             value={depth}
             onChange={(e) => setDepth(Number(e.target.value))}
-            className="input-premium w-full !py-3 px-4 !bg-ui-bg"
+            className="input-premium h-10 w-full px-4 py-2.5 !bg-ui-bg text-sm"
             disabled={isLoading}
           >
             <option value="1">1 (Fastest)</option>
@@ -181,16 +181,16 @@ export const CodeAnalyzer: React.FC<CodeAnalyzerProps> = ({ onAnalysisStart, onA
           </select>
         </div>
 
-        <div className="relative flex items-center p-5 bg-dashboard-bg/50 border border-ui-border rounded-2xl cursor-pointer hover:border-ui-accent/30 transition-all duration-300 group shadow-inner" onClick={() => setDeepAnalysis(!deepAnalysis)}>
-          <div className={`w-5 h-5 rounded-lg border flex items-center justify-center transition-all ${deepAnalysis ? 'bg-ui-accent border-ui-accent shadow-[0_0_10px_rgba(255,127,80,0.3)]' : 'bg-ui-bg border-ui-border'
+        <div className="relative flex cursor-pointer items-center rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 transition-all duration-300 group hover:border-coral/30" onClick={() => setDeepAnalysis(!deepAnalysis)}>
+          <div className={`flex h-5 w-5 items-center justify-center rounded-lg border transition-all ${deepAnalysis ? 'bg-ui-accent border-ui-accent shadow-[0_0_10px_rgba(255,127,80,0.3)]' : 'bg-ui-bg border-ui-border'
             }`}>
             {deepAnalysis && <div className="w-2.5 h-2.5 bg-white rounded-md" />}
           </div>
-          <div className="ml-4 flex flex-col">
+          <div className="ml-3 flex flex-col">
             <label htmlFor="deep-analysis-sast" className="text-sm font-bold text-ui-text-main cursor-pointer group-hover:text-ui-accent transition-colors">
               Enable Deep Analysis Mode
             </label>
-            <p className="text-[11px] text-ui-text-dim/80 leading-relaxed mt-1">Multi-pass analysis per finding for maximum recall. (Uses more API credits)</p>
+            <p className="mt-1 text-[11px] leading-relaxed text-ui-text-muted">Multi-pass analysis per finding for maximum recall. (Uses more API credits)</p>
           </div>
           <input
             id="deep-analysis-sast"
@@ -204,11 +204,11 @@ export const CodeAnalyzer: React.FC<CodeAnalyzerProps> = ({ onAnalysisStart, onA
       </div>
 
 
-      <div className="flex justify-center mt-8">
+      <div className="mt-6 flex justify-center">
         <button
           onClick={handleAnalyze}
           disabled={isLoading || !code.trim()}
-          className="btn-mini btn-mini-primary !py-4 px-12 !rounded-2xl !text-sm group"
+          className="btn-mini btn-mini-primary h-11 !rounded-xl !px-8 !text-sm group"
         >
           {isLoading ? <Spinner /> : <ScanIcon className="h-5 w-5 mr-3 group-hover:rotate-12 transition-transform" />}
           Analyze Codebase
@@ -229,7 +229,7 @@ export const CodeAnalyzer: React.FC<CodeAnalyzerProps> = ({ onAnalysisStart, onA
         </div>
       )}
 
-      {error && !isLoading && <div className="mt-6 p-4 gradient-red-pink rounded-lg font-mono shadow-lg shadow-red-500/30 text-white">{error}</div>}
+      {error && !isLoading && <div className="mt-6 rounded-xl border border-error/30 bg-error/10 px-4 py-3 font-mono text-xs text-error">{error}</div>}
 
       {report && !isLoading && (
         <div className="mt-8">

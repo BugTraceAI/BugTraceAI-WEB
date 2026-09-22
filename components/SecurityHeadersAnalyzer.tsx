@@ -9,6 +9,7 @@ import { Spinner } from './Spinner.tsx';
 import { ScanIcon, ShieldCheckIcon } from './Icons.tsx';
 import { ToolLayout } from './ToolLayout.tsx';
 import { HeadersReportHeader } from './HeadersReportHeader.tsx';
+import { CopyableCodeBlock } from './CopyableCodeBlock.tsx';
 
 interface SecurityHeadersAnalyzerProps {
     onAnalysisStart: () => void;
@@ -40,7 +41,7 @@ const FindingCard: React.FC<{ finding: HeaderFinding }> = ({ finding }) => {
             {finding.value && (
                 <div className="mb-4">
                     <p className="label-mini mb-1.5 opacity-60">DETECTED VALUE</p>
-                    <pre className="bg-black/40 p-3 rounded-xl font-mono text-[10px] text-ui-accent/90 overflow-x-auto border border-white/5"><code>{finding.value}</code></pre>
+                    <CopyableCodeBlock value={finding.value} language="HEADER VALUE" />
                 </div>
             )}
             <div>
@@ -150,7 +151,7 @@ export const SecurityHeadersAnalyzer: React.FC<SecurityHeadersAnalyzerProps> = (
                             value={url}
                             onChange={(e) => setUrl(e.target.value)}
                             placeholder="https://example.com"
-                            className="input-premium w-full !py-3.5 px-6 !rounded-2xl !text-base"
+                            className="input-premium h-10 w-full px-4 !rounded-xl !text-sm"
                             disabled={isLoading}
                             onKeyDown={(e) => e.key === 'Enter' && !isLoading && handleAnalyze()}
                         />
@@ -158,7 +159,7 @@ export const SecurityHeadersAnalyzer: React.FC<SecurityHeadersAnalyzerProps> = (
                     <button
                         onClick={handleAnalyze}
                         disabled={isLoading || !url.trim()}
-                        className="btn-mini btn-mini-primary w-full sm:w-auto !py-4 px-10 !rounded-2xl !text-sm group"
+                        className="btn-mini btn-mini-primary h-11 w-full !rounded-xl !px-8 !text-sm group"
                     >
                         {isLoading ? <Spinner /> : <ScanIcon className="h-5 w-5 mr-3 group-hover:rotate-12 transition-transform" />}
                         Analyze Headers

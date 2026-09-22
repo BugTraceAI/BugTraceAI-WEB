@@ -5,7 +5,7 @@ services:
     container_name: bugtraceai-web-db
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-bugtraceai}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-bugtraceai_dev_2026}
       POSTGRES_DB: ${POSTGRES_DB:-bugtraceai_web}
     volumes:
       - postgres_data:/var/lib/postgresql/data
@@ -31,8 +31,10 @@ services:
     environment:
       NODE_ENV: production
       PORT: 3001
-      DATABASE_URL: postgresql://${POSTGRES_USER:-bugtraceai}:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}@postgres:5432/${POSTGRES_DB:-bugtraceai_web}?schema=public
+      DATABASE_URL: postgresql://${POSTGRES_USER:-bugtraceai}:${POSTGRES_PASSWORD:-bugtraceai_dev_2026}@postgres:5432/${POSTGRES_DB:-bugtraceai_web}?schema=public
       FRONTEND_URL: http://localhost:${FRONTEND_PORT:-6869}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
     depends_on:
@@ -57,6 +59,10 @@ services:
       args:
         VITE_API_URL: /api
         VITE_CLI_API_URL: ${VITE_CLI_API_URL:-/cli-api}
+        VITE_BTAI_API_URL: ${VITE_BTAI_API_URL:-/btai-api}
+    environment:
+      BTAI_API_PORT: ${BTAI_API_PORT:?BTAI_API_PORT must be set by Launcher}
+      CLI_API_PORT: ${CLI_API_PORT:?CLI_API_PORT must be set by Launcher}
     container_name: bugtraceai-web-frontend
     ports:
       - "${FRONTEND_PORT:-6869}:80"
@@ -69,35 +75,31 @@ services:
     networks:
       - bugtraceai-network
 
-  # ────────────────────────────────────────────────────────────────────────────
-  # API Discovery (Kiterunner)
-  # ────────────────────────────────────────────────────────────────────────────
-  # api-routes-mcp has been removed from this release pending Kiterunner AGPL
-  # licensing review. It will be published as a separate repository.
-  # To restore: clone BugTraceAI/api-routes-mcp and add it back to this compose.
-  # api-routes:
-  #   image: bugtraceai/api-routes-mcp:latest
-  #   container_name: bugtraceai-api-routes
-  #   profiles:
-  #     - disabled
-  #   command: ["mcp", "--sse"]
-  #   environment:
-  #     - KR_BIN=/usr/local/bin/kr
-  #     - WORDLISTS_DIR=/opt/kiterunner/wordlists
-  #     - MCP_PORT=8003
-  #     - API_PORT=8004
-  #   healthcheck:
-  #     test: ["CMD", "curl", "-sf", "--max-time", "2", "http://localhost:8004/health"]
-  #     interval: 30s
-  #     timeout: 10s
-  #     retries: 3
-  #     start_period: 15s
-  #   restart: unless-stopped
-  #   expose:
-  #     - "8003"
-  #     - "8004"
-  #   networks:
-  #     - bugtraceai-network
+  # API Discovery (Kiterunner) — core WEB feature, always runs
+  api-routes:
+    build:
+      context: ./api-routes-mcp
+      dockerfile: Dockerfile
+      network: host
+    container_name: bugtraceai-api-routes
+    command: ["mcp", "--sse"]
+    environment:
+      - KR_BIN=/usr/local/bin/kr
+      - WORDLISTS_DIR=/opt/kiterunner/wordlists
+      - MCP_PORT=8003
+      - API_PORT=8004
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "--max-time", "2", "http://localhost:8004/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+    restart: unless-stopped
+    expose:
+      - "8003"
+      - "8004"
+    networks:
+      - bugtraceai-network
 
   # ============================================
   # MCP Security Agents (optional, chat extras)
@@ -129,11 +131,12 @@ services:
     networks:
       - bugtraceai-network
 
-  # reconFTW MCP Server - optional external image.
-  # Build or obtain the image separately, then set RECONFTW_MCP_IMAGE in .env.
-  # Start manually: docker compose --profile recon up -d reconftw-mcp
+  # reconFTW MCP Server - Automated reconnaissance container
+  # Start manually: docker-compose up -d reconftw-mcp
   reconftw-mcp:
-    image: ${RECONFTW_MCP_IMAGE:-reconftw-mcp:local}
+    build:
+      context: ../reconftw-mcp
+      dockerfile: Dockerfile
     container_name: reconftw-mcp
     profiles:
       - recon
@@ -169,34 +172,6 @@ services:
     networks:
       - bugtraceai-network
 
-  # BugTraceAI-CLI MCP Server - optional external image.
-  # Build the CLI image from the public BugTraceAI-CLI repository separately,
-  # then set BUGTRACEAI_CLI_MCP_IMAGE in .env.
-  # Start manually: docker compose --profile cli up -d bugtrace-cli-mcp
-  bugtrace-cli-mcp:
-    image: ${BUGTRACEAI_CLI_MCP_IMAGE:-bugtraceai-cli-mcp:local}
-    container_name: bugtrace-cli-mcp
-    profiles:
-      - cli
-      - all-agents
-    ports:
-      - "${CLI_MCP_PORT:-8001}:8001"
-    volumes:
-      - cli-scans:/app/scans
-      - cli-reports:/app/reports
-    environment:
-      - MCP_PORT=8001
-      - SSE_MODE=${CLI_SSE_MODE:-false}
-    healthcheck:
-      test: ["CMD-SHELL", "curl -sS -m 2 http://localhost:8001/sse >/dev/null; res=$$?; [ $$res -eq 0 ] || [ $$res -eq 28 ] || exit 1"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 30s
-    restart: unless-stopped
-    networks:
-      - bugtraceai-network
-
 volumes:
   postgres_data:
     name: bugtraceai_web_postgres_data
@@ -210,14 +185,8 @@ volumes:
   reconftw-config:
     name: bugtraceai_reconftw_config
     driver: local
-  cli-scans:
-    name: bugtraceai_cli_scans
-    driver: local
-  cli-reports:
-    name: bugtraceai_cli_reports
-    driver: local
-
 networks:
   bugtraceai-network:
-    name: bugtraceai-web-network
+    # The Launcher gives WEB and BugTraceAI-API the same named bridge network.
+    name: ${BTAI_SHARED_NETWORK:-bugtraceai-platform}
     driver: bridge

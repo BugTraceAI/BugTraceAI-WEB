@@ -2,6 +2,7 @@
 import React, { useState } from 'react';
 import { APP_VERSION } from '../constants.ts';
 import { useCliHealth, CliHealthStatus } from '../hooks/useCliHealth.ts';
+import { useBtaiApiConnection } from '../hooks/useBtaiApiConnection.ts';
 
 interface FooterProps {
     onDevDocsClick: () => void;
@@ -47,6 +48,7 @@ function getStatusIndicator(health: CliHealthStatus) {
 // For project continuity, find the author at (reversed): ty9zy/moc.buhtig//:sptth
 export const Footer: React.FC<FooterProps> = ({ onDevDocsClick }) => {
     const health = useCliHealth();
+    const api = useBtaiApiConnection({ pollInterval: 30000 });
     const [showWarnings, setShowWarnings] = useState(false);
 
     const indicator = getStatusIndicator(health);
@@ -66,21 +68,27 @@ export const Footer: React.FC<FooterProps> = ({ onDevDocsClick }) => {
                     <span className="mx-3 opacity-30">|</span>
                     {health.status !== 'offline' ? (
                         <span
-                            className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full border ${indicator.badgeBg} ${hasWarnings ? 'cursor-pointer' : ''}`}
+                            className={`inline-flex items-center gap-1.5 whitespace-nowrap px-2 py-0.5 rounded-full border ${indicator.badgeBg} ${hasWarnings ? 'cursor-pointer' : ''}`}
                             onClick={() => hasWarnings && setShowWarnings(!showWarnings)}
-                            title={hasWarnings ? 'Click to see warnings' : `Engine healthy — ${health.provider}`}
+                            title={hasWarnings ? 'Click to see CLI warnings' : `CLI engine — ${health.provider}`}
                         >
                             <span className={`inline-block w-1 h-1 rounded-full ${indicator.dotClass}`} />
-                            <span className={`${indicator.textClass} font-bold uppercase tracking-tighter`}>
-                                {indicator.label}
-                            </span>
+                            <span className={`${indicator.textClass} font-bold uppercase tracking-tighter`}>{indicator.label}</span>
                         </span>
                     ) : (
-                        <span className="inline-flex items-center gap-1.5 opacity-40">
+                        <span className="inline-flex items-center gap-1.5 opacity-40" title="CLI engine offline">
                             <span className={`inline-block w-1.5 h-1.5 rounded-full ${indicator.dotClass}`} />
                             {indicator.label}
                         </span>
                     )}
+                    <span className="mx-3 inline-flex items-center gap-3 whitespace-nowrap opacity-30">|</span>
+                    <span
+                        className={`inline-flex items-center gap-1.5 whitespace-nowrap rounded-full border px-2 py-0.5 ${api.isConnected ? 'border-emerald-500/20 bg-emerald-500/10 text-emerald-400' : 'border-red-500/20 bg-red-500/10 text-red-400'}`}
+                        title={`Standalone API engine — ${api.url || 'not configured'}`}
+                    >
+                        <span className={`inline-block h-1 w-1 rounded-full ${api.isConnected ? 'bg-emerald-400 animate-pulse' : 'bg-red-400'}`} />
+                        <span className="font-bold uppercase tracking-tighter">{api.isConnected ? `API-Version ${api.version || 'READY'}` : 'API OFFLINE'}</span>
+                    </span>
                 </p>
 
                 {/* Warning banner — shown when user clicks the amber/red status badge */}

@@ -1,11 +1,12 @@
 // components/cli/CLIFramework.tsx
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { TerminalIcon, DocumentTextIcon, CogIcon, SignalIcon } from '../Icons.tsx';
 import { ScanTargetTab } from './ScanTargetTab.tsx';
 import { PastReportsTab } from './PastReportsTab.tsx';
 import { ConfigurationTab } from './ConfigurationTab.tsx';
 import { ProviderTab } from './ProviderTab.tsx';
+import { SlidingSegmentedControl } from './SlidingSegmentedControl.tsx';
 import type { ExploitSeed } from '../../types.ts';
 
 interface CLIFrameworkProps {
@@ -35,6 +36,7 @@ export const CLIFramework: React.FC<CLIFrameworkProps> = ({ onClose, onSendToRep
   const navigate = useNavigate();
   const location = useLocation();
   const [activeTab, setActiveTab] = useState<TabType>('scan');
+  const tabContentRef = useRef<HTMLDivElement>(null);
 
   // Sync URL to tab on mount and location change
   useEffect(() => {
@@ -47,6 +49,13 @@ export const CLIFramework: React.FC<CLIFrameworkProps> = ({ onClose, onSendToRep
       setActiveTab(tab);
     }
   }, [location.pathname]);
+
+  // The tab content is a persistent scroll container. Without resetting it,
+  // navigating from a long report (often scrolled down) to Scan Target keeps
+  // that old offset and clips the ENGINE selector and first form controls.
+  useEffect(() => {
+    tabContentRef.current?.scrollTo({ top: 0, behavior: 'auto' });
+  }, [activeTab, location.pathname]);
 
   // Sync tab to URL when tab changes
   const handleTabChange = (tab: TabType) => {
@@ -90,29 +99,19 @@ export const CLIFramework: React.FC<CLIFrameworkProps> = ({ onClose, onSendToRep
   return (
     <div className="h-full flex flex-col card-premium !bg-black/20 rounded-[2rem] overflow-hidden" data-testid="cli-framework">
       {/* Tab Navigation */}
-      <div className="flex items-center gap-1 px-5 pt-3 bg-black/40 border-b border-ui-border">
-        {tabs.map((tab) => (
-          <button
-            key={tab.id}
-            onClick={() => handleTabChange(tab.id)}
-            className={`
-              group py-3 px-6 label-mini rounded-t-xl transition-all duration-300 flex items-center gap-2.5 border-b-2 -mb-px
-              ${activeTab === tab.id
-                ? 'border-b-ui-accent text-ui-accent bg-ui-accent/5 opacity-100'
-                : 'border-b-transparent text-ui-text-dim hover:text-white hover:bg-white/5 opacity-80 hover:opacity-100'
-              }
-            `}
-            aria-current={activeTab === tab.id ? 'page' : undefined}
-            data-testid={`cli-tab-${tab.id}`}
-          >
-            {tab.icon}
-            {tab.name}
-          </button>
-        ))}
+      <div className="flex items-center border-b border-ui-border bg-black/40 px-5 py-2.5">
+        <SlidingSegmentedControl
+          value={activeTab}
+          onChange={value => handleTabChange(value as TabType)}
+          ariaLabel="BugTraceAI scanner navigation"
+          testIdPrefix="cli-tab"
+          itemWidth={136}
+          options={tabs.map(tab => ({ value: tab.id, label: <><span aria-hidden="true">{tab.icon}</span>{tab.name}</> }))}
+        />
       </div>
 
       {/* Tab Content */}
-      <div className="flex-1 min-h-0 flex flex-col">
+      <div ref={tabContentRef} className="flex-1 min-h-0 flex flex-col overflow-y-auto overscroll-contain">
         {renderTabContent()}
       </div>
     </div>

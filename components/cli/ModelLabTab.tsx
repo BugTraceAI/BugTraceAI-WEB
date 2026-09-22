@@ -14,6 +14,7 @@ import { useState, useRef, useCallback, useMemo, useEffect } from 'react';
 import { useSettings } from '../../contexts/SettingsProvider.tsx';
 import { TrashIcon } from '../Icons.tsx';
 import { ConfirmDeleteModal } from '../chat/ConfirmDeleteModal.tsx';
+import { SlidingSegmentedControl } from './SlidingSegmentedControl.tsx';
 
 // ── Dimension icons ───────────────────────────────────────────────────────────
 const BoltIcon = ({ className = 'w-3.5 h-3.5' }: { className?: string }) => (
@@ -62,6 +63,7 @@ const FALLBACK_CATALOG: CatalogModel[] = [
     { id: 'anthropic/claude-sonnet-4.6', name: 'Claude Sonnet 4.6', price: '$3.00/M' },
     { id: 'anthropic/claude-opus-4.6', name: 'Claude Opus 4.6', price: '$5.00/M' },
     { id: 'deepseek/deepseek-v4-pro', name: 'DeepSeek V4 Pro', price: '$0.43/M' },
+    { id: 'deepseek/deepseek-v4.1-flash', name: 'DeepSeek V4.1 Flash', price: '$0.12/M' },
     { id: 'z-ai/glm-5.2', name: 'GLM 5.2', price: '$0.82/M' },
     { id: 'anthropic/claude-opus-4.7', name: 'Claude Opus 4.7', price: '$5.00/M' },
     { id: 'moonshotai/kimi-k3', name: 'Kimi K3', price: '$3.00/M' },
@@ -830,12 +832,10 @@ export function ModelLabTab() {
                 try {
                     const response = await fetch(`${active.baseUrl}/api/model-eval/${expectedJobId}/results`, { signal: requestController.signal });
                     if (response.status === 404) {
-                        applyTerminalPayload({
-                            job_id: expectedJobId,
-                            status: 'FAILED',
-                            result: null,
-                            error: 'Benchmark job no longer exists on the CLI.',
-                        }, expectedJobId, token);
+                        // A CLI restart/rebuild removes in-memory jobs. This is not a
+                        // benchmark failure and should not leave a stale red error in
+                        // the UI; return to a clean configuration state instead.
+                        resetLocal();
                         return;
                     }
                     if (!response.ok) throw new Error(await apiError(response));
@@ -859,7 +859,7 @@ export function ModelLabTab() {
                 }
             }
         })();
-    }, [applyTerminalPayload, closeSocket, stopRecovery]);
+    }, [applyTerminalPayload, closeSocket, resetLocal, stopRecovery]);
 
     useEffect(() => () => {
         const active = activeJobRef.current;
@@ -1185,10 +1185,14 @@ export function ModelLabTab() {
                         <span className="label-mini label-mini-accent">Model Benchmark</span>
                         <span className="title-standard">Model Lab</span>
                     </div>
-                    <div className="flex items-center gap-1 rounded-xl border border-white/10 bg-white/[0.03] p-1">
-                        <button onClick={() => setActiveView('benchmark')} className={`btn-mini !py-1.5 !px-3 ${activeView === 'benchmark' ? 'btn-mini-primary' : 'btn-mini-secondary'}`}>Benchmark</button>
-                        <button onClick={showHistory} disabled={phase === 'running'} className={`btn-mini !py-1.5 !px-3 disabled:cursor-not-allowed disabled:opacity-30 ${activeView === 'history' ? 'btn-mini-primary' : 'btn-mini-secondary'}`}>History</button>
-                    </div>
+                    <SlidingSegmentedControl
+                        value={activeView}
+                        onChange={value => value === 'history' ? showHistory() : setActiveView('benchmark')}
+                        ariaLabel="Model Lab view"
+                        disabled={phase === 'running'}
+                        testIdPrefix="model-lab-view"
+                        options={[{ value: 'benchmark', label: 'Benchmark' }, { value: 'history', label: 'History' }]}
+                    />
                     {!cliConnected && <span className="badge-mini border border-amber-500/30 text-amber-300">CLI offline</span>}
                     {phase === 'running' && (
                         <span className="badge-mini badge-mini-accent animate-pulse shadow-[0_0_10px_rgba(255,127,80,0.2)]">
@@ -1251,14 +1255,16 @@ export function ModelLabTab() {
                         <div className="mb-2 flex flex-col gap-2 sm:flex-row sm:items-center">
                             <div className="flex items-center gap-2 label-mini">
                                 <span>Difficulty</span>
-                                <div className="flex items-center gap-1 rounded-xl border border-white/10 bg-white/[0.03] p-1">
-                                    {Object.values(BENCHMARK_SUITES).map(suite => (
-                                        <button key={suite.id} onClick={() => setSuiteId(suite.id)} disabled={phase === 'running'}
-                                            className={`btn-mini !py-1.5 !px-3 disabled:cursor-not-allowed disabled:opacity-30 ${suiteId === suite.id ? 'btn-mini-primary' : 'btn-mini-secondary'}`}>
-                                            {suite.label}
-                                        </button>
-                                    ))}
-                                </div>
+                                <SlidingSegmentedControl
+                                    value={suiteId}
+                                    onChange={value => setSuiteId(value as BenchmarkSuiteId)}
+                                    ariaLabel="Benchmark difficulty"
+                                    disabled={phase === 'running'}
+                                    testIdPrefix="benchmark-suite"
+                                    itemWidth={156}
+                                    variant="sub"
+                                    options={Object.values(BENCHMARK_SUITES).map(suite => ({ value: suite.id, label: suite.label }))}
+                                />
                             </div>
                             <span className="badge-mini w-fit border border-white/10 text-ui-text-dim">
                                 {BENCHMARK_SUITES[suiteId].prompts * 2} calls/model · {BENCHMARK_SUITES[suiteId].tier}

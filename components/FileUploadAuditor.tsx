@@ -14,6 +14,7 @@ import { Spinner } from './Spinner.tsx';
 import { ArrowUpTrayIcon, ScanIcon, FileCodeIcon, ArrowDownTrayIcon } from './Icons.tsx';
 import { ToolLayout } from './ToolLayout.tsx';
 import { MarkdownRenderer } from './MarkdownRenderer.tsx';
+import { CopyableCodeBlock } from './CopyableCodeBlock.tsx';
 
 interface FileUploadAuditorProps {
     onAnalysisStart: () => void;
@@ -96,9 +97,7 @@ const GeneratedFileCard: React.FC<{ file: GeneratedFile }> = ({ file }) => {
                 )}
             </div>
             {showContent && file.content && (
-                <pre className="mt-4 bg-black/40 p-3 rounded-md font-mono text-xs text-orange-300 overflow-x-auto border border-orange-900/50">
-                    <code>{file.content}</code>
-                </pre>
+                <CopyableCodeBlock value={file.content} language="FILE CONTENT" />
             )}
         </div>
     );
@@ -214,7 +213,7 @@ export const FileUploadAuditor: React.FC<FileUploadAuditorProps> = ({ onAnalysis
                         value={url}
                         onChange={(e) => setUrl(e.target.value)}
                         placeholder="https://example.com/profile-edit"
-                        className="input-premium w-full !py-4"
+                        className="input-premium h-10 w-full px-4 py-2.5 text-sm"
                         disabled={isLoading}
                         onKeyDown={(e) => e.key === 'Enter' && !isLoading && handleAnalyze()}
                     />
@@ -223,7 +222,7 @@ export const FileUploadAuditor: React.FC<FileUploadAuditorProps> = ({ onAnalysis
                     <button
                         onClick={handleAnalyze}
                         disabled={isLoading || !url.trim()}
-                        className="btn-mini btn-mini-primary !h-12 !px-10 !rounded-xl shadow-glow-coral group gap-3"
+                        className="btn-mini btn-mini-primary h-11 !px-8 !rounded-xl shadow-glow-coral group gap-2"
                         title="Scan the URL's HTML to find a file upload form"
                     >
                         {isLoading ? <Spinner /> : <ScanIcon className="h-5 w-5 group-hover:scale-110 transition-transform" />}
@@ -259,7 +258,7 @@ export const FileUploadAuditor: React.FC<FileUploadAuditorProps> = ({ onAnalysis
                         id="payload"
                         value={payload}
                         onChange={(e) => setPayload(e.target.value)}
-                        className="input-premium w-full h-32 p-5 font-mono text-sm resize-y"
+                        className="input-premium h-32 w-full resize-y p-4 font-mono text-sm leading-relaxed sm:p-5"
                     />
                 </div>
                 <div className="mt-8 flex justify-center">

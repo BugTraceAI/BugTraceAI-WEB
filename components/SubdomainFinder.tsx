@@ -39,14 +39,14 @@ export const SubdomainFinder: React.FC = () => {
                         value={domainInput}
                         onChange={(e) => setDomainInput(e.target.value)}
                         placeholder="example.com"
-                        className="input-premium w-full !py-3.5 px-6 !rounded-2xl !text-base"
+                        className="input-premium h-10 w-full px-4 !rounded-xl !text-sm"
                         onKeyDown={(e) => e.key === 'Enter' && handleOpenSubdomainList()}
                     />
                 </div>
                 <button
                     onClick={handleOpenSubdomainList}
                     disabled={!domainInput.trim()}
-                    className="btn-mini btn-mini-primary w-full sm:w-auto !py-4 px-10 !rounded-2xl !text-sm group"
+                    className="btn-mini btn-mini-primary h-11 w-full sm:w-auto !px-8 !rounded-xl !text-sm group"
                 >
                     <ScanIcon className="h-5 w-5 mr-3 group-hover:rotate-12 transition-transform" />
                     Open Subdomain List

@@ -77,7 +77,7 @@ export const JsRecon: React.FC<JsReconProps> = ({ onAnalysisStart, onAnalysisCom
           value={code}
           onChange={(e) => setCode(e.target.value)}
           placeholder="const apiKey = 'sk_live_...';\n\nfetch('/api/v1/users', {\n  // ...\n});"
-          className="input-premium w-full h-64 font-mono text-sm resize-y"
+          className="input-premium h-64 w-full resize-y p-4 font-mono text-xs leading-relaxed sm:p-5"
           disabled={isLoading}
         />
       </div>
@@ -86,7 +86,7 @@ export const JsRecon: React.FC<JsReconProps> = ({ onAnalysisStart, onAnalysisCom
         <button
           onClick={handleAnalyze}
           disabled={isLoading || !code.trim()}
-          className="btn-mini btn-mini-primary !py-4 px-10 !rounded-2xl !text-sm group"
+          className="btn-mini btn-mini-primary h-11 !rounded-xl !px-8 !text-sm group"
         >
           {isLoading ? <Spinner /> : <ScanIcon className="h-5 w-5 mr-3 group-hover:rotate-12 transition-transform" />}
           Analyze JS Code
@@ -107,7 +107,7 @@ export const JsRecon: React.FC<JsReconProps> = ({ onAnalysisStart, onAnalysisCom
         </div>
       )}
       
-      {error && !isLoading && <div className="mt-6 p-4 bg-red-900/50 border border-red-700 text-red-200 rounded-lg font-mono">{error}</div>}
+      {error && !isLoading && <div className="mt-6 rounded-xl border border-error/30 bg-error/10 px-4 py-3 font-mono text-xs text-error">{error}</div>}
 
       {report && !isLoading && (
         <div className="mt-8">

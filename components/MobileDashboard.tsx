@@ -1,5 +1,9 @@
 // components/MobileDashboard.tsx
 // Pocket monitor — ultra-minimal mobile scan status
+//
+// NOTE: This component is CLI-ONLY. It intentionally does not import API data
+// and does not consume mixed-engine reports; WebSocket/pause-resume actions stay
+// CLI-bound. Mixed-engine report views live in PastReportsTab instead.
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useScanSocket } from '../hooks/useScanSocket';
 import { usePastReports } from '../hooks/usePastReports';
@@ -55,11 +59,15 @@ export const MobileDashboard: React.FC = () => {
   // Auto-subscribe to active scan (guarded — only when scan ID actually changes)
   const subscribedIdRef = useRef<number | null>(null);
   useEffect(() => {
-    const running = activeScans.find(s => ['running', 'initializing', 'pending'].includes(s.status));
+    // Mobile dashboard is the legacy CLI WebSocket surface. API scans are
+    // monitored by the desktop API launcher via HTTP polling and must never be
+    // sent to the CLI socket (API ids are opaque strings).
+    const running = activeScans.find(s => s.engine === 'cli' && ['running', 'initializing', 'pending'].includes(s.status));
     if (running) {
-      if (subscribedIdRef.current !== running.id) {
-        subscribedIdRef.current = running.id;
-        subscribe(running.id);
+      const cliId = Number(running.id);
+      if (subscribedIdRef.current !== cliId) {
+        subscribedIdRef.current = cliId;
+        subscribe(cliId);
       }
     } else if (subscribedIdRef.current !== null) {
       subscribedIdRef.current = null;
@@ -67,7 +75,7 @@ export const MobileDashboard: React.FC = () => {
     }
   }, [activeScans, subscribe, unsubscribe]);
 
-  const activeScan = activeScans.find(s => ['running', 'initializing', 'pending', 'paused'].includes(s.status));
+  const activeScan = activeScans.find(s => s.engine === 'cli' && ['running', 'initializing', 'pending', 'paused'].includes(s.status));
 
   const sevCounts = useMemo(() => {
     const c: Record<string, number> = { critical: 0, high: 0, medium: 0, low: 0 };
@@ -336,10 +344,11 @@ export const MobileDashboard: React.FC = () => {
             </a>
           )}
 
-          {/* Past scans — one-liner */}
-          {reports.length > 0 && (
+          {/* Past scans — one-liner (CLI-only; usePastReports may include API rows,
+              but this mobile view stays CLI-bound per its header comment) */}
+          {reports.filter(r => (r.engine ?? 'cli') === 'cli').length > 0 && (
             <div className="flex items-center justify-between text-[11px] px-1">
-              <span className="text-ui-text-dim">{reports.length} past scan{reports.length !== 1 ? 's' : ''}</span>
+              <span className="text-ui-text-dim">{reports.filter(r => (r.engine ?? 'cli') === 'cli').length} past scan{reports.filter(r => (r.engine ?? 'cli') === 'cli').length !== 1 ? 's' : ''}</span>
               <a href="/" className="text-ui-accent">Desktop &rarr;</a>
             </div>
           )}

@@ -40,9 +40,11 @@ import { SecurityHeadersAnalyzer } from './components/SecurityHeadersAnalyzer.ts
 import { NoLightModeModal } from './components/NoLightModeModal.tsx';
 import { ErrorToast } from './components/ErrorToast.tsx';
 import { UpdateBanner } from './components/UpdateBanner.tsx';
+import { DesignSystemPage } from './components/DesignSystemPage.tsx';
 import { useWebSecAgent } from './hooks/useWebSecAgent.tsx';
 import { useChatContext } from './contexts/ChatContext.tsx';
 import { useSettings } from './contexts/SettingsProvider.tsx';
+import { getGeneralAssistantSystemPrompt } from './services/systemPrompts.ts';
 import { useRouteSync } from './hooks/useRouteSync.ts';
 import { View, Tool, VulnerabilityReport, Vulnerability, ExploitContext, ExploitSeed, Severity, AgentType } from './types.ts';
 
@@ -178,6 +180,11 @@ const App: React.FC = () => {
   const { maxToolHops } = useSettings();
 
   // Use the new custom hook for all WebSec Agent logic
+  const { loadSession, currentSession: activeChatSession } = useChatContext();
+  const chatSystemPromptOverride = activeChatSession?.session_type === 'general'
+    ? getGeneralAssistantSystemPrompt()
+    : null;
+
   const {
     messages: agentMessages,
     isLoading: isAgentLoading,
@@ -186,9 +193,10 @@ const App: React.FC = () => {
     startAnalysisWithAgent,
     startReportAnalysisWithAgent,
     syncHistory: syncAgentHistory
-  } = useWebSecAgent(handleShowApiKeyWarning, activeAgent, curlEnabled, { maxToolHops });
-
-  const { loadSession } = useChatContext();
+  } = useWebSecAgent(handleShowApiKeyWarning, activeAgent, curlEnabled, {
+    maxToolHops,
+    systemPromptOverride: chatSystemPromptOverride,
+  });
 
   const handleAcceptDisclaimer = () => {
     try {
@@ -626,6 +634,9 @@ const App: React.FC = () => {
           />
         </div>
         <Routes>
+          {/* Standalone visual reference page; does not mutate application state. */}
+          <Route path="/design-system" element={<DesignSystemPage />} />
+          <Route path="/bugtraceai/design-system" element={<DesignSystemPage />} />
           {/* Dynamic routes with URL parameters */}
           <Route path="/chat/:sessionId" element={renderActiveView()} />
           <Route path="/chat" element={renderActiveView()} />

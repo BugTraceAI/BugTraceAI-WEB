@@ -7,15 +7,51 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-## [2.0.0-rc1] - 2026-09-02
+## [2.0.24-beta] - 2026-09-22
+
+### Fixed
+
+- Launcher-selected API and CLI ports now flow through Docker Compose and the
+  Nginx proxies without fixed runtime listener assumptions.
+- WEB-to-CLI and WEB-to-BugTraceAI-API health checks are covered by the shared
+  Docker network integration path.
+
+## [2.0.23-beta] - 2026-09-22
+
+### Added
+
+- **BugTraceAI-API integration** — added a typed REST client for API scans,
+  opaque scan IDs, HTTP status polling, findings/results, OpenAPI and handoff
+  artifacts, report downloads, health checks, and provider management. The
+  default same-origin route is `/btai-api`, with an editable API Connector URL
+  for direct deployments.
+- **Launcher-aware API proxying** — Nginx now receives the API REST port from
+  the generated Launcher environment and proxies `/btai-api/` dynamically;
+  the WEB no longer assumes a fixed API host port.
+- **Design-system reference** — added the state-free `/design-system` and
+  `/bugtraceai/design-system` routes for reviewing the public visual language
+  and component patterns.
+- **ModelLab module** — promoted ModelLab to its own `/modellab` sidebar
+  module with independent OpenRouter credentials, live benchmark progress,
+  calibrated quick/advanced suites, per-slot recommendations, diversity
+  probing, cost visibility, cancellation/recovery and local history.
+- **AIrepeater workbench** — added the three-pane Request / Response / AI Agent
+  workflow with tabs, search, playbooks and report handoff.
+- **Live scan visibility** — added live specialist escalation ladders and
+  AuthDiscovery progress/totals to the Swarm Graph and event stream.
 
 ### Changed
-- Aligned the WEB release candidate with the BugTraceAI-CLI 4.0 refactor
-  standard.
-- BugTraceAI-owned portions of this snapshot are licensed under Apache-2.0.
-  Earlier AGPL-3.0 releases remain governed by their original terms.
-- Added release notices, contributor attribution, license history and a
-  preliminary third-party register for final artifact verification.
+
+- **Finding presentation** — API report rows now separate review state from
+  meaningful finding categories and remove duplicated review prefixes from
+  titles.
+- **Public release documentation** — documented the visual, ModelLab and
+  BugTraceAI-API changes and aligned the README version badge with `VERSION`.
+
+### Security
+
+- BugTraceAI-API remains a separate service with no built-in tenant isolation;
+  use it only on a trusted network or behind an authenticated reverse proxy.
 
 ## [1.5.40-beta] - 2026-07-24
 

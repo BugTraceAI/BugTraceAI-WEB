@@ -234,10 +234,10 @@
 
 /* Labels & Typography */
 .label-mini {
-  font-size: 10px;
+  font-size: 9px;
   font-weight: 800;
   text-transform: uppercase;
-  letter-spacing: 0.15em;
+  letter-spacing: 0.14em;
   color: var(--ui-text-dim);
 }
 
@@ -247,7 +247,7 @@
 }
 
 .title-standard {
-  font-size: 18px;
+  font-size: 17px;
   font-weight: 700;
   color: var(--ui-text-main);
   letter-spacing: -0.02em;
@@ -296,7 +296,10 @@
   border: 1px solid var(--ui-input-border);
   border-radius: 12px;
   color: var(--ui-text-main);
-  font-size: 13px;
+  font-size: 12px;
+  min-height: 38px;
+  line-height: 1.25;
+  padding-inline: 12px;
   transition: all var(--transition-fast);
 }
 
@@ -312,12 +315,15 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  padding: 8px 16px;
+  padding: 7px 14px;
+  min-height: 34px;
   border-radius: 12px;
-  font-size: 10px;
+  font-size: 9px;
   font-weight: 800;
   text-transform: uppercase;
-  letter-spacing: 0.12em;
+  letter-spacing: 0.1em;
+  line-height: 1.2;
+  white-space: nowrap;
   transition: all var(--transition-fast);
   cursor: pointer;
   border: 1px solid transparent;
@@ -348,6 +354,62 @@
   background: rgba(255, 255, 255, 0.05);
   color: var(--ui-text-main);
   border-color: var(--ui-card-hover-border);
+}
+
+.segmented-sub-indicator {
+  background: rgba(255, 127, 80, 0.68);
+  box-shadow: 0 3px 8px rgba(255, 127, 80, 0.2);
+}
+
+/* Binary controls use one compact track/thumb geometry everywhere. Keep this
+ * separate from segmented controls: switches represent a boolean, while the
+ * sliding selector represents mutually-exclusive modes. */
+.toggle-premium {
+  position: relative;
+  display: inline-flex;
+  flex-shrink: 0;
+  width: 44px;
+  height: 24px;
+  align-items: center;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.3);
+  cursor: pointer;
+  transition: background-color var(--transition-fast), border-color var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.toggle-premium:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--ui-input-focus-glow);
+}
+
+.toggle-premium.is-on {
+  border-color: rgba(255, 127, 80, 0.65);
+  background: rgba(255, 127, 80, 0.28);
+  border-color: color-mix(in srgb, var(--ui-accent) 65%, transparent);
+  background: color-mix(in srgb, var(--ui-accent) 28%, transparent);
+  box-shadow: 0 4px 12px color-mix(in srgb, var(--ui-accent) 24%, transparent);
+}
+
+.toggle-premium.is-disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.toggle-premium-thumb {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 16px;
+  height: 16px;
+  border-radius: 999px;
+  background: var(--color-text-primary);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35);
+  transition: transform var(--transition-normal);
+}
+
+.toggle-premium.is-on .toggle-premium-thumb {
+  transform: translateX(20px);
 }
 
 /* ============================================
@@ -638,6 +700,198 @@ option {
 
 .radar-ping {
   animation: radarPing 2s ease-out infinite;
+}
+
+/* API scan activity: a focused request/evidence pipeline rather than the CLI swarm graph. */
+.api-scan-visual {
+  position: relative;
+  min-height: 126px;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+  padding: 1rem 1.25rem;
+  border: 1px solid rgba(255, 127, 80, 0.22);
+  border-radius: 1rem;
+  background:
+    radial-gradient(circle at 9% 50%, rgba(255, 127, 80, 0.14), transparent 18%),
+    linear-gradient(110deg, rgba(255, 127, 80, 0.075), rgba(255, 255, 255, 0.018) 48%, rgba(126, 87, 170, 0.08));
+}
+
+.api-scan-visual::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.3;
+  background-image: linear-gradient(rgba(255, 255, 255, 0.035) 1px, transparent 1px), linear-gradient(90deg, rgba(255, 255, 255, 0.035) 1px, transparent 1px);
+  background-size: 22px 22px;
+  mask-image: linear-gradient(90deg, black, transparent 82%);
+}
+
+.api-scan-radar {
+  position: relative;
+  flex: 0 0 76px;
+  width: 76px;
+  height: 76px;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255, 127, 80, 0.18), rgba(41, 26, 67, 0.1) 54%, transparent 55%);
+  box-shadow: 0 0 26px rgba(255, 127, 80, 0.1);
+}
+
+.api-scan-radar-ring {
+  position: absolute;
+  inset: 13px;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  border-radius: 50%;
+}
+
+.api-scan-radar-ring-two {
+  inset: 27px;
+  border-color: rgba(255, 127, 80, 0.42);
+}
+
+.api-scan-radar-sweep {
+  position: absolute;
+  inset: 3px;
+  border-radius: 50%;
+  background: conic-gradient(from 0deg, rgba(255, 127, 80, 0.55), transparent 18%, transparent 100%);
+  animation: apiRadarSweep 2.8s linear infinite;
+}
+
+.api-scan-radar-core {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--color-accent-primary);
+  box-shadow: 0 0 0 5px rgba(255, 127, 80, 0.12), 0 0 15px var(--color-accent-primary);
+  transform: translate(-50%, -50%);
+  animation: apiRadarCore 1.8s ease-in-out infinite;
+}
+
+.api-scan-visual-content {
+  position: relative;
+  z-index: 1;
+  min-width: 0;
+  flex: 1;
+}
+
+.api-scan-live-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  color: var(--color-success);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+}
+
+.api-scan-live-indicator span {
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: currentColor;
+  box-shadow: 0 0 9px currentColor;
+  animation: apiLivePulse 1.4s ease-in-out infinite;
+}
+
+.api-scan-phase-list {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 0.5rem;
+  margin-top: 0.8rem;
+}
+
+.api-scan-phase {
+  position: relative;
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 0.35rem;
+  color: rgba(206, 193, 226, 0.55);
+  font-size: 9px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.api-scan-phase::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  right: -0.45rem;
+  width: 0.4rem;
+  height: 1px;
+  background: rgba(255, 255, 255, 0.14);
+}
+
+.api-scan-phase:last-child::after {
+  display: none;
+}
+
+.api-scan-phase-dot {
+  flex: 0 0 6px;
+  width: 6px;
+  height: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  border-radius: 50%;
+}
+
+.api-scan-phase.is-complete {
+  color: var(--color-success);
+}
+
+.api-scan-phase.is-complete .api-scan-phase-dot {
+  border-color: var(--color-success);
+  background: var(--color-success);
+  box-shadow: 0 0 7px rgba(34, 197, 94, 0.5);
+}
+
+.api-scan-phase.is-active {
+  color: var(--color-accent-primary);
+}
+
+.api-scan-phase.is-active .api-scan-phase-dot {
+  border-color: var(--color-accent-primary);
+  background: var(--color-accent-primary);
+  box-shadow: 0 0 0 4px rgba(255, 127, 80, 0.12), 0 0 10px var(--color-accent-primary);
+  animation: apiPhasePulse 1.25s ease-in-out infinite;
+}
+
+@keyframes apiRadarSweep {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes apiRadarCore {
+  0%, 100% { transform: translate(-50%, -50%) scale(0.8); opacity: 0.7; }
+  50% { transform: translate(-50%, -50%) scale(1.15); opacity: 1; }
+}
+
+@keyframes apiLivePulse {
+  0%, 100% { opacity: 0.45; transform: scale(0.8); }
+  50% { opacity: 1; transform: scale(1.15); }
+}
+
+@keyframes apiPhasePulse {
+  0%, 100% { opacity: 0.55; transform: scale(0.85); }
+  50% { opacity: 1; transform: scale(1.2); }
+}
+
+@media (max-width: 700px) {
+  .api-scan-visual { align-items: flex-start; }
+  .api-scan-radar { flex-basis: 58px; width: 58px; height: 58px; }
+  .api-scan-radar-ring { inset: 10px; }
+  .api-scan-radar-ring-two { inset: 20px; }
+  .api-scan-phase-list { grid-template-columns: repeat(3, minmax(0, 1fr)); row-gap: 0.45rem; }
+  .api-scan-phase:nth-child(3)::after, .api-scan-phase:nth-child(6)::after { display: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .api-scan-radar-sweep, .api-scan-radar-core, .api-scan-live-indicator span, .api-scan-phase.is-active .api-scan-phase-dot { animation: none; }
 }
 
 /* Scanline moving top to bottom */
@@ -1933,5 +2187,68 @@ select.input-modern {
           mask-image: linear-gradient(to bottom, transparent 0, #000 16px, #000 calc(100% - 16px), transparent 100%);
 }
 .director-events-full { position: absolute; inset: 0; overflow-y: auto; overflow-x: auto; }
+
+/* ===== shared read-only code blocks ===== */
+.btai-code-block {
+  margin: 0.75rem 0;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.10);
+  border-radius: 0.65rem;
+  background: rgba(10, 6, 22, 0.72);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
+}
+.btai-code-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 2rem;
+  padding: 0.35rem 0.65rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+  background: rgba(45, 27, 77, 0.58);
+}
+.btai-code-language {
+  color: rgba(202, 191, 224, 0.68);
+  font: 700 0.625rem/1 ui-monospace, SFMono-Regular, Menlo, monospace;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+.btai-code-copy {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  border: 1px solid rgba(255, 127, 80, 0.22);
+  border-radius: 0.4rem;
+  padding: 0.25rem 0.5rem;
+  color: rgba(255, 201, 179, 0.82);
+  background: rgba(255, 127, 80, 0.06);
+  font: 700 0.625rem/1 ui-monospace, SFMono-Regular, Menlo, monospace;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  transition: color 150ms ease, border-color 150ms ease, background 150ms ease;
+}
+.btai-code-copy:hover,
+.btai-code-copy:focus-visible {
+  border-color: rgba(255, 127, 80, 0.55);
+  color: #fff;
+  background: rgba(255, 127, 80, 0.16);
+  outline: none;
+}
+.btai-code-pre {
+  margin: 0;
+  max-height: 28rem;
+  overflow: auto;
+  padding: 0.8rem;
+  color: rgba(245, 239, 255, 0.78);
+  background: transparent;
+  font: 0.75rem/1.55 ui-monospace, SFMono-Regular, Menlo, monospace;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.btai-code-pre code {
+  color: inherit;
+  background: transparent;
+  padding: 0;
+  font: inherit;
+}
 /* fullscreen (⤢): the whole live console fills the screen — stage director view */
 [data-testid="scan-console"]:fullscreen { border-radius: 0; background: radial-gradient(1300px 800px at 50% 30%, #3a275c 0%, #2D1B4D 62%, #221340 100%); }

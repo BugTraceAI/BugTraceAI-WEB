@@ -1,4 +1,6 @@
 // components/cli/dashboard/RecentReportsPanel.tsx
+// CLI-only reports panel for the CLI agent dashboard. This panel intentionally
+// consumes only CLI API data (`/api/cli/reports`) and never mixed-engine rows.
 import React, { useState, useEffect } from 'react';
 import { ArrowPathIcon } from '../../Icons.tsx';
 
@@ -14,6 +16,7 @@ export interface CLIReport {
   } | null;
   report_path: string;
   origin?: string; // "cli" or "web" — where scan was launched
+  engine?: "cli" | "api"; // engine discriminator; this panel only renders "cli" rows
   has_report?: boolean; // Whether report files exist on disk
 }
 
