@@ -12,7 +12,7 @@
   <a href="https://bugtraceai.com"><img src="https://img.shields.io/badge/Website-bugtraceai.com-blue?logo=google-chrome&logoColor=white" alt="Website"/></a>
   <a href="https://deepwiki.com/BugTraceAI/BugTraceAI-WEB"><img src="https://img.shields.io/badge/Wiki-Documentation-000?logo=wikipedia&logoColor=white" alt="Wiki"/></a>
   <a href="https://deepwiki.com/BugTraceAI/BugTraceAI-WEB"><img src="https://deepwiki.com/badge.svg" alt="Ask DeepWiki"/></a>
-  <img src="https://img.shields.io/badge/License-AGPL--3.0-blue.svg" alt="License"/>
+  <img src="https://img.shields.io/badge/License-Apache--2.0-blue.svg" alt="License"/>
   <img src="https://img.shields.io/badge/Version-2.0.24--beta-orange" alt="Version"/>
 </p>
 
@@ -419,7 +419,7 @@ BugTraceAI-WEB/
 
 ## License
 
-AGPL-3.0 License. See [LICENSE](LICENSE) for details.
+Apache License 2.0. See [LICENSE](LICENSE) for details.
 
 ---
 
