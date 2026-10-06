@@ -293,12 +293,29 @@ keys into an AI coding-agent chat.
 Give your local terminal agent this prompt. It launches the official installer
 and leaves the interactive choices and secret entry to you:
 
-> Install BugTraceAI-WEB using the official universal Launcher. Read this
-> README and the Launcher README, run the official install command above in my
-> terminal, and let me interact with the TUI. I will enter and verify the
-> provider key locally, choose Wizard or AI, and select the modules and runtime.
-> Do not ask for secrets in chat or start a scan. Verify the selected
-> installation and report any checks that could not be completed.
+```text
+Install BugTraceAI-WEB only on this machine using the official universal Launcher.
+
+First read:
+https://github.com/BugTraceAI/BugTraceAI-WEB#readme
+https://github.com/BugTraceAI/BugTraceAI-Launcher#readme
+
+Follow those instructions using the official installer:
+https://raw.githubusercontent.com/BugTraceAI/BugTraceAI-Launcher/main/install.sh
+
+Select only BugTraceAI-WEB. Do not select BugTraceAI-API or BugTraceAI-CLI.
+Use Install with Wizard for this standalone WEB installation. Existing
+external scanning engines can be connected later.
+
+Preserve any existing installation, configuration and data. Run the
+Launcher in my local interactive terminal. I will enter and verify the
+provider API key there, choose ports and review the plan before installation.
+Keep credentials out of chat and logs. Do not start a scan.
+
+Verify the WEB frontend and backend health on the configured port.
+Report the installation location, launch commands, checks completed
+and any checks still pending.
+```
 
 For direct WEB-only setup in this checkout, configure `.env.docker` from
 `.env.example`, set a unique database password and run
