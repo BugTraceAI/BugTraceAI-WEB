@@ -8,7 +8,7 @@
 
 - [Prerequisites](#prerequisites)
 - [Option 1: BugTraceAI Launcher (Recommended)](#option-1-bugtraceai-launcher-recommended)
-- [Option 2: Standalone Docker (install.sh wizard)](#option-2-standalone-docker-installsh-wizard)
+- [Option 2: Standalone Docker](#option-2-standalone-docker)
 - [Option 3: Manual Docker Compose](#option-3-manual-docker-compose)
 - [Option 4: Local Development Setup](#option-4-local-development-setup)
 - [Post-Installation](#post-installation)
@@ -23,12 +23,12 @@
 
 | Requirement | Option 1–3 (Docker) | Option 4 (Local Dev) |
 |---|---|---|
-| **Docker** 24.0+ | ✅ Required | ❌ Not needed |
-| **Docker Compose** | ✅ Required | ❌ Not needed |
+| **Docker** | Launcher prepares it; direct setup requires it | ❌ Not needed for WEB itself |
+| **Docker Compose v2** | Launcher prepares it; direct setup requires it | ❌ Not needed for WEB itself |
 | **Node.js** 18+ | ❌ Not needed | ✅ Required |
 | **npm** | ❌ Not needed | ✅ Required |
 | **Git** | ✅ Required | ✅ Required |
-| **OpenRouter API key** | ✅ Required | ✅ Required |
+| **Provider key** | Configure locally for AI analysis | Configure locally for AI analysis |
 | **RAM** | 2 GB minimum | 1 GB minimum |
 | **Disk** | 3 GB free | 500 MB free |
 
@@ -40,7 +40,12 @@ Get an OpenRouter API key at [openrouter.ai/keys](https://openrouter.ai/keys) �
 
 ## Option 1: BugTraceAI Launcher (Recommended)
 
-The Launcher deploys both **BugTraceAI-WEB and BugTraceAI-CLI** together, fully configured and auto-connected. This is the recommended approach for most users.
+The universal Launcher presents one profile chooser for the products you want.
+Choose `web` for **BugTraceAI-WEB + the CLI web-scanning REST API/MCP + the
+BugTraceAI-API target scanner**. Choose `full` to add the CLI terminal TUI.
+The `terminal` profile installs only the CLI TUI; `server` installs only the
+CLI web-scanning API/MCP; `api` installs only the independent API-target
+scanner. See the [Launcher profile guide](https://github.com/BugTraceAI/BugTraceAI-Launcher#quick-start).
 
 ### One-liner install
 
@@ -56,46 +61,80 @@ cd ~/bugtraceai-launcher
 ./launcher.sh
 ```
 
-The wizard will:
+The Launcher TUI will:
 
-1. Check and install missing dependencies (Git, Docker, Compose) on Ubuntu/Debian
-2. Ask you to choose a deployment mode (Full, Standalone WEB, or Standalone CLI)
-3. Ask for your OpenRouter API key
-4. Auto-detect free ports (default: WEB on `6869`, CLI on `8000`)
-5. Clone repos, build Docker images, and start all services
-6. Run health checks and confirm everything is working
+1. Show the products and engines included in each profile
+2. Select a runtime once (WEB/API-target profiles require Docker)
+3. Offer optional reconFTW and Kali toolboxes for WEB deployments
+4. Optionally enter provider credentials and configure available service ports
+5. Build the selected Docker services and run health checks
 
-After installation, access the dashboard at **http://localhost:6869**
+After installation, use the dashboard URL printed by the Launcher (normally
+**http://localhost:6869**).
+
+At the provider-key prompt, press Enter to skip and continue installation.
+Add the key through the local provider settings before starting AI-powered
+analysis; installation itself does not run a scan.
 
 > See [BugTraceAI-Launcher](https://github.com/BugTraceAI/BugTraceAI-Launcher) for full Launcher documentation including macOS (Apple Silicon) support.
 
+### Install with your AI coding agent
+
+Give this prompt to an agent with terminal access. It installs standalone WEB
+only; for the integrated platform, replace the standalone setup with the
+Launcher `web` profile (Launcher 3.3.14+).
+
+```text
+Install BugTraceAI-WEB as a standalone Docker deployment from this checkout.
+
+Read INSTALLATION.md, README.md and the Compose configuration first. Preserve
+existing files and local configuration. Configure .env.docker from .env.example
+and use ./scripts/install-runtime.sh after verifying its documented requirements;
+do not silently add BugTraceAI-CLI or BugTraceAI-API. Keep the generated
+database password in local configuration and enter provider keys only through
+the documented local setup flow or application settings, never in chat output
+or command logs. If a port is occupied, select an available port and record it.
+
+Build and start WEB, then verify the frontend and backend health checks and
+open the local dashboard. Do not launch a scan or send traffic to a target as
+part of installation. If Docker, Compose or provider configuration is missing,
+report the precise blocker and next step without installing unrelated tools.
+
+Finish with the installation directory, local dashboard URL and checks run.
+Do not print secret values.
+```
+
 ---
 
-## Option 2: Standalone Docker (install.sh wizard)
+## Option 2: Standalone Docker
 
-Use this if you only want to deploy BugTraceAI-WEB without the CLI.
+Bare `./install.sh` opens the universal Launcher with `web` suggested. The
+explicit runtime backend below deploys only this WEB checkout. It requires
+Docker Compose v2 and curl, and does not install scanning engines or toolboxes.
 
 ```bash
 git clone https://github.com/BugTraceAI/BugTraceAI-WEB.git
 cd BugTraceAI-WEB
-chmod +x install.sh
-./install.sh
+cp .env.example .env.docker
+chmod 600 .env.docker
+# Edit .env.docker: set a unique POSTGRES_PASSWORD and available ports.
+./scripts/install-runtime.sh
 ```
 
-The wizard will prompt you for:
-- Frontend port (default: `6869`)
-- Backend port (default: `3001`)
-- PostgreSQL password (auto-generated if you press Enter)
-- CLI backend URL (optional — leave empty for standalone WEB mode)
+The installer keeps the existing file and database volumes, validates Compose,
+waits for the selected services and checks the frontend health route before
+reporting readiness. It never prints the database password. The backend listens
+on port 3001 inside Docker; the frontend exposes it through `/api` and `/health`.
+Standalone WEB starts without CLI or API-target backends; their scan routes
+require connecting the corresponding services separately.
 
 After the wizard completes:
 
 ```bash
 # Check services are running
-docker compose ps
+docker compose --env-file .env.docker ps
 
-# Access the dashboard
-open http://localhost:6869
+# Open the dashboard URL printed by the installer (default localhost:6869).
 ```
 
 ---
@@ -125,34 +164,37 @@ FRONTEND_PORT=6869
 BACKEND_PORT=3001
 
 # Optional: connect to BugTraceAI-CLI
-VITE_CLI_API_URL=http://localhost:8000
+VITE_CLI_API_URL=/cli-api
+VITE_BTAI_API_URL=/btai-api
+CLI_API_PORT=8000
+BTAI_API_PORT=8005
 ```
 
 ### Step 3: Start services
 
 ```bash
-docker compose --env-file .env.docker up -d
+docker compose --env-file .env.docker up --build -d --wait
 ```
 
 ### Step 4: Verify
 
 ```bash
-# All 3 containers should be running: postgres, backend, frontend
-docker compose ps
+# Core services: postgres, backend, frontend and api-routes
+docker compose --env-file .env.docker ps
 
 # Health check
-curl http://localhost:6869
+curl -fsS http://localhost:6869/health
 ```
 
 ### Managing the stack
 
 ```bash
-docker compose down              # Stop
-docker compose up -d             # Start
-docker compose logs -f           # Tail logs
-docker compose logs frontend     # Frontend (nginx) logs only
-docker compose logs backend      # Backend (Express) logs only
-docker compose restart backend   # Restart a specific service
+docker compose --env-file .env.docker down              # Stop; keep volumes
+docker compose --env-file .env.docker up -d             # Start
+docker compose --env-file .env.docker logs -f           # Tail logs
+docker compose --env-file .env.docker logs frontend     # Frontend logs
+docker compose --env-file .env.docker logs backend      # Backend logs
+docker compose --env-file .env.docker restart backend   # Restart a service
 ```
 
 ---
@@ -170,9 +212,8 @@ cd BugTraceAI-WEB/backend
 # Install dependencies
 npm install
 
-# Configure environment
-cp .env.example .env
-# Edit .env — set DATABASE_URL to your local PostgreSQL instance
+# Create backend/.env with DATABASE_URL pointing to your local PostgreSQL.
+# Preserve an existing file and credentials.
 
 # Run database migrations
 npx prisma migrate dev
@@ -253,12 +294,21 @@ BugTraceAI-WEB supports **authenticated CLI scans** for login-protected targets.
 ### Create your auth config
 
 ```yaml
-# auth_config.yaml
-login_url: https://target.com/login
-username: pentester@example.com
-password: your_password_here
-totp_secret: BASE32TOTPSECRETHERE   # optional — for 2FA/TOTP apps
-success_condition: "dashboard"       # string to confirm successful login
+authentication:
+  login_url: "/login"
+  login_type: form
+  credentials:
+    username: "user@example.com"
+    password: "your-password"
+    # totp_secret: "YOUR_BASE32_SECRET"
+  login_flow:
+    - "Type $username into the email field"
+    - "Type $password into the password field"
+    - "Click the 'Sign In' button"
+    # - "Enter $totp in the code field"
+  success_condition:
+    type: url_contains
+    value: "/dashboard"
 ```
 
 ### Use it from the WEB dashboard
@@ -275,7 +325,8 @@ The scanner will:
 - Confirm login via `success_condition`
 - Reuse the authenticated session across all 6 scan phases
 
-> The `auth_config.yaml` is included in the report ZIP automatically for audit traceability.
+Use the [CLI authentication reference](https://github.com/BugTraceAI/BugTraceAI-CLI/blob/main/INSTALLATION.md#target-authentication)
+for the shared YAML format and optional TOTP setup.
 
 ---
 
@@ -291,8 +342,8 @@ The WEB is already connected to the CLI automatically. Nothing to do.
 1. Start BugTraceAI-CLI separately:
    ```bash
    cd BugTraceAI-CLI
-   docker compose up -d
-   # CLI API will be at http://localhost:8000
+   ./scripts/install-runtime.sh --interface api --runtime docker --global no --launch no
+   # Use the API URL printed by the CLI installer.
    ```
 
 2. In BugTraceAI-WEB, go to **Settings** → **CLI Connector**
@@ -310,20 +361,21 @@ The WEB is already connected to the CLI automatically. Nothing to do.
 
 ```bash
 # Check container status
-docker compose ps
+docker compose --env-file .env.docker ps
 
 # View all logs
-docker compose logs
+docker compose --env-file .env.docker logs
 
 # View specific service logs
-docker compose logs backend
-docker compose logs frontend
-docker compose logs postgres
+docker compose --env-file .env.docker logs backend
+docker compose --env-file .env.docker logs frontend
+docker compose --env-file .env.docker logs postgres
 ```
 
 ### Port already in use
 
-The `install.sh` wizard auto-detects and resolves port conflicts. For manual Docker deployments:
+The universal Launcher detects available ports. For manual Docker deployments,
+edit `.env.docker` before starting; the direct backend uses those configured values:
 
 ```bash
 # Find what's using port 6869
@@ -335,24 +387,22 @@ sudo lsof -i :6869
 
 ```bash
 # Check PostgreSQL container is running
-docker compose ps postgres
+docker compose --env-file .env.docker ps postgres
 
 # Check connection from backend container
-docker compose exec backend sh -c "npx prisma db pull"
-
-# Reset database (warning: deletes all data)
-docker compose down -v
-docker compose up -d
+docker compose --env-file .env.docker exec backend sh -c "npx prisma db pull"
 ```
+
+Check that `.env.docker` contains the credentials used when the database volume
+was created. Changing environment variables does not change an existing
+PostgreSQL user's password. Restore the matching configuration or update that
+user deliberately; reinstalling does not require deleting the database volume.
 
 ### Prisma migration errors
 
 ```bash
 # Apply pending migrations
-docker compose exec backend npx prisma migrate deploy
-
-# Reset and re-apply all migrations (dev only)
-docker compose exec backend npx prisma migrate reset
+docker compose --env-file .env.docker exec backend npx prisma migrate deploy
 ```
 
 ### API key not working
@@ -393,7 +443,7 @@ This stops all containers, removes Docker volumes (including the database), and 
 cd BugTraceAI-WEB
 
 # Stop and remove containers + volumes (deletes database)
-docker compose down -v
+docker compose --env-file .env.docker down -v
 
 # Remove cloned repo
 cd ..
@@ -427,3 +477,16 @@ rm -rf BugTraceAI-WEB
 ---
 
 <p align="center">Made with ❤️ by Albert C. — <a href="https://x.com/yz9yt">@yz9yt</a></p>
+
+## Updates and compatible versions
+
+For Launcher-managed installations, use Launcher 3.3.14+ and review
+`./launcher.sh update --plan` before `./launcher.sh update`. The visual menu also
+has **Update installation**. Source tags come from one compatible release
+manifest; preparation finishes before activation, and saved settings/data remain
+in place. Use `./launcher.sh update --recover` for an interrupted activation.
+
+See the [release and recovery guide](https://github.com/BugTraceAI/BugTraceAI-Launcher/blob/main/RELEASES.md).
+Direct component checkouts keep their explicit runtime backend. Choose tagged
+versions deliberately, retain local configuration and data, and rerun that
+backend; a development checkout is not silently moved to a public release.
