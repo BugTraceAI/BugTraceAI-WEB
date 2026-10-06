@@ -15,8 +15,12 @@ WORKDIR /app
 COPY backend/package.json backend/package-lock.json ./
 COPY VERSION ./
 
-# Install all dependencies (including dev for build)
-RUN npm ci
+# Install all dependencies (including dev for build). npm registry connections
+# can reset during the long first build, especially on small/remote hosts.
+RUN npm config set fetch-retries 5 && \
+    npm config set fetch-retry-mintimeout 20000 && \
+    npm config set fetch-retry-maxtimeout 120000 && \
+    npm ci --no-audit --no-fund
 
 # Copy Prisma schema and generate client
 COPY backend/prisma ./prisma
@@ -40,7 +44,11 @@ WORKDIR /app
 # Copy package files and install production dependencies only
 COPY backend/package.json backend/package-lock.json ./
 COPY VERSION ./
-RUN npm ci --omit=dev
+# Keep the production install resilient to transient npm ECONNRESET failures.
+RUN npm config set fetch-retries 5 && \
+    npm config set fetch-retry-mintimeout 20000 && \
+    npm config set fetch-retry-maxtimeout 120000 && \
+    npm ci --omit=dev --no-audit --no-fund
 
 # Copy Prisma schema for migrations
 COPY backend/prisma ./prisma

@@ -13,7 +13,7 @@
   <a href="https://deepwiki.com/BugTraceAI/BugTraceAI-WEB"><img src="https://img.shields.io/badge/Wiki-Documentation-000?logo=wikipedia&logoColor=white" alt="Wiki"/></a>
   <a href="https://deepwiki.com/BugTraceAI/BugTraceAI-WEB"><img src="https://deepwiki.com/badge.svg" alt="Ask DeepWiki"/></a>
   <img src="https://img.shields.io/badge/License-Apache--2.0-blue.svg" alt="License"/>
-  <img src="https://img.shields.io/badge/Version-2.0.24--beta-orange" alt="Version"/>
+  <img src="https://img.shields.io/badge/Version-2.0.32--beta-orange" alt="Version"/>
 </p>
 
 <p align="center">
@@ -37,7 +37,7 @@
 - [Disclaimer](#disclaimer)
 - [What is BugTraceAI-WEB?](#what-is-bugtraceai-web)
 - [Features](#features)
-- [What's New in v2.0.24-beta](#whats-new-in-v2024-beta)
+- [What's New in v2.0.32-beta](#whats-new-in-v2032-beta)
 - [Architecture](#architecture)
 - [Getting Started](#getting-started)
 - [Development Setup](#development-setup)
@@ -45,7 +45,24 @@
 - [Tech Stack](#tech-stack)
 - [License](#license)
 
-## What's New in v2.0.24-beta
+## What's New in v2.0.32-beta
+
+- Keep the standalone Launcher bootstrap compatible with macOS's system Bash 3.2 regex parser.
+- Component installer entry points verify Launcher 3.3.14+ before launching and stop safely when the published Launcher is older.
+- Compatible release updates use the coordinated Launcher 3.3.14 manifest with preparation before activation, database backup and runtime verification.
+- Refresh production dependencies and remove the unused backend `chokidar` dependency; production dependency audits report no known vulnerabilities.
+
+- Universal Launcher entry point with WEB suggested; explicit runtime backend for coding agents, with no duplicate setup wizard.
+- Standalone configuration template, data-preserving installs and service health verification.
+- WEB starts without optional scanning engines; their proxy routes resolve when used.
+
+## Previous changes: v2.0.25-beta
+
+- Installation guidance distinguishes WEB-only, integrated WEB + both scanning
+  engines, and the full workspace with the CLI terminal TUI. The standalone
+  install path now includes a safe prompt for an AI coding agent.
+
+## Previous release: v2.0.24-beta
 
 This release consolidates the public WEB experience and its connection to the
 standalone BugTraceAI-API service.
@@ -235,48 +252,68 @@ They work **autonomously or together** — the WEB app doesn't need the CLI to f
 
 ### Prerequisites
 
-- [Docker](https://docs.docker.com/get-docker/) & Docker Compose
-- An [OpenRouter](https://openrouter.ai/) API key (for AI-powered analysis tools)
+The Launcher prepares the dependencies for your selection. Direct standalone
+WEB requires Docker Compose v2, curl and local database configuration. Configure
+a supported provider in the application to use AI analysis tools. Node/npm are
+needed for local development, not for Docker deployment.
 
 ### Installation (Docker)
+
+For the connected platform, use the universal [BugTraceAI Launcher](https://github.com/BugTraceAI/BugTraceAI-Launcher)
+and choose its `web` profile. It installs WEB plus the CLI web-scanning and
+API-target engines; `full` also includes the CLI terminal TUI. See
+[INSTALLATION.md](INSTALLATION.md) for the profile matrix, standalone Docker
+path and an AI-agent install prompt.
 
 **Interactive wizard (recommended):**
 
 ```bash
+curl -fsSL https://raw.githubusercontent.com/BugTraceAI/BugTraceAI-Launcher/main/install.sh | bash
+```
+
+From a WEB checkout, the component entry point opens the same menu with `web`
+suggested (Launcher 3.3.14+; older public Launcher versions are rejected before installation):
+
+```bash
 git clone https://github.com/BugTraceAI/BugTraceAI-WEB
 cd BugTraceAI-WEB
-chmod +x install.sh
 ./install.sh
 ```
 
-The wizard guides you through port selection, database configuration, and CLI backend URL.
+The menu shows WEB and both required scanning engines before installation.
+For direct WEB-only setup in this checkout, configure `.env.docker` from
+`.env.example`, set a unique database password and run
+`./scripts/install-runtime.sh`. It preserves configuration and database volumes;
+scans require the corresponding backend connected separately. The legacy
+`dockerizer.sh` command delegates to the universal entry point. Legacy
+`./install.sh --standalone` delegates to the same direct backend, with no
+additional installation menu.
 
 ### Authenticated Scanning (YAML + TOTP)
 
 For targets that require login, BugTraceAI-WEB can configure authenticated scan sessions. Create an `auth_config.yaml` file:
 
 ```yaml
-login_url: https://target.com/login
-username: your_user
-password: your_password
-totp_secret: YOUR_TOTP_SECRET    # optional, for 2FA targets
-success_condition: "dashboard"   # string to confirm successful login
+authentication:
+  login_url: "/login"
+  login_type: form
+  credentials:
+    username: "user@example.com"
+    password: "your-password"
+    # totp_secret: "YOUR_BASE32_SECRET"
+  login_flow:
+    - "Type $username into the email field"
+    - "Type $password into the password field"
+    - "Click the 'Sign In' button"
+    # - "Enter $totp in the code field"
+  success_condition:
+    type: url_contains
+    value: "/dashboard"
 ```
 
 Upload it in the Scan Launcher → **Auth Config** tab before starting the scan. The CLI will handle TOTP token generation automatically.
 
 See the [CLI documentation](https://github.com/BugTraceAI/BugTraceAI-CLI) for the full `auth_config.yaml` reference.
-
-**Quick start:**
-
-```bash
-git clone https://github.com/BugTraceAI/BugTraceAI-WEB
-cd BugTraceAI-WEB
-chmod +x dockerizer.sh
-./dockerizer.sh
-```
-
-Access at **http://localhost:6869**
 
 ### Post-install
 
@@ -288,9 +325,9 @@ Access at **http://localhost:6869**
 ### Stop / Restart
 
 ```bash
-docker compose down          # Stop
-docker compose up -d         # Start again
-docker compose logs -f       # View logs
+docker compose --env-file .env.docker down          # Stop; keep volumes
+docker compose --env-file .env.docker up -d         # Start again
+docker compose --env-file .env.docker logs -f       # View logs
 ```
 
 ## Development Setup
@@ -305,9 +342,8 @@ cd backend
 # Install dependencies
 npm install
 
-# Configure environment
-cp .env.example .env
-# Edit .env with your PostgreSQL connection string
+# Create backend/.env with your local PostgreSQL DATABASE_URL.
+# Preserve existing configuration and credentials.
 
 # Run database migrations
 npx prisma migrate dev
@@ -412,9 +448,10 @@ BugTraceAI-WEB/
 │   │   └── utils/        #   Prisma client, exporters, comparison engine
 │   └── tests/            #   Integration tests
 ├── App.tsx               # Main app (routing, providers)
-├── docker-compose.yml    # 3-service stack (PostgreSQL, backend, frontend/nginx)
-├── install.sh            # Interactive installation wizard
-└── dockerizer.sh         # Quick Docker deploy script
+├── docker-compose.yml    # WEB/database/api-routes; optional toolboxes
+├── install.sh            # Universal Launcher compatibility entry
+├── dockerizer.sh         # Compatibility alias for install.sh
+└── scripts/install-runtime.sh # Explicit deployment from existing config
 ```
 
 ## License

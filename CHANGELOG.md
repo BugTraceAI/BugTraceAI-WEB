@@ -7,6 +7,41 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [2.0.32-beta] - 2026-10-05
+
+### Changed
+- Require BugTraceAI Launcher 3.3.14 or newer from the universal component entry point, matching the version that fixes combined WEB/API Docker networking.
+- Align WEB installation and AI-agent instructions with the supported Launcher minimum.
+
+## [2.0.31-beta] - 2026-10-05
+
+### Fixed
+- Keep the standalone Launcher bootstrap compatible with macOS's system Bash 3.2 regex parser.
+
+### Changed
+- Update the coordinated release candidate to WEB 2.0.31-beta.
+
+## [2.0.30-beta] - 2026-10-05
+
+### Fixed
+- Check the public Launcher version before component entry points run it, so an incompatible old installer cannot silently take over setup.
+
+### Changed
+- Coordinate the WEB installer candidate with Launcher 3.3.6 and WEB 2.0.30-beta.
+
+## [2.0.29-beta] - 2026-10-05
+
+### Security
+
+- Update production DOMPurify and IP address validation dependencies to patched
+  releases, and remove the unused backend `chokidar` runtime dependency. The
+  production dependency audits report no known vulnerabilities.
+
+### Changed
+
+- Align compatible-release documentation with Launcher 3.3.5 and refresh the
+  release/version metadata.
+
 ## [2.0.24-beta] - 2026-09-22
 
 ### Fixed
