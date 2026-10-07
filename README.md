@@ -1,503 +1,197 @@
 <p align="center">
-  <img src="logo.png" alt="BugTraceAI" width="200"/>
+  <a href="https://github.com/BugTraceAI/BugTraceAI">
+    <img src="BTAI_Logo_GitHub.png" alt="BugTraceAI" width="180"/>
+  </a>
 </p>
 
 <h1 align="center">BugTraceAI-WEB</h1>
 
 <p align="center">
-  AI-powered web vulnerability analysis suite & CLI control center
+  Launch scans. Follow agents live. Investigate requests. Review the evidence.
 </p>
 
 <p align="center">
-  <a href="https://bugtraceai.com"><img src="https://img.shields.io/badge/Website-bugtraceai.com-blue?logo=google-chrome&logoColor=white" alt="Website"/></a>
-  <a href="https://deepwiki.com/BugTraceAI/BugTraceAI-WEB"><img src="https://img.shields.io/badge/Wiki-Documentation-000?logo=wikipedia&logoColor=white" alt="Wiki"/></a>
-  <a href="https://deepwiki.com/BugTraceAI/BugTraceAI-WEB"><img src="https://deepwiki.com/badge.svg" alt="Ask DeepWiki"/></a>
-  <img src="https://img.shields.io/badge/License-Apache--2.0-blue.svg" alt="License"/>
-  <img src="https://img.shields.io/badge/Version-2.0.32--beta-orange" alt="Version"/>
+  <a href="https://bugtraceai.com"><img src="https://img.shields.io/badge/Website-bugtraceai.com-FF7F50" alt="Website"/></a>
+  <a href="https://bugtraceai.github.io/BugTraceAI/bugtraceai-web/"><img src="https://img.shields.io/badge/Documentation-WEB-8B5CF6" alt="WEB documentation"/></a>
+  <a href="https://deepwiki.com/BugTraceAI/BugTraceAI-WEB"><img src="https://img.shields.io/badge/Ask-DeepWiki-5A5AFF" alt="Ask DeepWiki"/></a>
+  <a href="https://github.com/BugTraceAI/BugTraceAI-WEB/tree/v2.0.32-beta"><img src="https://img.shields.io/badge/Public_tag-2.0.32--beta-FF7F50" alt="Public tag: 2.0.32-beta"/></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/License-Apache--2.0-blue" alt="Apache-2.0 license"/></a>
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/React_18-61DAFB?logo=react&logoColor=black" alt="React"/>
-  <img src="https://img.shields.io/badge/TypeScript_5-3178C6?logo=typescript&logoColor=white" alt="TypeScript"/>
-  <img src="https://img.shields.io/badge/Express_5-000?logo=express&logoColor=white" alt="Express"/>
-  <img src="https://img.shields.io/badge/PostgreSQL_16-4169E1?logo=postgresql&logoColor=white" alt="PostgreSQL"/>
-  <img src="https://img.shields.io/badge/Docker-2496ED?logo=docker&logoColor=white" alt="Docker"/>
+  <a href="#quick-start"><img src="https://img.shields.io/badge/Get_started-Launcher-FF7F50?style=for-the-badge&logo=docker&logoColor=white" alt="Install with the Launcher"/></a>
+  <a href="https://demo.bugtraceai.com/bugtraceai"><img src="https://img.shields.io/badge/Explore_a_sample_report-8B5CF6?style=for-the-badge&logo=google-chrome&logoColor=white" alt="Explore a sample scan report"/></a>
+  <a href="https://github.com/BugTraceAI/BugTraceAI"><img src="https://img.shields.io/badge/The_BugTraceAI_ecosystem-181717?style=for-the-badge&logo=github&logoColor=white" alt="Explore the BugTraceAI ecosystem"/></a>
 </p>
 
----
+BugTraceAI-WEB is the self-hosted browser workspace for the
+[BugTraceAI](https://github.com/BugTraceAI/BugTraceAI) security suite. Use its
+analysis tools independently, connect **BugTraceAI-CLI** for autonomous web
+scans, or connect **BugTraceAI-API** for API-target testing.
 
-|                                    Product Demo (English)                                     |                              Demostración del producto (Español)                              |
-| :-------------------------------------------------------------------------------------------: | :-------------------------------------------------------------------------------------------: |
-| [![English Demo](https://img.youtube.com/vi/exrqesNWp1M/0.jpg)](https://youtu.be/exrqesNWp1M) | [![Spanish Demo](https://img.youtube.com/vi/CwT66Uqe6to/0.jpg)](https://youtu.be/CwT66Uqe6to) |
+[Quick start](#quick-start) · [Workspace](#workspace) · [Screenshots](#screenshots) · [Engine connections](#engine-connections) · [Development](#development) · [Documentation](#documentation)
 
----
+## See it in action
 
-## Table of Contents
+<p align="center">
+  <a href="https://www.youtube.com/watch?v=FCoQNgO8hmM">
+    <img src="https://img.youtube.com/vi/FCoQNgO8hmM/maxresdefault.jpg" alt="Watch the BugTraceAI product walkthrough on YouTube" width="720"/>
+  </a>
+</p>
 
-- [Disclaimer](#disclaimer)
-- [What is BugTraceAI-WEB?](#what-is-bugtraceai-web)
-- [Features](#features)
-- [What's New in v2.0.32-beta](#whats-new-in-v2032-beta)
-- [Architecture](#architecture)
-- [Getting Started](#getting-started)
-- [Development Setup](#development-setup)
-- [CLI Integration](#cli-integration)
-- [Tech Stack](#tech-stack)
-- [License](#license)
+<p align="center">
+  <a href="https://www.youtube.com/watch?v=FCoQNgO8hmM">Watch the product walkthrough on YouTube</a>
+</p>
 
-## What's New in v2.0.32-beta
+## Quick start
 
-- Keep the standalone Launcher bootstrap compatible with macOS's system Bash 3.2 regex parser.
-- Component installer entry points verify Launcher 3.3.14+ before launching and stop safely when the published Launcher is older.
-- Compatible release updates use the coordinated Launcher 3.3.14 manifest with preparation before activation, database backup and runtime verification.
-- Refresh production dependencies and remove the unused backend `chokidar` dependency; production dependency audits report no known vulnerabilities.
-
-- Universal Launcher entry point with WEB suggested; explicit runtime backend for coding agents, with no duplicate setup wizard.
-- Standalone configuration template, data-preserving installs and service health verification.
-- WEB starts without optional scanning engines; their proxy routes resolve when used.
-
-## Previous changes: v2.0.25-beta
-
-- Installation guidance distinguishes WEB-only, integrated WEB + both scanning
-  engines, and the full workspace with the CLI terminal TUI. The standalone
-  install path now includes a safe prompt for an AI coding agent.
-
-## Previous release: v2.0.24-beta
-
-This release consolidates the public WEB experience and its connection to the
-standalone BugTraceAI-API service.
-
-### Visual and interaction improvements
-
-- **Dedicated ModelLab navigation** — ModelLab is a first-class sidebar module
-  at `/modellab`, with separate benchmark, results and history views instead of
-  being buried inside the CLI area.
-- **Consistent visual language** — shared glass/dark surfaces, compact status
-  badges, responsive layouts, expandable report rows and reusable tool headers
-  keep the dashboard, analysis tools and report views visually coherent.
-- **Design-system reference** — the visual system is browsable at
-  `/design-system` (and `/bugtraceai/design-system`) without changing
-  application state, making the public UI tokens and component patterns easy
-  to review.
-- **Live progress surfaces** — the Swarm Graph shows specialist escalation
-  levels while work is still running, and AuthDiscovery exposes per-URL
-  progress plus JWT/cookie totals in the event stream and graph.
-- **AIrepeater workbench** — a Burp/Caido-style Request / Response / AI Agent
-  workspace with tabs, response search, manual or agent-driven execution,
-  vulnerability playbooks and report handoff.
-- **Clearer API findings** — review-state prefixes are removed from visible
-  finding titles, review states remain in their dedicated badges, and meaningful
-  categories are shown only when they add context.
-
-### ModelLab improvements
-
-- Calibrated `quick-v3` and `advanced-v2` suites, with legacy suites retained
-  for comparison.
-- A **Best per slot** leaderboard recommends separate models for MUTATION,
-  SKEPTICAL, ANALYSIS and REPORTING instead of one global winner.
-- An opt-in MUTATION diversity probe measures whether generated payloads are
-  meaningfully varied before influencing the MUTATION recommendation.
-- Live benchmark progress, cancellation/recovery, cost visibility, local run
-  history, deletion confirmation and an OpenRouter **Test key** flow are kept
-  in the module.
-- ModelLab owns its OpenRouter key independently from the scanner provider; its
-  credentials are sent only with ModelLab requests to the CLI benchmark API.
-
-### BugTraceAI-API integration
-
-- WEB uses the typed client in `lib/btaiApi.ts` for API scans, HTTP status
-  polling, results/findings, OpenAPI and handoff artifacts, report downloads,
-  health checks and provider selection/testing.
-- API scan IDs are treated as opaque strings and API progress uses the REST
-  contract (`0.0`–`1.0`), preserving the API/CLI contract boundary.
-- The default deployment base path is same-origin `/btai-api`; Settings can
-  override it for a direct or remote API URL, and `VITE_BTAI_API_URL` supports
-  build-time configuration.
-- BugTraceAI-API is a separate process and has no WebSocket dependency. Nginx
-  proxies `/btai-api/` over the shared `BTAI_SHARED_NETWORK` Docker bridge to
-  `bugtrace-api` on the REST port selected by `launcher.sh`, so the integration
-  does not depend on fixed ports or host-network hairpin routing.
-- API finding presentation normalizes evidence, PoCs, classifications,
-  validation state and AI enrichment without confusing API findings with CLI
-  findings.
-
-The complete historical detail is in [CHANGELOG.md](CHANGELOG.md). The WEB and
-API remain intended for a local machine or trusted network; do not expose the
-CLI/API services directly to the Internet without an authenticated reverse
-proxy and appropriate authorization.
-
-## What's New in v1.5.40-beta
-
-- **Anthropic provider (Claude Messages API)** — Select Anthropic alongside OpenRouter and Z.ai. Enter an `sk-ant-...` key, pick a Claude model, and chat, analysis, and the AIrepeater all run on the native Messages API (`x-api-key`).
-- **Curated model pack + Thinking control** — The OpenRouter model picker loads a hand-picked, verified set from a single file, with **Thinking / High / xHigh** entries that enable OpenRouter's `reasoning` parameter for deeper responses.
-- **Model Lab module** — Model Lab moved to its own sidebar entry at `/modellab` with its **own** OpenRouter key, independent of the scanner provider. Adds the recalibrated **quick-v3 / advanced-v2** suites, a **"Best per slot"** leaderboard that recommends a model per MUTATION / SKEPTICAL / ANALYSIS / REPORTING slot, and an opt-in **MUTATION diversity probe**.
-- **Live Swarm Graph escalation ladders** — Per-agent **L1 → L6** escalation ladders now climb live as specialists work, so an in-progress agent visibly advances instead of appearing stuck.
-- **AuthDiscovery visibility** — Follow authentication scanning URL by URL in Events and see JWT/cookie totals on the live Swarm Graph.
-- 🧪 **AIrepeater** — Burp/Caido-style three-pane workbench (Request / Response / AI Agent) with manual and AI-driven modes, multi-tab sessions, response search, per-vulnerability playbooks, and report handoff.
-
-> **Local beta:** run BugTraceAI-WEB and BugTraceAI-CLI on your machine or a trusted LAN. Do not expose the CLI API directly to the Internet. Model Lab uses its own OpenRouter API key and provider charges may apply.
-
-## Disclaimer
-
-This application is provided for **educational and authorized security testing purposes only**.
-
-- AI output may contain inaccuracies, false positives, or false negatives
-- It is **not** a substitute for professional security auditing
-- Only test applications for which you have **explicit, written authorization**
-- The creators assume no liability for misuse or damage
-
-**Always verify findings manually.**
-
-## What is BugTraceAI-WEB?
-
-BugTraceAI-WEB is part of the [BugTraceAI](https://github.com/BugTraceAI/BugTraceAI) ecosystem. It serves two purposes:
-
-1. **Standalone analysis toolkit** — 20+ AI-powered security tools for manual pentesting (SAST, DAST, recon, payload generation, exploitation assistants).
-2. **CLI control center** — Real-time dashboard to launch, monitor, and review [BugTraceAI-CLI](https://github.com/BugTraceAI/BugTraceAI-CLI) autonomous scans from the browser.
-
-Each role works independently. You can use the web tools without the CLI, or connect to a CLI instance for full scan management.
-
-## Features
-
-### CLI Control Center
-
-When connected to BugTraceAI-CLI (optional):
-
-- **Live Dashboard** — Real-time metrics, findings count, scan progress
-- **Scan Launcher** — Configure and launch CLI scans from the browser with support for **YAML-based authenticated scanning** (TOTP/2FA included)
-- **Scan Resume** — Resume recoverable scans from previous state without restarting the full workflow
-- **Report Viewer** — Browse, search, and view past scan reports (Markdown rendering)
-- **Configuration Editor** — Modify CLI settings remotely
-- **Severity Charts** — Visual breakdown of findings by severity
-- **Report Comparison** — Side-by-side diff of two scan reports
-- **API Discovery** — Active API endpoint discovery via Kiterunner with multi-filter, sort, speed control, and persistent history
-- **ModelLab beta** — Compare OpenRouter models with live benchmark progress, cost visibility, and local run history
-
-### AI Assistants
-
-- **Kali Expert Agent (MCP)** — Real-time terminal access to the full Kali Linux toolset (Nmap, SQLMap, etc.) via the WebSec Chat.
-- **ReconFTW Agent (MCP)** — Fully automated reconnaissance pipelines managed directly from the browser.
-- **XSS Exploitation Assistant** — Given a confirmed XSS: cookie theft, keyloggers, phishing overlays, session hijacking
-- **SQL Exploitation Assistant** — Given a confirmed SQLi: data extraction, auth bypass, privilege escalation, DB enumeration
-
-### Analysis Tools
-
-- **URL Analyzer (DAST)** — Recon scan, active scan, grey-box scan with live JS analysis
-- **Code Analyzer (SAST)** — SQLi patterns, XSS sinks, insecure functions, logic flaws
-- **Security Headers Analyzer** — CSP, HSTS, X-Frame-Options grading with actionable recommendations
-- **DOM XSS Pathfinder** — Source-to-sink data flow analysis (location.hash → innerHTML, eval, document.write)
-- **JWT Decompiler & Auditor** — Blue team (weak algorithms, data exposure) + Red team (confusion attacks, claim manipulation)
-- **PrivEsc Pathfinder** — CVE and Exploit-DB search by technology/version, privilege escalation vectors
-- **File Upload Auditor** — Automatic form detection, malicious file generation (SVG XSS, polyglots, web shells)
-
-### Reconnaissance
-
-- **JS Reconnaissance** — Hardcoded API endpoints, internal URLs, API keys, cloud credentials (AWS, GCP)
-- **URL List Finder** — Wayback Machine historical URL discovery
-- **Subdomain Finder** — Certificate Transparency search via crt.sh
-- **API Discovery** — Active Kiterunner-powered endpoint discovery with wordlists, speed selector (slow/medium/fast), multi-filter, tag-based sorting, and backend persistence across sessions
-
-### Payload Generation
-
-- **Payload Forge** — WAF bypass payloads (encoding, case manipulation, null bytes, comment injection)
-- **SSTI Forge** — Template injection for Jinja2, Twig, Freemarker, Velocity
-- **OOB Interaction Helper** — Blind XSS callbacks, Log4Shell, DNS exfiltration, interact.sh integration
-
-### Analysis Management
-
-- Persistent storage of all analyses (PostgreSQL)
-- Side-by-side report comparison with diff engine
-- Export to JSON, CSV, and PDF
-- Tagging and search across analyses
-
-### AI Analysis Methodology
-
-Each analysis runs through multiple AI passes with different perspectives (Bug Hunter, Code Auditor, Pentester, Security Researcher), then consolidates and de-duplicates findings into a single report. An optional deep analysis pass refines each finding with better PoCs, impact scenarios, and remediation.
-
-## Architecture
-
-```
-┌─────────────────────────────────────────────────────────────┐
-│  BugTraceAI-WEB                                             │
-│                                                             │
-│  ┌──────────────────┐    ┌──────────────────┐              │
-│  │  React Frontend   │───▶│  Express Backend  │              │
-│  │  (Vite + TS)      │    │  (Prisma ORM)     │              │
-│  │  Port 5173 / 6869 │    │  Port 3001        │              │
-│  └──────────────────┘    └────────┬─────────┘              │
-│                                    │                        │
-│                            ┌───────▼────────┐              │
-│                            │  PostgreSQL 16  │              │
-│                            │  Chats, Settings│              │
-│                            │  Analyses       │              │
-│                            └────────────────┘              │
-└──────────────────────────────┬──────────────────────────────┘
-                               │ Optional
-                    ┌──────────▼──────────┐
-                    │  BugTraceAI-CLI API  │
-                    │  (FastAPI)           │
-                    │  Port 8000           │
-                    │  SQLite (scans)      │
-                    └─────────────────────┘
-```
-
-**Dual database design:**
-
-- **PostgreSQL** (WEB) — Local to each WEB instance. Stores chat sessions, analysis reports, and app settings.
-- **SQLite** (CLI) — Source of truth for all scan data. Accessed via CLI API on port 8000.
-
-They work **autonomously or together** — the WEB app doesn't need the CLI to function, and vice versa.
-
-## Getting Started
-
-### Prerequisites
-
-The Launcher prepares the dependencies for your selection. Direct standalone
-WEB requires Docker Compose v2, curl and local database configuration. Configure
-a supported provider in the application to use AI analysis tools. Node/npm are
-needed for local development, not for Docker deployment.
-
-### Installation (Docker)
-
-For guided setup, use the universal [BugTraceAI Launcher](https://github.com/BugTraceAI/BugTraceAI-Launcher)
-(current release 3.3.26). WEB, CLI and the API-target engine are independent
-modules; select only WEB for a standalone dashboard, or check any engines you
-want to connect. The `web` suggestion starts with WEB only; `full` preselects
-all three modules and the CLI terminal TUI.
-
-**Interactive wizard (recommended):**
+Run the official [BugTraceAI Launcher](https://github.com/BugTraceAI/BugTraceAI-Launcher):
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/BugTraceAI/BugTraceAI-Launcher/main/install.sh | bash
 ```
 
-From a WEB checkout, the component entry point opens the same menu with WEB
-suggested. It requires Launcher 3.3.14 or newer; use 3.3.26 for the current
-provider, Wizard and AI-assisted setup screens:
+The Launcher presents provider setup, installation choices, module selection,
+and ports before deploying the selected services.
 
-```bash
-git clone https://github.com/BugTraceAI/BugTraceAI-WEB
-cd BugTraceAI-WEB
-./install.sh
+- **WEB only:** choose Wizard and select WEB for the dashboard and analysis tools. Existing scanning engines can be connected later.
+- **WEB + scanning engines:** select WEB with CLI, BugTraceAI-API, or both for the scan workflows you need.
+- **Full workspace:** include the CLI terminal TUI alongside WEB and the selected engines.
+
+WEB deployment uses Docker. Optional Kali and reconFTW toolboxes can be selected
+during setup. Review the installation plan, then open the WEB URL printed by
+the Launcher; the usual frontend port is **6869**, but your configured port
+takes precedence.
+
+From an existing WEB checkout, `./install.sh` opens the same Launcher with WEB
+suggested. Direct standalone Docker setup and a copyable coding-agent prompt
+are in [INSTALLATION.md](INSTALLATION.md#option-2-standalone-docker).
+
+### Configure your workspace
+
+In **Settings**, choose **OpenRouter**, **Anthropic**, or **Z.ai**, enter that
+provider's key locally, and select a model. **ModelLab** uses its own OpenRouter
+key inside the module, independently of the provider used for analysis.
+
+For target login, use the scan launcher's **Auth Config** tab. Login YAML and
+optional TOTP/2FA are documented in the
+[authentication guide](INSTALLATION.md#authenticated-scanning-yaml--totp).
+
+For Launcher-managed deployments, run `./launcher.sh status`, `logs web`, `start`, `stop`, or
+`update --plan` from the Launcher checkout. See its
+[command guide](https://github.com/BugTraceAI/BugTraceAI-Launcher#commands).
+
+## Workspace
+
+| Area | What you can do |
+| --- | --- |
+| **Web scans** | Launch CLI scans, configure target authentication, follow the six scan phases and live Swarm Graph, resume recoverable scans, and review reports. |
+| **API testing** | Connect the standalone BugTraceAI-API engine to launch API audits, follow progress, inspect findings and evidence, and download reports. |
+| **AIrepeater** | Inspect HTTP requests and responses in a Request / Response / AI Agent workbench. Send requests manually or with AI assistance, use vulnerability playbooks, and hand findings into reports. |
+| **Analysis tools** | Work with URL and source-code analysis, security headers, DOM XSS, JWT auditing, file uploads, and privilege-escalation research. |
+| **Discovery and payloads** | Discover subdomains, historical URLs, JavaScript endpoints, and API routes. Prepare WAF-bypass and SSTI payloads or out-of-band interaction checks. |
+| **AI assistants** | Investigate security questions in chat and connect optional Kali and reconFTW MCP toolboxes. |
+| **ModelLab** | Compare OpenRouter models with live benchmark progress, per-slot recommendations, cost visibility, results, and run history. |
+| **Reports** | Inspect severity, validation state, evidence, and PoCs; compare reports, search analysis history, and export results. |
+
+The scanning engines are independent products. WEB's own chat, settings, and
+analysis tools remain available without connecting either engine; engine-specific
+scan workflows require the corresponding service.
+
+## Screenshots
+
+| Live scan workspace | Specialist Swarm Graph |
+| :---: | :---: |
+| [![WEB live scan workspace](assets/console.webp)](assets/console.webp) | [![WEB specialist Swarm Graph](assets/swarm-graph.webp)](assets/swarm-graph.webp) |
+| **API route discovery** | **Findings and report explorer** |
+| [![WEB API route discovery](assets/api-discovery.webp)](assets/api-discovery.webp) | [![WEB findings and report explorer](assets/report-findings.webp)](assets/report-findings.webp) |
+
+These example captures use the BugStore practice target. Counts and findings
+belong to those sessions. The sample report linked above was generated with an
+earlier scanner build and is provided to explore the workflow.
+
+## Engine connections
+
+```mermaid
+flowchart LR
+    WEB[WEB browser workspace] --> Backend[WEB Express backend]
+    Backend --> DB[(PostgreSQL)]
+    WEB --> CLI[BugTraceAI-CLI REST API]
+    WEB --> API[BugTraceAI-API REST API]
+    CLI --> WebScans[Autonomous web scans]
+    API --> APIScans[API-target scans]
 ```
 
-Enter and verify your provider API key on the first screen, then choose
-**Install with Wizard** or **Install with AI**. The built-in assistant stays in
-the TUI and uses provider tokens. It supports API-only or the full WEB + CLI +
-API selection, including the CLI TUI, with OpenRouter or Anthropic. Use Wizard
-for WEB-only and all other combinations, including Z.ai. Never paste provider
-keys into an AI coding-agent chat.
+| Service | Role |
+| --- | --- |
+| **WEB backend + PostgreSQL** | Store this WEB instance's chats, settings, and analysis history. |
+| [**BugTraceAI-CLI**](https://github.com/BugTraceAI/BugTraceAI-CLI) | Run autonomous web scans and provide scan events, configuration, findings, and reports. |
+| [**BugTraceAI-API**](https://github.com/BugTraceAI/BugTraceAI-API) | Run independent API-target audits over REST, with MCP available for external assistants. |
 
-### Install with your AI coding agent
+The Launcher configures connections for the engines you select. For an existing
+or remote service, use the **CLI API URL** or **BugTraceAI-API URL** fields in
+Settings and the corresponding **Test** button.
 
-Give your local terminal agent this prompt. It launches the official installer
-and leaves the interactive choices and secret entry to you:
+Docker deployments use same-origin proxy routes (`/cli-api` and `/btai-api`).
+The usual direct REST ports are **8000** for CLI and **8005** for BugTraceAI-API;
+use the actual URLs from your deployment. Multiple WEB instances can connect
+to the same CLI service. WEB and the scanning services are intended for a local
+machine or trusted network.
 
-```text
-Install BugTraceAI-WEB only on this machine using the official universal Launcher.
+## Development
 
-First read:
-https://github.com/BugTraceAI/BugTraceAI-WEB#readme
-https://github.com/BugTraceAI/BugTraceAI-Launcher#readme
+Local development requires Node/npm and a configured PostgreSQL database.
+Follow the [development setup](INSTALLATION.md#option-4-local-development-setup)
+for environment variables and database credentials.
 
-Follow those instructions using the official installer:
-https://raw.githubusercontent.com/BugTraceAI/BugTraceAI-Launcher/main/install.sh
-
-Select only BugTraceAI-WEB. Do not select BugTraceAI-API or BugTraceAI-CLI.
-Use Install with Wizard for this standalone WEB installation. Existing
-external scanning engines can be connected later.
-
-Preserve any existing installation, configuration and data. Run the
-Launcher in my local interactive terminal. I will enter and verify the
-provider API key there, choose ports and review the plan before installation.
-Keep credentials out of chat and logs. Do not start a scan.
-
-Verify the WEB frontend and backend health on the configured port.
-Report the installation location, launch commands, checks completed
-and any checks still pending.
-```
-
-For direct WEB-only setup in this checkout, configure `.env.docker` from
-`.env.example`, set a unique database password and run
-`./scripts/install-runtime.sh`. It preserves configuration and database volumes;
-scans require the corresponding backend connected separately. The legacy
-`dockerizer.sh` command delegates to the universal entry point. Legacy
-`./install.sh --standalone` delegates to the same direct backend, with no
-additional installation menu.
-
-### Authenticated Scanning (YAML + TOTP)
-
-For targets that require login, BugTraceAI-WEB can configure authenticated scan sessions. Create an `auth_config.yaml` file:
-
-```yaml
-authentication:
-  login_url: "/login"
-  login_type: form
-  credentials:
-    username: "user@example.com"
-    password: "your-password"
-    # totp_secret: "YOUR_BASE32_SECRET"
-  login_flow:
-    - "Type $username into the email field"
-    - "Type $password into the password field"
-    - "Click the 'Sign In' button"
-    # - "Enter $totp in the code field"
-  success_condition:
-    type: url_contains
-    value: "/dashboard"
-```
-
-Upload it in the Scan Launcher → **Auth Config** tab before starting the scan. The CLI will handle TOTP token generation automatically.
-
-See the [CLI documentation](https://github.com/BugTraceAI/BugTraceAI-CLI) for the full `auth_config.yaml` reference.
-
-### Post-install
-
-1. Open **Settings** (gear icon in the header)
-2. Enter your OpenRouter API key
-3. Select a model (the app fetches available models from OpenRouter automatically)
-4. Start analyzing
-
-### Stop / Restart
-
-```bash
-docker compose --env-file .env.docker down          # Stop; keep volumes
-docker compose --env-file .env.docker up -d         # Start again
-docker compose --env-file .env.docker logs -f       # View logs
-```
-
-## Development Setup
-
-For local development without Docker:
-
-### Backend
+Backend terminal:
 
 ```bash
 cd backend
-
-# Install dependencies
 npm install
-
-# Create backend/.env with your local PostgreSQL DATABASE_URL.
-# Preserve existing configuration and credentials.
-
-# Run database migrations
+# Configure backend/.env for your local PostgreSQL database.
 npx prisma migrate dev
-
-# Start dev server (auto-reload)
 npm run dev
 ```
 
-Backend runs on **http://localhost:3001**.
-
-### Frontend
+Frontend terminal, from the WEB repository root:
 
 ```bash
-# From the project root
 npm install
-
-# Configure environment
-cp .env.example .env
-# Default values work if backend is on port 3001
-
-# Start dev server
+# Configure the frontend environment as described in INSTALLATION.md.
 npm run dev
 ```
 
-Frontend runs on **http://localhost:5173** with Vite proxy forwarding `/api` to the backend.
+The backend defaults to **3001** and Vite to **5173**.
+Run `npm run build` for the production frontend build.
 
-### Environment Variables
+| Layer | Technology |
+| --- | --- |
+| Frontend | React 18, TypeScript, Vite, Tailwind CSS |
+| Backend and storage | Express 5, Prisma, PostgreSQL 16 |
+| Live events and visualization | Socket.IO, Recharts |
+| HTTP and code workbench | Monaco Editor |
+| Deployment | Docker Compose, Nginx |
 
-**Frontend** (`.env`):
+## Documentation
 
-```bash
-VITE_API_URL=/api      # Backend API
-VITE_CLI_API_URL=/cli-api      # BugTraceAI-CLI API (optional)
-```
+| Guide | Contents |
+| --- | --- |
+| [Installation](INSTALLATION.md) | Guided setup, standalone Docker, coding-agent prompts, configuration, and troubleshooting |
+| [Authentication](INSTALLATION.md#authenticated-scanning-yaml--totp) | Target login YAML and TOTP/2FA |
+| [Launcher](https://github.com/BugTraceAI/BugTraceAI-Launcher) | Module selection, provider setup, service management, and updates |
+| [WEB documentation](https://bugtraceai.github.io/BugTraceAI/bugtraceai-web/) | Workspace and tool documentation |
+| [Changelog](CHANGELOG.md) · [Tags](https://github.com/BugTraceAI/BugTraceAI-WEB/tags) · [Releases](https://github.com/BugTraceAI/BugTraceAI-WEB/releases) | Version history and published builds |
+| [BugStore](https://github.com/BugTraceAI/BugStore) | Deliberately vulnerable practice target |
 
-**Backend** (`.env`):
+## Responsible use and license
 
-```bash
-DATABASE_URL="postgresql://bugtraceai:your_password@localhost:5432/bugtraceai_web?schema=public"
-PORT=3001
-NODE_ENV=development
-FRONTEND_URL="http://localhost:5173"
-```
+Use BugTraceAI only for educational work and testing you are authorized to
+perform. AI findings can be wrong; verify the evidence before relying on them.
 
-## CLI Integration
-
-Connecting to BugTraceAI-CLI unlocks the dashboard features (scan launcher, report viewer, config editor, etc.).
-
-1. Start the CLI API server:
-
-   ```bash
-   cd BugTraceAI-CLI
-   python3 -m uvicorn bugtrace.api.main:app --host 0.0.0.0 --port 8000
-   ```
-
-2. In BugTraceAI-WEB **Settings** → **CLI Connector**:
-   - Enter CLI API URL (default: `http://localhost:8000`)
-   - Enable the CLI Connector toggle
-
-3. The CLI Dashboard tab becomes available automatically.
-
-Multiple WEB instances can connect to the same CLI API server over the network.
-
-## Tech Stack
-
-| Layer       | Technology                                          |
-| ----------- | --------------------------------------------------- |
-| Frontend    | React 18, TypeScript 5, Vite 5                      |
-| Styling     | Tailwind CSS                                        |
-| State       | React Context + Custom Hooks                        |
-| Charts      | Recharts                                            |
-| Code Editor | Monaco Editor                                       |
-| Backend     | Express 5, TypeScript, Prisma ORM                   |
-| Database    | PostgreSQL 16                                       |
-| Real-time   | Socket.IO                                           |
-| Validation  | Zod                                                 |
-| AI Provider | OpenRouter (200+ models) + Anthropic (Claude Messages API) + Z.ai (GLM family) |
-| Testing     | Vitest + Supertest                                  |
-| Deployment  | Docker Compose, Nginx reverse proxy                 |
-
-## Project Structure
-
-```
-BugTraceAI-WEB/
-├── components/           # React components (70+)
-│   ├── cli/              #   CLI dashboard (scan launcher, reports, config editor)
-│   ├── analysis/         #   Analysis history, report viewer, comparison, export
-│   └── ...               #   Tools: UrlAnalyzer, CodeAnalyzer, JwtAnalyzer, etc.
-├── contexts/             # React Context providers (Chat, Analysis, Settings)
-├── hooks/                # Custom hooks (13 files)
-├── services/             # AI analysis service, CLI connector, system prompts
-│   └── prompts/          #   Analysis-specific prompt templates
-├── payloads/             # XSS payload wordlists
-├── styles/               # Global CSS
-├── utils/                # Utility functions
-├── backend/              # Express + Prisma backend
-│   ├── prisma/           #   Database schema & migrations
-│   ├── src/
-│   │   ├── controllers/  #   Chat, Analysis, Settings controllers
-│   │   ├── routes/       #   API route definitions
-│   │   ├── middleware/   #   Error handling, rate limiting, validation
-│   │   └── utils/        #   Prisma client, exporters, comparison engine
-│   └── tests/            #   Integration tests
-├── App.tsx               # Main app (routing, providers)
-├── docker-compose.yml    # WEB/database/api-routes; optional toolboxes
-├── install.sh            # Universal Launcher compatibility entry
-├── dockerizer.sh         # Compatibility alias for install.sh
-└── scripts/install-runtime.sh # Explicit deployment from existing config
-```
-
-## License
-
-Apache License 2.0. See [LICENSE](LICENSE) for details.
-
----
+Licensed under **Apache-2.0**. See [LICENSE](LICENSE) and
+[CONTRIBUTORS.md](CONTRIBUTORS.md).
 
 <p align="center">
-  Made by Albert C. — <a href="https://x.com/yz9yt">@yz9yt</a>
-  <br/>
-  <a href="https://bugtraceai.com">bugtraceai.com</a>
+  Built by Albert C. · <a href="https://x.com/yz9yt">@yz9yt</a> · <a href="https://bugtraceai.com">bugtraceai.com</a>
 </p>
