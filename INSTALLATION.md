@@ -40,12 +40,12 @@ Get an OpenRouter API key at [openrouter.ai/keys](https://openrouter.ai/keys) â€
 
 ## Option 1: BugTraceAI Launcher (Recommended)
 
-The universal Launcher presents one profile chooser for the products you want.
-Choose `web` for **BugTraceAI-WEB + the CLI web-scanning REST API/MCP + the
-BugTraceAI-API target scanner**. Choose `full` to add the CLI terminal TUI.
-The `terminal` profile installs only the CLI TUI; `server` installs only the
-CLI web-scanning API/MCP; `api` installs only the independent API-target
-scanner. See the [Launcher profile guide](https://github.com/BugTraceAI/BugTraceAI-Launcher#quick-start).
+The universal Launcher lets you select **WEB**, **CLI**, and **BugTraceAI-API**
+independently. The `web` suggestion starts with WEB only; add either scanning
+engine when needed. The `full` suggestion preselects all three modules and the
+CLI terminal TUI. For WEB-only installation, use Wizard. See the
+[Launcher guide](https://github.com/BugTraceAI/BugTraceAI-Launcher#quick-start)
+for module choices, runtimes, and AI-assisted installation.
 
 ### One-liner install
 
@@ -63,26 +63,26 @@ cd ~/bugtraceai-launcher
 
 The Launcher TUI will:
 
-1. Show the products and engines included in each profile
-2. Select a runtime once (WEB/API-target profiles require Docker)
-3. Offer optional reconFTW and Kali toolboxes for WEB deployments
-4. Optionally enter provider credentials and configure available service ports
-5. Build the selected Docker services and run health checks
+1. Collect and verify provider credentials in the local terminal
+2. Offer Wizard or the built-in AI-assisted setup
+3. Review module selection and runtime (WEB and BugTraceAI-API require Docker)
+4. Configure ports and optional reconFTW/Kali toolboxes before confirming the plan
+5. Deploy the selected services and run health checks
 
 After installation, use the dashboard URL printed by the Launcher (normally
 **http://localhost:6869**).
 
-At the provider-key prompt, press Enter to skip and continue installation.
-Add the key through the local provider settings before starting AI-powered
-analysis; installation itself does not run a scan.
+Enter provider credentials through the Launcher's local setup flow. The WEB
+application's provider settings can be configured or updated after deployment;
+installation itself does not run a scan.
 
-> See [BugTraceAI-Launcher](https://github.com/BugTraceAI/BugTraceAI-Launcher) for full Launcher documentation including macOS (Apple Silicon) support.
+> See [BugTraceAI-Launcher](https://github.com/BugTraceAI/BugTraceAI-Launcher) for supported runtimes and platform-specific requirements.
 
 ### Install with your AI coding agent
 
 Give this prompt to an agent with terminal access. It installs standalone WEB
-only; for the integrated platform, replace the standalone setup with the
-Launcher `web` profile (Launcher 3.3.14+).
+only. For guided deployment with connected scanning engines, use the universal
+Launcher and review the module selection instead.
 
 ```text
 Install BugTraceAI-WEB as a standalone Docker deployment from this checkout.
