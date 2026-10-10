@@ -10,6 +10,7 @@ import { createBtaiApi, BtaiApiProviderDetail, BtaiApiProviderSummary } from '..
 import { formatSecretPreview } from '../../lib/maskedSecret.ts';
 import { CURATED_MODEL_KEYS, curatedModelName } from '../../lib/curatedModels.ts';
 import { SlidingSegmentedControl } from './SlidingSegmentedControl.tsx';
+import { buildProviderRequestBody } from './providerRequestBody.ts';
 
 interface ProviderPreset {
     provider: string;
@@ -272,6 +273,7 @@ export function ProviderTab() {
     const [selectedProvider, setSelectedProvider] = useState<string>('');
     const [selectedPreset, setSelectedPreset] = useState<ProviderPreset | null>(null);
     const [apiKeyInput, setApiKeyInput] = useState('');
+    const [bedrockRegion, setBedrockRegion] = useState('us-east-1');
 
     // Test state — key must be tested before save is allowed
     const [isTesting, setIsTesting] = useState(false);
@@ -353,8 +355,7 @@ export function ProviderTab() {
         setKeyValidated(false);
         setSaveMessage(null);
         try {
-            const body: Record<string, string> = { provider: selectedProvider };
-            if (apiKeyInput.trim()) body.api_key = apiKeyInput.trim();
+            const body = buildProviderRequestBody(selectedProvider, apiKeyInput, bedrockRegion);
             const resp = await fetch(`${cliUrl}/api/provider/test`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -380,8 +381,7 @@ export function ProviderTab() {
         setIsSaving(true);
         setSaveMessage(null);
         try {
-            const body: Record<string, string> = { provider: selectedProvider };
-            if (apiKeyInput.trim()) body.api_key = apiKeyInput.trim();
+            const body = buildProviderRequestBody(selectedProvider, apiKeyInput, bedrockRegion);
             const resp = await fetch(`${cliUrl}/api/provider`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
@@ -536,6 +536,7 @@ export function ProviderTab() {
                                     onChange={(e) => {
                                         setSelectedProvider(e.target.value);
                                         setApiKeyInput('');
+                                        setBedrockRegion('us-east-1');
                                         resetTestState();
                                     }}
                                     className="w-full input-premium p-2"
@@ -550,6 +551,26 @@ export function ProviderTab() {
                                     </p>
                                 )}
                             </div>
+
+                            {/* AWS Bedrock region */}
+                            {selectedProvider === 'bedrock' && (
+                                <div>
+                                    <label className="label-mini block mb-1.5">AWS Region</label>
+                                    <input
+                                        type="text"
+                                        value={bedrockRegion}
+                                        onChange={(e) => {
+                                            setBedrockRegion(e.target.value);
+                                            resetTestState();
+                                        }}
+                                        placeholder="us-east-1"
+                                        className="w-full input-premium px-4 py-2"
+                                    />
+                                    <p className="text-[11px] text-ui-text-dim mt-1.5">
+                                        Set an AWS region for Bedrock Converse (default us-east-1). Leave the key blank to use the CLI host's AWS credentials.
+                                    </p>
+                                </div>
+                            )}
 
                             {/* API Key input */}
                             <div>
