@@ -7,6 +7,7 @@
 <h1 align="center">BugTraceAI-WEB</h1>
 
 <p align="center">
+  The analyst workspace for the BugTraceAI web pentesting suite.<br/>
   Launch scans. Follow agents live. Investigate requests. Review the evidence.
 </p>
 
@@ -15,7 +16,7 @@
   <a href="https://bugtraceai.github.io/BugTraceAI/bugtraceai-web/"><img src="https://img.shields.io/badge/Documentation-WEB-8B5CF6" alt="WEB documentation"/></a>
   <a href="https://deepwiki.com/BugTraceAI/BugTraceAI-WEB"><img src="https://img.shields.io/badge/Ask-DeepWiki-5A5AFF" alt="Ask DeepWiki"/></a>
   <a href="https://discord.gg/g48NcdGme"><img src="https://img.shields.io/badge/Join-Discord-5865F2?logo=discord&logoColor=white" alt="Join the BugTraceAI Discord"/></a>
-  <a href="https://github.com/BugTraceAI/BugTraceAI-WEB/tree/v2.0.32-beta"><img src="https://img.shields.io/badge/Public_tag-2.0.37--beta-FF7F50" alt="Public tag: 2.0.32-beta"/></a>
+  <a href="https://github.com/BugTraceAI/BugTraceAI-WEB/releases"><img src="https://img.shields.io/badge/Version-2.0.37--beta-FF7F50" alt="Public version: 2.0.37-beta"/></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-Apache--2.0-blue" alt="Apache-2.0 license"/></a>
 </p>
 
@@ -27,8 +28,8 @@
 
 BugTraceAI-WEB is the self-hosted browser workspace for the
 [BugTraceAI](https://github.com/BugTraceAI/BugTraceAI) security suite. Use its
-analysis tools independently, connect **BugTraceAI-CLI** for autonomous web
-scans, or connect **BugTraceAI-API** for API-target testing.
+analysis tools independently, connect [**BugTraceAI-CLI**](https://github.com/BugTraceAI/BugTraceAI-CLI) for agentic web
+scans, or connect [**BugTraceAI-API**](https://github.com/BugTraceAI/BugTraceAI-API) for API-target testing.
 
 [Quick start](#quick-start) · [Workspace](#workspace) · [Screenshots](#screenshots) · [Engine connections](#engine-connections) · [Development](#development) · [Documentation](#documentation)
 
@@ -73,6 +74,8 @@ are in [INSTALLATION.md](INSTALLATION.md#option-2-standalone-docker).
 In **Settings**, choose **OpenRouter**, **Anthropic**, or **Z.ai**, enter that
 provider's key locally, and select a model. **ModelLab** uses its own OpenRouter
 key inside the module, independently of the provider used for analysis.
+
+The [BugTraceAI model catalog](https://huggingface.co/BugTraceAI) contains the suite's published checkpoints. Follow each model card and the applicable module's configuration guide when choosing how to use a checkpoint.
 
 For target login, use the scan launcher's **Auth Config** tab. Login YAML and
 optional TOTP/2FA are documented in the
