@@ -15,7 +15,7 @@
   <a href="https://bugtraceai.github.io/BugTraceAI/bugtraceai-web/"><img src="https://img.shields.io/badge/Documentation-WEB-8B5CF6" alt="WEB documentation"/></a>
   <a href="https://deepwiki.com/BugTraceAI/BugTraceAI-WEB"><img src="https://img.shields.io/badge/Ask-DeepWiki-5A5AFF" alt="Ask DeepWiki"/></a>
   <a href="https://discord.gg/g48NcdGme"><img src="https://img.shields.io/badge/Join-Discord-5865F2?logo=discord&logoColor=white" alt="Join the BugTraceAI Discord"/></a>
-  <a href="https://github.com/BugTraceAI/BugTraceAI-WEB/tree/v2.0.32-beta"><img src="https://img.shields.io/badge/Public_tag-2.0.32--beta-FF7F50" alt="Public tag: 2.0.32-beta"/></a>
+  <a href="https://github.com/BugTraceAI/BugTraceAI-WEB/tree/v2.0.32-beta"><img src="https://img.shields.io/badge/Public_tag-2.0.37--beta-FF7F50" alt="Public tag: 2.0.32-beta"/></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-Apache--2.0-blue" alt="Apache-2.0 license"/></a>
 </p>
 
@@ -196,3 +196,7 @@ Licensed under **Apache-2.0**. See [LICENSE](LICENSE) and
 <p align="center">
   Built by Albert C. · <a href="https://x.com/yz9yt">@yz9yt</a> · <a href="https://bugtraceai.com">bugtraceai.com</a> · <a href="https://discord.gg/g48NcdGme">Discord community</a>
 </p>
+
+## Bedrock CLI provider (beta)
+
+Configure the CLI engine with an AWS source region and an optional Bedrock API key. Region-only edits and AWS role/profile connection tests are supported. [Scope and setup](BEDROCK.md).

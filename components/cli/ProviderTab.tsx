@@ -3,13 +3,14 @@
 // Provider configuration for both engines. The WEB/CLI panel keeps its existing
 // connector; the API panel talks to BugTraceAI-API and persists its ordered
 // primary + fallback model chain through the API REST contract.
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useSettings } from '../../contexts/SettingsProvider.tsx';
 import { useBtaiApiConnection } from '../../hooks/useBtaiApiConnection.ts';
 import { createBtaiApi, BtaiApiProviderDetail, BtaiApiProviderSummary } from '../../lib/btaiApi.ts';
 import { formatSecretPreview } from '../../lib/maskedSecret.ts';
 import { CURATED_MODEL_KEYS, curatedModelName } from '../../lib/curatedModels.ts';
 import { SlidingSegmentedControl } from './SlidingSegmentedControl.tsx';
+import { buildProviderRequestBody, providerFormActions } from './providerRequestBody.ts';
 
 interface ProviderPreset {
     provider: string;
@@ -17,6 +18,7 @@ interface ProviderPreset {
     base_url: string;
     models: Record<string, string>;
     features?: { description?: string };
+    region?: string | null;
 }
 
 interface ProviderListItem {
@@ -24,6 +26,7 @@ interface ProviderListItem {
     name: string;
     recommended?: boolean;
     api_key_configured: boolean;
+    auth_method?: string;
 }
 
 const apiModelLabel = (providerId: string, model: string): string => {
@@ -264,6 +267,7 @@ export function ProviderTab() {
     const [activeProvider, setActiveProvider] = useState<string>('');
     const [activePreset, setActivePreset] = useState<ProviderPreset | null>(null);
     const [apiKeyConfigured, setApiKeyConfigured] = useState(false);
+    const [activeBedrockRegion, setActiveBedrockRegion] = useState('');
 
     // Available providers list
     const [providers, setProviders] = useState<ProviderListItem[]>([]);
@@ -272,6 +276,8 @@ export function ProviderTab() {
     const [selectedProvider, setSelectedProvider] = useState<string>('');
     const [selectedPreset, setSelectedPreset] = useState<ProviderPreset | null>(null);
     const [apiKeyInput, setApiKeyInput] = useState('');
+    const [bedrockRegion, setBedrockRegion] = useState('');
+    const validationEpoch = useRef(0);
 
     // Test state — key must be tested before save is allowed
     const [isTesting, setIsTesting] = useState(false);
@@ -302,7 +308,10 @@ export function ProviderTab() {
             setActiveProvider(providerData.provider);
             setActivePreset(providerData);
             setApiKeyConfigured(!!providerData.api_key_configured);
+            const currentRegion = providerData.provider === 'bedrock' ? (providerData.region || '') : '';
+            setActiveBedrockRegion(currentRegion);
             setSelectedProvider(providerData.provider);
+            if (providerData.provider === 'bedrock') setBedrockRegion(currentRegion);
 
             if (listResp.ok) {
                 const listData: ProviderListItem[] = await listResp.json();
@@ -333,7 +342,14 @@ export function ProviderTab() {
                 if (cancelled) return;
                 if (resp.ok) {
                     const data = await resp.json();
+                    if (cancelled) return;
                     setSelectedPreset(data);
+                    if (selectedProvider === 'bedrock') {
+                        resetTestState();
+                        const configuredRegion = data.region || '';
+                        setActiveBedrockRegion(configuredRegion);
+                        setBedrockRegion(configuredRegion);
+                    }
                 } else {
                     console.warn(`[ProviderTab] Failed to fetch preset for ${selectedProvider}: ${resp.status}`);
                 }
@@ -348,13 +364,13 @@ export function ProviderTab() {
 
     const handleTestKey = async () => {
         if (!cliUrl) return;
+        const epoch = validationEpoch.current;
         setIsTesting(true);
         setTestResult(null);
         setKeyValidated(false);
         setSaveMessage(null);
         try {
-            const body: Record<string, string> = { provider: selectedProvider };
-            if (apiKeyInput.trim()) body.api_key = apiKeyInput.trim();
+            const body = buildProviderRequestBody(selectedProvider, apiKeyInput, bedrockRegion);
             const resp = await fetch(`${cliUrl}/api/provider/test`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -363,12 +379,15 @@ export function ProviderTab() {
             });
             if (resp.ok) {
                 const data = await resp.json();
+                if (epoch !== validationEpoch.current) return;
                 setTestResult({ success: data.success, message: data.message });
                 setKeyValidated(data.success);
             } else {
+                if (epoch !== validationEpoch.current) return;
                 setTestResult({ success: false, message: 'Could not reach test endpoint.' });
             }
         } catch {
+            if (epoch !== validationEpoch.current) return;
             setTestResult({ success: false, message: 'Could not reach CLI API.' });
         } finally {
             setIsTesting(false);
@@ -380,8 +399,7 @@ export function ProviderTab() {
         setIsSaving(true);
         setSaveMessage(null);
         try {
-            const body: Record<string, string> = { provider: selectedProvider };
-            if (apiKeyInput.trim()) body.api_key = apiKeyInput.trim();
+            const body = buildProviderRequestBody(selectedProvider, apiKeyInput, bedrockRegion);
             const resp = await fetch(`${cliUrl}/api/provider`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
@@ -403,24 +421,17 @@ export function ProviderTab() {
         }
     };
 
-    // Switching provider only (no new key) = can save directly if key already configured
-    const isProviderSwitch = selectedProvider !== activeProvider && !apiKeyInput.trim();
-    const hasNewKey = apiKeyInput.trim().length > 0;
-    const hasChanges = selectedProvider !== activeProvider || hasNewKey;
-
-    // Save enabled: provider switch with existing key OR new key that passed test
-    const canSave = hasChanges && (
-        (isProviderSwitch && providers.find(p => p.id === selectedProvider)?.api_key_configured) ||
-        (hasNewKey && keyValidated)
-    );
-
-    // Test enabled: there's a key to test (new input or existing configured key)
-    const canTest = !isTesting && (
-        hasNewKey || (selectedProvider === activeProvider && apiKeyConfigured)
-    );
+    const { canSave, canTest, hasChanges, hasNewKey } = providerFormActions({
+        selectedProvider, activeProvider,
+        presetProvider: selectedPreset?.provider,
+        apiKey: apiKeyInput, region: bedrockRegion, activeRegion: activeBedrockRegion,
+        selectedHasKey: !!providers.find(p => p.id === selectedProvider)?.api_key_configured,
+        activeHasKey: apiKeyConfigured, keyValidated, isTesting,
+    });
 
     // Reset test state when key input or provider changes
     const resetTestState = () => {
+        validationEpoch.current += 1;
         setTestResult(null);
         setKeyValidated(false);
         setSaveMessage(null);
@@ -523,7 +534,7 @@ export function ProviderTab() {
                                         ? 'bg-green-500/20 text-green-400'
                                         : 'bg-yellow-500/20 text-yellow-400'
                                         }`}>
-                                        {apiKeyConfigured ? 'Key Configured' : 'No Key'}
+                                        {apiKeyConfigured ? 'Key Configured' : activeProvider === 'bedrock' ? 'AWS Runtime Auth' : 'No Key'}
                                     </span>
                                 </div>
                             </div>
@@ -534,8 +545,10 @@ export function ProviderTab() {
                                 <select
                                     value={selectedProvider}
                                     onChange={(e) => {
-                                        setSelectedProvider(e.target.value);
+                                        const nextProvider = e.target.value;
+                                        setSelectedProvider(nextProvider);
                                         setApiKeyInput('');
+                                        setBedrockRegion(nextProvider === 'bedrock' && nextProvider === activeProvider ? activeBedrockRegion : '');
                                         resetTestState();
                                     }}
                                     className="w-full input-premium p-2"
@@ -551,10 +564,31 @@ export function ProviderTab() {
                                 )}
                             </div>
 
+                            {selectedProvider === 'bedrock' && (
+                                <div>
+                                    <label htmlFor="bedrock-region" className="label-mini block mb-1.5">AWS source region (optional)</label>
+                                    <input
+                                        id="bedrock-region"
+                                        type="text"
+                                        value={bedrockRegion}
+                                        onChange={(e) => {
+                                            setBedrockRegion(e.target.value);
+                                            resetTestState();
+                                        }}
+                                        placeholder="Use the CLI host AWS profile/default region"
+                                        className="w-full input-premium px-4 py-2"
+                                        autoComplete="off"
+                                    />
+                                    <p className="text-[11px] text-ui-text-dim mt-1.5">
+                                        The CLI host uses its AWS role/profile when no API key is entered. Geography-prefixed inference profiles can route requests across regions within their geography.
+                                    </p>
+                                </div>
+                            )}
+
                             {/* API Key input */}
                             <div>
                                 <label className="label-mini block mb-1.5">
-                                    API Key {apiKeyConfigured && selectedProvider === activeProvider && (
+                                    {selectedProvider === 'bedrock' ? 'Bedrock API Key (optional)' : 'API Key'} {apiKeyConfigured && selectedProvider === activeProvider && (
                                         <span className="text-green-400 text-[10px] ml-1">(already configured)</span>
                                     )}
                                 </label>
@@ -567,13 +601,15 @@ export function ProviderTab() {
                                     }}
                                     placeholder={apiKeyConfigured && selectedProvider === activeProvider
                                         ? 'Leave blank to keep current key'
-                                        : 'Enter API key for this provider'
+                                        : selectedProvider === 'bedrock' ? 'Optional · use AWS role/profile instead' : 'Enter API key for this provider'
                                     }
                                     className="w-full input-premium px-4 py-2"
                                 />
                                 {apiKeyInput.trim() && <p className="text-[11px] text-ui-text-dim mt-1.5" aria-live="polite">Preview: <code className="font-mono text-ui-text-muted">{formatSecretPreview(apiKeyInput)}</code></p>}
                                 <p className="text-[11px] text-ui-text-dim mt-1.5">
-                                    The key is stored in the CLI's configuration file, not in the browser.
+                                    {selectedProvider === 'bedrock'
+                                        ? 'Credentials stay on the CLI host. Prefer an AWS role/profile for managed deployments.'
+                                        : "The key is stored in the CLI's configuration file, not in the browser."}
                                 </p>
                             </div>
 
@@ -583,7 +619,7 @@ export function ProviderTab() {
                                 disabled={!canTest}
                                 className="w-full flex items-center justify-center gap-2 px-4 py-2 text-sm font-semibold text-coral bg-coral/20 border border-coral/40 rounded-lg hover:bg-coral/30 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                             >
-                                {isTesting ? 'Testing...' : 'Test API Key'}
+                                {isTesting ? 'Testing...' : selectedProvider === 'bedrock' ? 'Test Bedrock Connection' : 'Test API Key'}
                             </button>
                             {testResult && (
                                 <p className={`text-sm text-center ${testResult.success ? 'text-green-400' : 'text-red-400'}`}>

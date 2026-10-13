@@ -11,7 +11,7 @@ services:
       - postgres_data:/var/lib/postgresql/data
       - ./backend/init-scripts:/docker-entrypoint-initdb.d
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-bugtraceai}"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-bugtraceai} -d ${POSTGRES_DB:-bugtraceai_web}"]
       interval: 10s
       timeout: 5s
       retries: 5
