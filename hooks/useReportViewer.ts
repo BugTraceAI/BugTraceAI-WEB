@@ -90,6 +90,7 @@ export const useReportViewer = (reportId: string): UseReportViewerReturn => {
   const [selectedSeverity, setSelectedSeverity] = useState<SeverityFilter>('all');
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const activeControllerRef = useRef<AbortController | null>(null);
+  const hasValidatedReportRef = useRef(false);
 
   const resetReportState = useCallback(() => {
     setMarkdown('');
@@ -98,21 +99,27 @@ export const useReportViewer = (reportId: string): UseReportViewerReturn => {
     setScanStats(null);
   }, []);
 
-  const loadData = useCallback(async () => {
+  const fetchReportData = useCallback(async (background: boolean) => {
+    // Do not interrupt an in-flight refresh merely because another timer fired.
+    if (background && activeControllerRef.current) return;
     activeControllerRef.current?.abort();
     const controller = new AbortController();
     activeControllerRef.current = controller;
 
-    setLoading(true);
-    setError(null);
-    resetReportState();
+    if (!background) {
+      setLoading(true);
+      setError(null);
+      resetReportState();
+      hasValidatedReportRef.current = false;
+    }
     try {
       // Fetch markdown, findings, engagement data, and all detections from DB
+      const options: RequestInit = { signal: controller.signal, cache: 'no-store' };
       const [mdResponse, findingsResponse, engagementResponse, detectionsResponse] = await Promise.all([
-        fetch(`${CLI_API_URL}/api/scans/${reportId}/files/final_report.md`, { signal: controller.signal }).catch(() => null),
-        fetch(`${CLI_API_URL}/api/scans/${reportId}/files/validated_findings.json`, { signal: controller.signal }).catch(() => null),
-        fetch(`${CLI_API_URL}/api/scans/${reportId}/files/engagement_data.json`, { signal: controller.signal }).catch(() => null),
-        fetch(`${CLI_API_URL}/api/scans/${reportId}/findings?per_page=100`, { signal: controller.signal }).catch(() => null),
+        fetch(`${CLI_API_URL}/api/scans/${reportId}/files/final_report.md`, options).catch(() => null),
+        fetch(`${CLI_API_URL}/api/scans/${reportId}/files/validated_findings.json`, options).catch(() => null),
+        fetch(`${CLI_API_URL}/api/scans/${reportId}/files/engagement_data.json`, options).catch(() => null),
+        fetch(`${CLI_API_URL}/api/scans/${reportId}/findings?per_page=100`, options).catch(() => null),
       ]);
 
       if (controller.signal.aborted || activeControllerRef.current !== controller) return;
@@ -130,20 +137,31 @@ export const useReportViewer = (reportId: string): UseReportViewerReturn => {
       // Findings tab — and the "Send to Repeater" action — still work on partial
       // reports. Both files expose findings under the same `.findings` key.
       let findingsJson: { findings?: Finding[]; manual_review?: Finding[] } | null = null;
+      let fromValidatedReport = false;
       if (findingsResponse?.ok) {
-        try { findingsJson = await findingsResponse.json(); } catch { /* malformed JSON */ }
+        try {
+          const data = await findingsResponse.json();
+          if (data && Array.isArray(data.findings)) {
+            findingsJson = data;
+            fromValidatedReport = true;
+          }
+        } catch { /* malformed JSON; preserve the previous report on refresh */ }
       }
-      if (!findingsJson) {
+      if (!findingsJson && !hasValidatedReportRef.current) {
         const rawResp = await fetch(
           `${CLI_API_URL}/api/scans/${reportId}/files/raw_findings.json`,
-          { signal: controller.signal },
+          options,
         ).catch(() => null);
         if (rawResp?.ok) {
-          try { findingsJson = await rawResp.json(); } catch { /* malformed JSON */ }
+          try {
+            const data = await rawResp.json();
+            if (data && Array.isArray(data.findings)) findingsJson = data;
+          } catch { /* malformed JSON */ }
         }
       }
       if (findingsJson) {
         if (controller.signal.aborted || activeControllerRef.current !== controller) return;
+        if (fromValidatedReport) hasValidatedReportRef.current = true;
         const notUnknown = (f: Finding) => f.type?.toLowerCase() !== 'unknown';
         const confirmed = (findingsJson.findings || []).filter(notUnknown);
         // Surface the `manual_review` bucket too (confirmed-but-demoted by the report
@@ -180,22 +198,37 @@ export const useReportViewer = (reportId: string): UseReportViewerReturn => {
       }
 
     } catch (err) {
-      if (!controller.signal.aborted && activeControllerRef.current === controller) {
+      if (!background && !controller.signal.aborted && activeControllerRef.current === controller) {
         setError(err instanceof Error ? err.message : 'Failed to load report');
       }
     } finally {
-      if (!controller.signal.aborted && activeControllerRef.current === controller) {
-        setLoading(false);
+      if (activeControllerRef.current === controller) {
+        activeControllerRef.current = null;
+        if (!background && !controller.signal.aborted) setLoading(false);
       }
     }
   }, [reportId, resetReportState]);
 
+  const loadData = useCallback(() => fetchReportData(false), [fetchReportData]);
+
   useEffect(() => {
     loadData();
-    return () => {
-      activeControllerRef.current?.abort();
+    // Report artifacts can be updated after this view first opens. Refresh quietly
+    // while visible, and immediately when the user returns to the tab.
+    const refresh = () => {
+      if (document.visibilityState === 'visible') void fetchReportData(true);
     };
-  }, [loadData]);
+    const interval = window.setInterval(refresh, 15000);
+    window.addEventListener('focus', refresh);
+    document.addEventListener('visibilitychange', refresh);
+    return () => {
+      window.clearInterval(interval);
+      window.removeEventListener('focus', refresh);
+      document.removeEventListener('visibilitychange', refresh);
+      activeControllerRef.current?.abort();
+      activeControllerRef.current = null;
+    };
+  }, [loadData, fetchReportData]);
 
   const handleCardClick = (severity: SeverityFilter) => {
     setSelectedSeverity(selectedSeverity === severity ? 'all' : severity);

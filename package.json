@@ -2,12 +2,12 @@
   "name": "bugtraceai",
   "private": true,
   "license": "Apache-2.0",
-  "version": "2.0.37-beta",
+  "version": "2.0.38-beta",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
-    "test": "vitest run services/repeaterPersistence.test.ts services/reportFindingPresentation.test.ts services/finisherSeed.test.ts components/cli/providerRequestBody.test.ts",
+    "test": "vitest run services/reportViewerRefresh.test.tsx services/repeaterPersistence.test.ts services/reportFindingPresentation.test.ts services/finisherSeed.test.ts components/cli/providerRequestBody.test.ts",
     "preview": "vite preview",
     "lint": "eslint . --ext .ts,.tsx --report-unused-disable-directives",
     "lint:fix": "eslint . --ext .ts,.tsx --fix"
@@ -48,6 +48,7 @@
     "eslint-plugin-react": "^7.37.5",
     "eslint-plugin-react-hooks": "^5.2.0",
     "globals": "^17.3.0",
+    "jsdom": "^25.0.1",
     "typescript": "^5.0.2",
     "vite": "^5.4.21",
     "vitest": "^4.0.18"

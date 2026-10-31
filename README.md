@@ -16,7 +16,7 @@
   <a href="https://bugtraceai.github.io/BugTraceAI/bugtraceai-web/"><img src="https://img.shields.io/badge/Documentation-WEB-8B5CF6" alt="WEB documentation"/></a>
   <a href="https://deepwiki.com/BugTraceAI/BugTraceAI-WEB"><img src="https://img.shields.io/badge/Ask-DeepWiki-5A5AFF" alt="Ask DeepWiki"/></a>
   <a href="https://discord.gg/g48NcdGme"><img src="https://img.shields.io/badge/Join-Discord-5865F2?logo=discord&logoColor=white" alt="Join the BugTraceAI Discord"/></a>
-  <a href="https://github.com/BugTraceAI/BugTraceAI-WEB/releases"><img src="https://img.shields.io/badge/Version-2.0.37--beta-FF7F50" alt="Public version: 2.0.37-beta"/></a>
+  <a href="https://github.com/BugTraceAI/BugTraceAI-WEB/releases"><img src="https://img.shields.io/badge/Version-2.0.38--beta-FF7F50" alt="Public version: 2.0.38-beta"/></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-Apache--2.0-blue" alt="Apache-2.0 license"/></a>
 </p>
 
