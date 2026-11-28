@@ -7,7 +7,7 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
-    "test": "vitest run services/reportViewerRefresh.test.tsx services/repeaterPersistence.test.ts services/reportFindingPresentation.test.ts services/finisherSeed.test.ts components/cli/providerRequestBody.test.ts",
+    "test": "vitest run services/reportViewerRefresh.test.tsx services/repeaterPersistence.test.ts services/reportFindingPresentation.test.ts services/finisherSeed.test.ts components/cli/providerRequestBody.test.ts components/workbench/workbenchModel.test.ts components/workbench/WorkbenchPage.test.tsx",
     "preview": "vite preview",
     "lint": "eslint . --ext .ts,.tsx --report-unused-disable-directives",
     "lint:fix": "eslint . --ext .ts,.tsx --fix"
@@ -35,6 +35,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.39.2",
+    "@testing-library/react": "^16.1.0",
     "@types/dompurify": "^3.2.0",
     "@types/js-yaml": "^4.0.9",
     "@types/marked": "^6.0.0",
